@@ -33,7 +33,7 @@ def compress_to_jpg(input_path, output_path):
     :param output_path: 输出文件路径
     """
     try:
-        subprocess.run(['magick', 'convert', input_path, '-quality', '75', output_path], check=True)
+        subprocess.run(['magick', input_path, '-quality', '75', output_path], check=True)
         print(f"已成功压缩为 JPG: {input_path} -> {output_path}")
     except subprocess.CalledProcessError as e:
         print(f"压缩失败: {input_path}，错误: {e}")
@@ -46,7 +46,7 @@ def compress_to_gif(input_path, output_path):
     :param output_path: 输出文件路径
     """
     try:
-        subprocess.run(['magick', 'convert', input_path, '-fuzz', '5%', '-quality', '75', '-layers', 'Optimize', output_path], check=True)
+        subprocess.run(['magick', input_path, '-fuzz', '5%', '-quality', '75', '-layers', 'Optimize', output_path], check=True)
         print(f"已成功压缩为 GIF: {input_path} -> {output_path}")
     except subprocess.CalledProcessError as e:
         print(f"压缩失败: {input_path}，错误: {e}")
