@@ -21,9 +21,9 @@ def ed2k_hash(file_path):
         print(f"无法读取文件 {file_path}：{e}")
         return ''
 
-def rename_files_in_folder(source_folder):
+def rename_files_in_folder_recursively(source_folder):
     """
-    遍历指定文件夹中的所有文件，并将其重命名为 ED2K 哈希格式。
+    遍历指定文件夹及其所有子文件夹中的文件，并将其重命名为 ED2K 哈希格式。
     :param source_folder: 源文件夹路径
     """
     if not os.path.isdir(source_folder):
@@ -33,7 +33,7 @@ def rename_files_in_folder(source_folder):
     for root, _, files in os.walk(source_folder):
         for file in files:
             file_path = os.path.join(root, file)
-            
+
             # 检查是否为文件
             if not os.path.isfile(file_path):
                 print(f"跳过非文件项：{file_path}")
@@ -66,9 +66,9 @@ def main():
     """
     # 获取源文件夹路径
     source_folder = input("请输入源文件夹位置（按回车键使用默认地址：t:\\XXX\\）：").strip() or "t:\\XXX\\"
-    
+
     # 调用重命名函数
-    rename_files_in_folder(source_folder)
+    rename_files_in_folder_recursively(source_folder)
 
     # 退出提示
     input("操作完成，按回车键退出...")

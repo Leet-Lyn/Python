@@ -43,11 +43,6 @@ def compress_file():
         except Exception as e:
             print(f"处理文件时出错：{source_file}，错误信息：{e}")
 
-        # 询问用户是否继续
-        # continue_choice = input("是否继续处理其他文件？(按回车键继续，输入 'n' 退出): ").strip().lower()
-        # if continue_choice == 'n':
-        #     break
-
     print("程序已退出。")
 
 def handle_static_image(source_file):
@@ -59,6 +54,7 @@ def handle_static_image(source_file):
         # 使用 magick 命令压缩图片
         subprocess.run(['magick', source_file, '-quality', '75', output_file], check=True)
         os.replace(output_file, source_file)  # 替换源文件
+        os.rename(source_file, output_file)  # 更新文件后缀名为 .jpg
         print(f"{source_file} 已成功压缩为 JPG 格式并替换。")
     except subprocess.CalledProcessError as e:
         print(f"压缩文件 {source_file} 时失败，错误信息：{e}")
@@ -76,6 +72,7 @@ def handle_webp_file(source_file):
             output_file = f"{os.path.splitext(source_file)[0]}.gif"
             subprocess.run(['magick', source_file, '-fuzz', '5%', '-quality', '75', '-layers', 'Optimize', output_file], check=True)
             os.replace(output_file, source_file)  # 替换源文件
+            os.rename(source_file, output_file)  # 更新文件后缀名为 .gif
             print(f"{source_file} 已成功转换为 GIF 格式并替换。")
         else:  # 静态 WebP 压缩为 JPG
             handle_static_image(source_file)
@@ -91,6 +88,7 @@ def handle_animated_or_video(source_file):
         # 使用 magick 命令处理 GIF 或视频
         subprocess.run(['magick', source_file, '-fuzz', '5%', '-quality', '75', '-layers', 'Optimize', output_file], check=True)
         os.replace(output_file, source_file)  # 替换源文件
+        os.rename(source_file, output_file)  # 更新文件后缀名为 .gif
         print(f"{source_file} 已成功转换为 GIF 格式并替换。")
     except subprocess.CalledProcessError as e:
         print(f"处理文件 {source_file} 时失败，错误信息：{e}")
