@@ -23,10 +23,10 @@ def format_size(size_str):
     return f"{size:.4f} TB"
 
 def main():
-    # 询问源文件位置，默认值为“d:\\Works\\Z\\”
-    source_folder = input("请输入源文件位置（默认为‘d:\\Works\\Z\\’）：").strip()
+    # 询问源文件位置，默认值为“d:\\Works\\Z\\Ed2K\\”
+    source_folder = input("请输入源文件位置（默认为‘d:\\Works\\Z\\Ed2K\\’）：").strip()
     if not source_folder:
-        source_folder = "d:\\Works\\Z\\Ed2K\\"
+        source_folder = "dd:\\Works\\Z\\Ed2K\\"
 
     # 询问源文件文件名，默认值为“Links.txt”
     source_filename = input("请输入源文件文件名（默认为‘Links.txt’）：").strip()
