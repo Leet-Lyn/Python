@@ -6,6 +6,7 @@
 # 如此循环，再次前询问我源文件位置。
 
 # 导入模块
+# 导入模块
 import os
 import subprocess
 import shutil  # 用于替换文件
@@ -54,7 +55,11 @@ def handle_static_image(source_file):
     try:
         # 使用 magick 命令压缩图片
         subprocess.run(f'magick "{source_file}" -quality 75 "{output_file}"', check=True, shell=True)
-        shutil.move(output_file, source_file)  # 替换源文件
+        
+        # 替换源文件，并更新后缀名为 .jpg
+        if source_file != output_file:
+            os.remove(source_file)  # 删除原始文件
+        shutil.move(output_file, source_file)  # 将新文件重命名为源文件
         print(f"{source_file} 已成功压缩为 JPG 格式并替换。")
     except subprocess.CalledProcessError as e:
         print(f"压缩文件 {source_file} 时失败，错误信息：{e}")
@@ -71,7 +76,11 @@ def handle_webp_file(source_file):
         if is_animated:  # 动态 WebP 转换为 GIF
             output_file = f"{os.path.splitext(source_file)[0]}.gif"
             subprocess.run(f'magick "{source_file}" -fuzz 5% -quality 75 -layers Optimize "{output_file}"', check=True, shell=True)
-            shutil.move(output_file, source_file)  # 替换源文件
+            
+            # 替换源文件，并更新后缀名为 .gif
+            if source_file != output_file:
+                os.remove(source_file)  # 删除原始文件
+            shutil.move(output_file, source_file)  # 将新文件重命名为源文件
             print(f"{source_file} 已成功转换为 GIF 格式并替换。")
         else:  # 静态 WebP 压缩为 JPG
             handle_static_image(source_file)
@@ -86,7 +95,11 @@ def handle_animated_or_video(source_file):
     try:
         # 使用 magick 命令处理 GIF 或视频
         subprocess.run(f'magick "{source_file}" -fuzz 5% -quality 75 -layers Optimize "{output_file}"', check=True, shell=True)
-        shutil.move(output_file, source_file)  # 替换源文件
+        
+        # 替换源文件，并更新后缀名为 .gif
+        if source_file != output_file:
+            os.remove(source_file)  # 删除原始文件
+        shutil.move(output_file, source_file)  # 将新文件重命名为源文件
         print(f"{source_file} 已成功转换为 GIF 格式并替换。")
     except subprocess.CalledProcessError as e:
         print(f"处理文件 {source_file} 时失败，错误信息：{e}")

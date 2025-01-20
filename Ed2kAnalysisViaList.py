@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件位置，默认为“d:\\Works\\Z\\Ed2K\\”；询问我源文件文件名，默认为“Links.txt”
+# 在脚本开始前询问我源文件位置，默认为“d:\\Works\\Ed2K\\”；询问我源文件文件名，默认为“Links.txt”
 # 该文件内包含许多 ed2k 链接，每行一个。顺序读取每个 ed2k 链接。
 # 每个链接都是百分号编码(Percent-encoding)，请将其转回原来链接。在源文件位置下生成新的文件，文件名相同，后缀名分别为“.new.txt”。
 # 根据“.new.txt”文件，在源文件位置下生成新的文件，文件名相同，后缀名分别为“.name.txt”、“.suffix.txt”、“.size.txt”、“.hash.txt”。分别存放链接的文件名、后缀名、大小、hash。“.size.txt”文件中存放的文件大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
@@ -23,10 +23,10 @@ def format_size(size_str):
     return f"{size:.4f} TB"
 
 def main():
-    # 询问源文件位置，默认值为“d:\\Works\\Z\\Ed2K\\”
-    source_folder = input("请输入源文件位置（默认为‘d:\\Works\\Z\\Ed2K\\’）：").strip()
+    # 询问源文件位置，默认值为“d:\\Works\\Ed2K\\”
+    source_folder = input("请输入源文件位置（默认为‘d:\\Works\\Ed2K\\’）：").strip()
     if not source_folder:
-        source_folder = "dd:\\Works\\Z\\Ed2K\\"
+        source_folder = "d:\\Works\\Ed2K\\"
 
     # 询问源文件文件名，默认值为“Links.txt”
     source_filename = input("请输入源文件文件名（默认为‘Links.txt’）：").strip()

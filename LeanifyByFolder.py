@@ -13,7 +13,7 @@ def compress_files_with_leanify():
     使用 Leanify 压缩源文件夹中的所有文件，并将结果保存到目标文件夹中，保留源文件夹的子文件夹结构。
     """
     # 提示用户输入源文件夹和目标文件夹位置
-    input_path = input("请输入源文件夹位置（按回车键使用默认地址：d:\\Works\\W\\）：").strip() or "d:\\Works\\W\\"
+    input_path = input("请输入源文件夹位置（按回车键使用默认地址：d:\\Works\\Webpages\\）：").strip() or "d:\\Works\\Webpages\\"
     output_path = input("请输入目标文件夹位置（按回车键使用默认地址：e:\\Documents\\Articles\\Webpages\\）：").strip() or "e:\\Documents\\Articles\\Webpages\\"
 
     # 验证输入路径
