@@ -60,38 +60,14 @@ def compress_audio(source_path, target_folder):
         print(f"错误信息: {e}")
         return
 
-def remux_audio(compressed_file_path, final_file_path):
-    """
-    使用 mkvmerge 对音频进行封装。
-    :param compressed_file_path: 已压缩的音频文件路径
-    :param final_file_path: 最终封装的音频文件路径
-    """
-    # 构建 mkvmerge 命令
-    mkvmerge_command = [
-        "mkvmerge", "-o", final_file_path, compressed_file_path
-    ]
-    
-    print(f"正在封装音频: {compressed_file_path}")
-    try:
-        subprocess.run(mkvmerge_command, check=True)
-        print(f"封装完成: {final_file_path}")
-        os.remove(compressed_file_path)  # 删除临时的压缩文件
-    except subprocess.CalledProcessError as e:
-        print(f"音频封装失败: {compressed_file_path}")
-        print(f"错误信息: {e}")
-
 # 遍历源文件夹中的所有音频文件
 for root, dirs, files in os.walk(source_folder):
     for file in files:
         if file.lower().endswith(audio_formats):  # 忽略文件名大小写
             source_path = os.path.join(root, file)
-            compressed_file_path = os.path.join(target_folder, f"{os.path.splitext(file)[0]}.ogg")
-            final_file_path = os.path.join(target_folder, f"{os.path.splitext(file)[0]}.mkv")
             
-            # 压缩音频并重新封装
+            # 压缩音频
             compress_audio(source_path, target_folder)
-            if os.path.exists(compressed_file_path):
-                remux_audio(compressed_file_path, final_file_path)
 
 print("所有音频处理完成！")
 input("按回车键退出...")
