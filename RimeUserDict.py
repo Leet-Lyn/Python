@@ -6,9 +6,6 @@
 # pip install pyperclip pypinyin
 
 # 导入模块
-# 需安装第三方库，运行前请执行以下命令：
-# pip install pyperclip pypinyin
-
 import pyperclip
 from pypinyin import lazy_pinyin, Style
 
