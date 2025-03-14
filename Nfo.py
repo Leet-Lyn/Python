@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置与目标文件夹位置。
+# 在脚本开始前询问我源文件夹位置。
 # 遍历源文件夹位置中所有 mkv 文件。在该文件夹下生成同名 txt 文件。
 # 询问我 txt 文件内写入的内容。UTF-8编码，默认为：<?xml version="1.0" encoding="UTF-8" standalone="yes"?><movie><title> </title></movie>
 # 再次枚举源文件夹位置中所有 txt 文件，读取其文件名（不包括后缀名），替换“<title> </title>”内的“ ”。   
@@ -7,15 +7,18 @@
 # 导入模块
 import os
 
-def get_valid_directory(prompt):
+def get_valid_directory(prompt, default_folder=None):
     """
-    获取有效的文件夹路径，确保路径存在且有效。
+    获取有效的文件夹路径，支持默认路径。
     """
     while True:
         folder = input(prompt).strip()
+        # 如果用户输入为空且存在默认路径，则使用默认路径
+        if not folder and default_folder is not None:
+            folder = default_folder
         if os.path.isdir(folder):
             return folder
-        print("输入的路径无效，请重新输入有效的文件夹路径。")
+        print(f"路径 '{folder}' 无效，请重新输入。")
 
 def create_txt_files_for_mkv(source_folder, xml_template):
     """
@@ -28,7 +31,7 @@ def create_txt_files_for_mkv(source_folder, xml_template):
 
             # 写入 XML 模板到 txt 文件
             with open(txt_file_path, 'w', encoding='utf-8') as txt_file:
-                txt_file.write(xml_template.replace("<title> </title>", "<title> </title>"))  # 固定模板
+                txt_file.write(xml_template)
 
             print(f"已生成 {txt_file_path} 文件")
 
@@ -58,8 +61,12 @@ def main():
     """
     主程序入口。
     """
-    # 询问源文件夹和目标文件夹路径
-    source_folder = get_valid_directory("请输入源文件夹路径：")
+    # 设置默认路径
+    default_source = r"D:\Works\Out"
+    
+    # 获取源文件夹路径（带默认值）
+    prompt = f"请输入源文件夹路径（默认为 {default_source}）："
+    source_folder = get_valid_directory(prompt, default_folder=default_source)
 
     # 询问用户 txt 文件内容
     custom_title = input("请输入txt文件中<title>标签的内容（按回车使用默认内容）：").strip()

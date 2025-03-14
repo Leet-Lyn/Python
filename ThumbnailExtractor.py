@@ -67,7 +67,7 @@ def main():
     主程序入口：获取用户输入的文件夹，遍历文件并处理。
     """
     # 默认源文件夹和目标文件夹路径
-    default_source_folder = "d:\\Works\\In\\"
+    default_source_folder = "d:\\Works\\Out\\"
     default_target_folder = "d:\\Works\\Out\\"
 
     # 获取源文件夹和目标文件夹路径
