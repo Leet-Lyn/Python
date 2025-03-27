@@ -1,5 +1,8 @@
 ﻿# 用 ed2k hash 对文件夹下所有文件重命名为生成的 ed2k hash。
 
+# 安装 pycryptodome 库：
+# pip install pycryptodome
+
 # 导入模块
 import os
 from Crypto.Hash import MD4
