@@ -2,7 +2,7 @@
 # 用 yt-dlp（"d:\\ProApps\\Youtube-dl\\yt-dlp.exe"）下载视频。
 # 首先询问我想下载单个链接还是列表文件中的链接？（如果输入的是网络链接，则下载该链接；按回车则为默认地址“d:\\ProApps\\Youtube-dl\\Cookies.txt”；如果输入的是本地链接，则下载该地址列表文件中的链接。）
 # 再询问我是否需要引入 cookies 文件？（按回车或输入“y”则为引入 cookies 文件，默认地址为"d:\\ProApps\\Youtube-dl\\Cookies.txt"；如果输入的是本地链接，则将该地址作为 cookies 文件地址；输入“n”则不引入 cookies 文件。）
-# 再询问我是否需要代理？（按回车或输入“y”则为代理，默认地址“127.0.0.1:10809”；输入“n”则不引入 cookies 文件。）
+# 再询问我是否需要代理？（按回车或输入“y”则为代理，默认地址“socks5://127.0.0.1:10808”；输入“n”则不引入 cookies 文件。）
 # 再询问我下载后文件存放的位置？（按回车则为默认地址“d:\\Downloads\\”；如果输入的是本地链接，则将该地址作为下载后文件存放的位置。）
 
 # 导入模块。
@@ -14,7 +14,7 @@ import os
 DEFAULT_COOKIES_PATH = "d:\\ProApps\\Youtube-dl\\Cookies.txt"
 DEFAULT_LIST_FILE = "d:\\ProApps\\Youtube-dl\\Links.txt"
 DEFAULT_OUTPUT_DIR = "d:\\Downloads\\"
-DEFAULT_PROXY = "127.0.0.1:10809"
+DEFAULT_PROXY = "socks5://127.0.0.1:10808"
 YT_DLP_PATH = "d:\\ProApps\\Youtube-dl\\yt-dlp.exe"
 
 def get_user_choice(prompt, default=None):
@@ -38,7 +38,7 @@ def download_videos(urls, output_dir, cookies_file=None, proxy=None):
     使用 yt-dlp 下载视频。
     """
     # 构建基本命令
-    base_command = [YT_DLP_PATH, "-o", os.path.join(output_dir, "%(title)s.%(ext)s")]
+    base_command = [YT_DLP_PATH, "--force-ipv4", "-o", os.path.join(output_dir, "%(title)s.%(ext)s")]
 
     # 如果启用 cookies 文件，添加参数
     if cookies_file:
