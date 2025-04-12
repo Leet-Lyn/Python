@@ -1,6 +1,6 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
 # 在脚本开始前询问我源文件夹位置。
-# 遍历源文件夹位置中所有的视频文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4）。在该文件夹下生成同名 nfo 文件。
+# 遍历源文件夹位置中所有的文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4、mp3、ogg、aac、ac3、wma、pdf、epub、zip、rar、7z）。在该文件夹下生成同名 nfo 文件。
 # 询问我 nfo 文件内写入的内容。UTF-8编码，默认为：<?xml version="1.0" encoding="UTF-8" standalone="yes"?><movie><title> </title></movie>
 # 再次枚举源文件夹位置中所有 nfo 文件，读取其文件名（不包括后缀名），替换“<title> </title>”内的“ ”。   
 
@@ -22,13 +22,16 @@ def get_valid_directory(prompt, default_folder=None):
 
 def create_nfo_files_for_videos(source_folder, xml_template):
     """
-    遍历源文件夹中的所有视频文件，生成对应的XML文件
+    遍历源文件夹中的所有文件，生成对应的XML文件
     """
-    # 支持的视频文件扩展名集合（小写）
+    # 支持的文件扩展名集合（小写）
     video_extensions = {
         '.mkv', '.avi', '.f4v', '.flv', '.ts',
         '.mpeg', '.mpg', '.rm', '.rmvb', '.asf',
-        '.wmv', '.mov', '.webm', '.mp4'
+        '.wmv', '.mov', '.webm', '.mp4',
+        '.mp3', '.ogg', '.aac', '.wma',
+        '.pdf', '.epub',
+        '.zip', '.rar', '.7z'
     }
 
     for file_name in os.listdir(source_folder):
@@ -76,7 +79,7 @@ def main():
     default_source = r"D:\Works\Out"
     
     # 获取用户输入的源文件夹路径
-    prompt = f"请输入视频文件夹路径（默认：{default_source}）："
+    prompt = f"请输入文件夹路径（默认：{default_source}）："
     source_folder = get_valid_directory(prompt, default_source)
 
     # 获取XML模板内容
