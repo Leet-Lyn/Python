@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置。
+# 在脚本开始前询问我源文件夹位置（默认为“D:\Works\Out”）。
 # 遍历源文件夹位置中所有的文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4、mp3、ogg、aac、ac3、wma、pdf、epub、zip、rar、7z）。在该文件夹下生成同名 nfo 文件。
 # 询问我 nfo 文件内写入的内容。UTF-8编码，默认为：<?xml version="1.0" encoding="UTF-8" standalone="yes"?><movie><title> </title></movie>
 # 再次枚举源文件夹位置中所有 nfo 文件，读取其文件名（不包括后缀名），替换“<title> </title>”内的“ ”。   
@@ -22,7 +22,7 @@ def get_valid_directory(prompt, default_folder=None):
 
 def create_nfo_files_for_videos(source_folder, xml_template):
     """
-    遍历源文件夹中的所有文件，生成对应的XML文件
+    遍历源文件夹及其子文件夹中的所有文件，生成对应的XML文件
     """
     # 支持的文件扩展名集合（小写）
     video_extensions = {
@@ -34,42 +34,46 @@ def create_nfo_files_for_videos(source_folder, xml_template):
         '.zip', '.rar', '.7z'
     }
 
-    for file_name in os.listdir(source_folder):
-        # 获取文件扩展名并转为小写
-        file_ext = os.path.splitext(file_name)[1].lower()
-        
-        if file_ext in video_extensions:
-            base_name = os.path.splitext(file_name)[0]  # 去除扩展名
-            nfo_file_path = os.path.join(source_folder, f"{base_name}.nfo")
+    # 遍历所有子文件夹
+    for root, dirs, files in os.walk(source_folder):
+        for file_name in files:
+            # 获取文件扩展名并转为小写
+            file_ext = os.path.splitext(file_name)[1].lower()
+            
+            if file_ext in video_extensions:
+                base_name = os.path.splitext(file_name)[0]  # 去除扩展名
+                nfo_file_path = os.path.join(root, f"{base_name}.nfo")
 
-            # 写入XML模板内容
-            with open(nfo_file_path, 'w', encoding='utf-8') as nfo_file:
-                nfo_file.write(xml_template)
-            print(f"已生成：{nfo_file_path}")
+                # 写入XML模板内容
+                with open(nfo_file_path, 'w', encoding='utf-8') as nfo_file:
+                    nfo_file.write(xml_template)
+                print(f"已生成：{nfo_file_path}")
 
 def update_nfo_with_filenames(source_folder):
     """
-    更新所有XML文件中的标题信息
+    更新所有子文件夹中的XML文件中的标题信息
     """
-    for file_name in os.listdir(source_folder):
-        if file_name.endswith('.nfo'):
-            base_name = os.path.splitext(file_name)[0]  # 获取基础文件名
-            nfo_path = os.path.join(source_folder, file_name)
+    # 遍历所有子文件夹
+    for root, dirs, files in os.walk(source_folder):
+        for file_name in files:
+            if file_name.endswith('.nfo'):
+                base_name = os.path.splitext(file_name)[0]  # 获取基础文件名
+                nfo_path = os.path.join(root, file_name)
 
-            # 读取并替换文件内容
-            with open(nfo_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            # 替换标题标签内容
-            new_content = content.replace(
-                "<title> </title>", 
-                f"<title>{base_name}</title>"
-            )
+                # 读取并替换文件内容
+                with open(nfo_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # 替换标题标签内容
+                new_content = content.replace(
+                    "<title> </title>", 
+                    f"<title>{base_name}</title>"
+                )
 
-            # 写回更新后的内容
-            with open(nfo_path, 'w', encoding='utf-8') as f:
-                f.write(new_content)
-            print(f"已更新：{nfo_path}")
+                # 写回更新后的内容
+                with open(nfo_path, 'w', encoding='utf-8') as f:
+                    f.write(new_content)
+                print(f"已更新：{nfo_path}")
 
 def main():
     """
