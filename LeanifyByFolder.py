@@ -14,7 +14,7 @@ def compress_files_with_leanify():
     """
     # 提示用户输入源文件夹和目标文件夹位置
     input_path = input("请输入源文件夹位置（按回车键使用默认地址：d:\\Works\\Webpages\\）：").strip() or "d:\\Works\\Webpages\\"
-    output_path = input("请输入目标文件夹位置（按回车键使用默认地址：e:\\Documents\\Articles\\Webpages\\）：").strip() or "e:\\Documents\\Articles\\Webpages\\"
+    output_path = input("请输入目标文件夹位置（按回车键使用默认地址：e:\\Documents\\Literatures\\Webpages\\）：").strip() or "e:\\Documents\\Literatures\\Webpages\\"
 
     # 验证输入路径
     if not os.path.isdir(input_path):

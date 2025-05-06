@@ -1,8 +1,8 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
 # 在脚本开始前询问我源文件夹位置与目标文件夹位置。
 # 遍历源文件夹位置中所有视频文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4）。
-# 使用 ffmpeg 压缩，类似命令：ffmpeg -i input.mkv -map 0 -c:v libx265 -crf 25 -preset medium -c:a aac -q:a 0.64 -c:s copy output.mkv。
-# 视频参数为：x265 格式，Const.Qualty: Quality=25，Preset=Medium。音频参数为：aac 格式，遍历每个音轨，质量模式。q=0.64。字幕保持不变。
+# 使用 ffmpeg 压缩，类似命令：ffmpeg -i input.mkv -map 0 -c:v libsvtav1 -crf 32 -preset 5 -c:a aac -q:a 0.64 -c:s copy output.mkv。
+# 视频参数为：x265 格式，Const.Qualty: Quality=32，Preset=5。音频参数为：aac 格式，遍历每个音轨，质量模式。q=0.64。字幕保持不变。
 # 生成的文件重新用 mkvmerge 再生成同名文件到目标文件夹位置。   
 
 # 导入模块
@@ -47,7 +47,7 @@ def compress_and_remux_video(source_path, target_folder):
     # 构建 ffmpeg 命令
     ffmpeg_command = [
         "ffmpeg", "-i", source_path,
-        "-c:v", "libx265", "-preset", "medium", "-crf", "25",
+        "-c:v", "libsvtav1", "-preset", "5", "-crf", "32",
         "-c:a", "aac", "-q:a", "0.64",
         "-c:s", "copy",
         "-map", "0",
