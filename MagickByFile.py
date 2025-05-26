@@ -100,7 +100,7 @@ def convert_to_avif(source_file):
         )
         # 替换原始文件
         os.remove(source_file)
-        print(f"✅ 成功生成：{output_file}")
+        print(f"成功生成：{output_file}")
     except subprocess.CalledProcessError as e:
         print(f"AVIF 转换失败：{e}")
         if os.path.exists(output_file):
