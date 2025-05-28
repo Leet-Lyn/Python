@@ -6,6 +6,7 @@
 # 如此循环，再次前询问我源文件位置。
 
 # 导入模块
+# 导入模块
 import os
 import subprocess
 from PIL import Image
@@ -50,11 +51,6 @@ def compress_file():
     """
     主函数：循环处理文件转换
     """
-    # print("=== 现代化媒体压缩工具 ===")
-    # print("支持格式：")
-    # print("- 静态图：bmp/jpg/png/webp/avif/heic/heif → AVIF")
-    # print("- 动态图：gif/webp/avif/heic/heif/mp4 → AV1 视频")
-    
     while True:
         source_file = input("\n请输入文件路径（输入 n 退出）: ").strip()
         if source_file.lower() == 'n':
@@ -109,7 +105,7 @@ def convert_to_avif(source_file):
 def convert_to_av1(source_file):
     """将动态内容转换为AV1视频"""
     original_source = source_file  # 保存原始文件路径
-    output_file = os.path.splitext(source_file)[0] + ".mp4"
+    output_file = os.path.splitext(source_file)[0] + "_temp.mp4"  # 临时文件名
     temp_file = None
     
     try:
@@ -143,12 +139,25 @@ def convert_to_av1(source_file):
             stderr=subprocess.DEVNULL
         )
 
-        # 清理文件
-        if original_source != output_file and os.path.exists(original_source):
+        # 确定最终文件名（与原始文件同目录，但格式为MP4）
+        final_output = os.path.splitext(original_source)[0] + ".mp4"
+
+        # 删除已存在的最终文件（如果有）
+        if os.path.exists(final_output):
+            os.remove(final_output)
+        
+        # 重命名临时文件为最终文件名
+        os.rename(output_file, final_output)
+
+        # 删除原始源文件（仅当原始文件与新文件不同名时）
+        if original_source != final_output and os.path.exists(original_source):
             os.remove(original_source)
+        
+        # 删除WebP转换的临时GIF文件（如果有）
         if temp_file and os.path.exists(temp_file):
             os.remove(temp_file)
-        print(f"转换完成，原始文件已删除: {original_source}")
+        
+        print(f"转换完成，生成文件：{final_output}")
 
     except subprocess.CalledProcessError as e:
         print(f"转换失败: {str(e)}")
