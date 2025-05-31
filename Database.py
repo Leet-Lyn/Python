@@ -3,6 +3,7 @@
 # 1. 生成文件：在脚本开始前询问我源 CSV 文件位置（默认为：d:\\Downloads\\CSV.csv）与目标文件夹位置（默认为：e:\\Documents\\Creations\\Articles\\Database\\）。这个 CSV 格式，第一行为所有字段名，字段名用""包绕。不同字段名之间用,隔开。第二行开始每一以"开头的为每一条记录。每一个""包绕的为相应的字段数据（可包含数行）为每一条字段。独立的一条记录和字段内多行区别在于行首有无"。每一记录内字段名与字段内容一一对应。请生成每一条记录（markdown 格式 文件，数据以 yaml 属性格式呈现如上文，markdown 文件名为字段"名字"对应字段内容，）。在目标文件夹下生成子文件夹，子文件夹名为CSV格式的文件名（不包括后缀名），将生成的记录放在该子文件夹下。生成的文件名为字段"名字"对应字段内容，当字段"名字"对应字段内容出现不能成为文件名的内容如半角冒号“:”，请用空格破折号空格“ -”代替。其他的如半角问号“?”、半角反斜杠“\”、正斜杠“/”，用全角问号“？”、全角反斜杠“＼”、正斜杠“／”代替。半角双引号“"”用半角波浪号“~”代替。竖线“|”用反单引号“`”代替。星号“*”用乘号“×”代替。<（小于）、>（大于）用书名号“《 》”代替。
 # 2. 删除字段：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Articles\\Database\\）。询问我需要删除某一字段名。遍历源文件夹位置中所有的文件及子文件夹内文件（md 格式），读取每一文件，找到这个字段后删除该字段即其配套的字段内容。
 # 3. 添加字段：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Articles\\Database\\）。询问我需要添加某一字段名，及添加在哪一个字段前。遍历源文件夹位置中所有的文件及子文件夹内文件（md 格式），读取每一文件，找到这个字段，在这行之前，添加要求的字段。
+# 4. 查找与替换：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Articles\\Database\\）。询问我存放查找内容的文本位置（默认为：e:\\Documents\\Creations\\Scripts\\Python\\DatabaseFind.txt）与存放替换内容的文本位置（默认为：e:\\Documents\\Creations\\Scripts\\Python\\DatabaseReplace.txt）。遍历源文件夹位置中所有的文件及子文件夹内文件（md 格式），读取每一文件，找到存放查找内容，用替换内容进行替换。
 
 # 导入模块
 import os
@@ -34,10 +35,11 @@ def sanitize_filename(name):
 
 def main():
     print("请选择操作：")
-    print("1. 从CSV生成Markdown文件")
+    print("1. 从 CSV 生成 Markdown 文件")
     print("2. 删除字段")
     print("3. 添加字段")
-    choice = input("请输入数字选择操作（1/2/3）：")
+    print("4. 查找与替换")
+    choice = input("请输入数字选择操作（1/2/3/4）：")
 
     if choice == '1':
         generate_from_csv()
@@ -45,13 +47,15 @@ def main():
         delete_field()
     elif choice == '3':
         add_field()
+    elif choice == '4':
+        find_and_replace()
     else:
         print("无效选择")
 
 def generate_from_csv():
     """从CSV生成Markdown文件"""
     # 获取用户输入路径
-    csv_path = input(f"请输入CSV文件路径（默认：D:\\Downloads\\CSV.csv）：") or "D:\\Downloads\\CSV.csv"
+    csv_path = input(f"请输入 CSV 文件路径（默认：D:\\Downloads\\CSV.csv）：") or "D:\\Downloads\\CSV.csv"
     output_dir = input(f"请输入目标文件夹（默认：E:\\Documents\\Creations\\Articles\\Database\\）：") or "E:\\Documents\\Creations\\Articles\\Database\\"
 
     # 创建输出子文件夹
@@ -81,7 +85,7 @@ def generate_from_csv():
                 # 获取并净化文件名
                 name_field = next((v for h, v in zip(headers, row) if h == "名字"), None)
                 if not name_field:
-                    raise ValueError("CSV中缺少'名字'字段")
+                    raise ValueError(" CSV 中缺少'名字'字段")
                 
                 safe_name = sanitize_filename(name_field)
                 if not safe_name:
@@ -149,7 +153,7 @@ def process_add_field(file_path, new_field, target_field):
         yaml_start = lines.index('---\n')
         yaml_end = lines.index('---\n', yaml_start+1)
     except ValueError:
-        print(f"文件 {file_path} 缺少YAML分隔符，跳过处理")
+        print(f"文件 {file_path} 缺少 YAML 分隔符，跳过处理")
         return
     
     # 查找目标字段位置
@@ -169,6 +173,67 @@ def process_add_field(file_path, new_field, target_field):
     with open(file_path, 'w', encoding='utf-8') as f:
         f.writelines(lines)
     print(f"已更新：{file_path}")
+
+def find_and_replace():
+    """查找与替换功能"""
+    source_dir = input(f"请输入源文件夹（默认：E:\\Documents\\Creations\\Articles\\Database\\）：") or "E:\\Documents\\Creations\\Articles\\Database\\"
+    find_file = input(f"请输入查找内容文件位置（默认：E:\\Documents\\Creations\\Scripts\\Python\\DatabaseFind.txt）：") or "E:\\Documents\\Creations\\Scripts\\Python\\DatabaseFind.txt"
+    replace_file = input(f"请输入替换内容文件位置（默认：E:\\Documents\\Creations\\Scripts\\Python\\DatabaseReplace.txt）：") or "E:\\Documents\\Creations\\Scripts\\Python\\DatabaseReplace.txt"
+    
+    # 读取查找内容
+    try:
+        with open(find_file, 'r', encoding='utf-8') as f:
+            find_content = f.read()
+    except FileNotFoundError:
+        print(f"查找文件不存在：{find_file}")
+        return
+    
+    # 读取替换内容
+    try:
+        with open(replace_file, 'r', encoding='utf-8') as f:
+            replace_content = f.read()
+    except FileNotFoundError:
+        print(f"替换文件不存在：{replace_file}")
+        return
+    
+    # 遍历所有Markdown文件
+    processed_count = 0
+    for root, _, files in os.walk(source_dir):
+        for file in files:
+            if file.endswith('.md'):
+                file_path = Path(root) / file
+                if process_find_replace(file_path, find_content, replace_content):
+                    processed_count += 1
+    
+    print(f"\n查找与替换完成！共处理 {processed_count} 个文件")
+
+def process_find_replace(file_path, find_content, replace_content):
+    """处理单个文件的查找与替换"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # 如果查找内容为空则跳过
+        if not find_content.strip():
+            print(f"跳过：{file_path}（查找内容为空）")
+            return False
+        
+        # 执行替换操作
+        new_content = content.replace(find_content, replace_content)
+        
+        # 如果没有变化则跳过
+        if new_content == content:
+            return False
+        
+        # 写入更新后的内容
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        
+        print(f"已更新：{file_path}")
+        return True
+    except Exception as e:
+        print(f"处理文件 {file_path} 时出错：{str(e)}")
+        return False
 
 if __name__ == "__main__":
     main()
