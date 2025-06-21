@@ -1,13 +1,13 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文。
-# 开始询问我目标文件夹位置（默认为“E:\\Backups\\StartMenu\\”）。依次运行该文件夹下所有 *.lnk 指向的内容。
+# 开始询问我目标文件夹位置（默认为“E:\\Backups\\Windows\\StartMenu\\”）。依次运行该文件夹下所有 *.lnk 指向的内容。
 
 # 导入模块
 import os
 
-# 获取用户输入的目标文件夹路径，默认值为“E:\\Backups\\StartMenu\\”
-folder = input("请输入目标文件夹位置（默认 E:\\Backups\\StartMenu\\）：").strip()
+# 获取用户输入的目标文件夹路径，默认值为“E:\\Backups\\Windows\\StartMenu\\”
+folder = input("请输入目标文件夹位置（默认 E:\\Backups\\Windows\\StartMenu\\）：").strip()
 if not folder:
-    folder = "E:\\Backups\\StartMenu\\"
+    folder = "E:\\Backups\\Windows\\StartMenu\\"
 # 规范路径格式并转换为绝对路径
 folder = os.path.abspath(os.path.normpath(folder))
 
