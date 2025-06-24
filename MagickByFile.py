@@ -1,14 +1,14 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
 # 在脚本开始前询问我源文件位置。
 # 1. 如果源文件格式为 bmp、jpg、jpeg、png 或静态 webp 格式、或静态 avif 格式、静态 heic 格式、静态 heif 格式，则使用 magick 压缩成 avif 格式，使用类似命令：magick convert input.jpg -quality 50 output.avif。
-# 2. 如果图片文件格式为 gif 或动态 webp 格式、或动态 avif 格式、动态 heic 格式、动态 heif 格式或 mp4 格式，则使用似命令：ffmpeg -i input.gif -map 0:v -c:v libsvtav1 -crf 32 -preset 5 output.mp4
+# 2. 如果图片文件格式为 gif 或动态 webp 格式、或动态 avif 格式、动态 heic 格式、动态 heif 格式或 mp4 格式，则使用似命令：ffmpeg -i input.gif -map 0:v -c:v libsvtav1 -crf 32 -preset 5 output.mp4，生成mp4，再生成 avif 动图（ffmpeg -i input-av1.mp4 -c:v copy animation.avif）。
 # 生成的文件替换源文件。
 # 如此循环，再次前询问我源文件位置。
 
 # 导入模块
-# 导入模块
 import os
 import subprocess
+import uuid
 from PIL import Image
 
 def is_animated_image(filepath):
@@ -26,7 +26,7 @@ def is_animated_image(filepath):
         
         # 其他格式使用 ImageMagick 检测帧数
         result = subprocess.run(
-            ['magick', 'identify', filepath],  # 使用列表参数避免路径问题
+            ['magick', 'identify', filepath],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -78,7 +78,7 @@ def compress_file():
                 print(f"不支持的格式：{ext}")
 
         except Exception as e:
-            print(f"处理失败：{source_file} | 错误：{str(e)}")
+            print(f"处理失败：{sourcefile} | 错误：{str(e)}")
 
     print("\n程序已退出。")
 
@@ -103,68 +103,70 @@ def convert_to_avif(source_file):
             os.remove(output_file)
 
 def convert_to_av1(source_file):
-    """将动态内容转换为AV1视频"""
+    """将动态内容转换为动态AVIF格式（分两步：先转MP4再转AVIF）"""
     original_source = source_file  # 保存原始文件路径
-    output_file = os.path.splitext(source_file)[0] + "_temp.mp4"  # 临时文件名
-    temp_file = None
     
+    # 生成唯一临时文件名
+    temp_id = uuid.uuid4().hex[:8]
+    temp_mp4 = os.path.splitext(original_source)[0] + f"_temp_{temp_id}.mp4"
+    final_avif = os.path.splitext(original_source)[0] + ".avif"
+    
+    temp_files_to_clean = [temp_mp4]  # 需要清理的临时文件列表
+    temp_source = None  # 可能的临时源文件（如从WebP转换的GIF）
+
     try:
-        # 处理 WebP 文件时生成临时文件
-        if original_source.lower().endswith('.webp'):
-            temp_dir = os.path.dirname(original_source)
-            base_name = os.path.basename(original_source).rsplit('.', 1)[0]
-            
-            import uuid
-            temp_file = os.path.join(temp_dir, f"{base_name}_temp_{uuid.uuid4().hex[:6]}.gif")
-            
-            # 转换 WebP 到 GIF
+        # 处理动态WebP：转换为临时GIF
+        if original_source.lower().endswith('.webp') and is_animated_image(original_source):
+            temp_source = os.path.splitext(original_source)[0] + f"_temp_{temp_id}.gif"
             subprocess.run(
-                ['magick', original_source, temp_file],
+                ['magick', original_source, temp_source],
                 check=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
-            source_file = temp_file  # 后续处理使用临时文件
+            source_file = temp_source  # 后续处理使用临时GIF
+            temp_files_to_clean.append(temp_source)
 
-        # 执行视频转换
+        # 第一步：转换为AV1编码的MP4
         subprocess.run(
             [
                 'ffmpeg', '-hide_banner', '-i', source_file,
                 '-map', '0:v', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
                 '-c:v', 'libsvtav1', '-crf', '32', '-preset', '5',
-                '-movflags', '+faststart', '-an', '-sn', '-f', 'mp4', output_file
+                '-movflags', '+faststart', '-an', '-sn', temp_mp4
             ],
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
 
-        # 确定最终文件名（与原始文件同目录，但格式为MP4）
-        final_output = os.path.splitext(original_source)[0] + ".mp4"
+        # 第二步：将MP4转换为动态AVIF
+        subprocess.run(
+            [
+                'ffmpeg', '-hide_banner', '-i', temp_mp4,
+                '-map', '0:v', '-c:v', 'copy', final_avif
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
 
-        # 删除已存在的最终文件（如果有）
-        if os.path.exists(final_output):
-            os.remove(final_output)
+        # 清理原始文件和临时文件
+        os.remove(original_source)
+        for temp_file in temp_files_to_clean:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
         
-        # 重命名临时文件为最终文件名
-        os.rename(output_file, final_output)
-
-        # 删除原始源文件（仅当原始文件与新文件不同名时）
-        if original_source != final_output and os.path.exists(original_source):
-            os.remove(original_source)
-        
-        # 删除WebP转换的临时GIF文件（如果有）
-        if temp_file and os.path.exists(temp_file):
-            os.remove(temp_file)
-        
-        print(f"转换完成，生成文件：{final_output}")
+        print(f"转换完成，生成动态AVIF文件：{final_avif}")
 
     except subprocess.CalledProcessError as e:
         print(f"转换失败: {str(e)}")
-        # 异常时清理残留文件
-        for f in [output_file, temp_file]:
-            if f and os.path.exists(f):
-                os.remove(f)
+        # 清理所有临时文件
+        for temp_file in temp_files_to_clean + [final_avif]:
+            if temp_file and os.path.exists(temp_file):
+                os.remove(temp_file)
+        if temp_source and os.path.exists(temp_source):
+            os.remove(temp_source)
 
 if __name__ == "__main__":
     compress_file()

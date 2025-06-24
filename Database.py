@@ -4,7 +4,10 @@
 # 2. 删除字段：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Articles\\Database\\）。询问我需要删除某一字段名。遍历源文件夹位置中所有的文件及子文件夹内文件（md 格式），读取每一文件，找到这个字段后删除该字段即其配套的字段内容。
 # 3. 添加字段：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Articles\\Database\\）。询问我需要添加某一字段名，及添加在哪一个字段前。遍历源文件夹位置中所有的文件及子文件夹内文件（md 格式），读取每一文件，找到这个字段，在这行之前，添加要求的字段。
 # 4. 查找与替换：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Articles\\Database\\）。询问我存放查找内容的文本位置（默认为：e:\\Documents\\Creations\\Scripts\\Python\\DatabaseFind.txt）与存放替换内容的文本位置（默认为：e:\\Documents\\Creations\\Scripts\\Python\\DatabaseReplace.txt）。遍历源文件夹位置中所有的文件及子文件夹内文件（md 格式），读取每一文件，找到存放查找内容，用替换内容进行替换。
-# 5. 退出程序。
+# 5. 生成数据结构文件：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Articles\\Database\\）。在该文件夹下生成一个 md 文件，文件名为“.DatabaseStructure.md”。读取该文件夹中的其他每一文件（排除 “.DatabaseStructure.md”），将第一个文件里每一个的字段名，依次写入“.DatabaseStructure.md”中。字段名后接一个半角冒号和空格（“: ”），在此之后，写着这个字段的字段类型（文本、数值、布尔、日期、时间、日期时间、列表），每一行一个字段。这些字段名首尾由一组三个破折号（“---”）分隔符包围。此后依次读取每一个文件，如文件里的字段名已经被“.DatabaseStructure.md”记录，则不做处理；如文件里的字段名未被“.DatabaseStructure.md”记录，则添加该字段。
+# 6. 结构化数据文件：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Articles\\Database\\）。读取该文件夹下的“.DatabaseStructure.md”。这个就是后续文件的字段的数据结构。依次读取该文件夹中的其他每一文件（排除 “.DatabaseStructure.md”），将它的字段按照“.DatabaseStructure.md”中字段名顺序重新排序；如果“.DatabaseStructure.md”里的某一字段名有，而该文件中没有，就按顺序添加到该文件中；如果该文件有，而“.DatabaseStructure.md”里没有的字段名，就删除该字段及其数据。
+# 7. 删除没有数据的字段名：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Articles\\Database\\）。依次读取该文件夹中的其他每一文件（排除 “.DatabaseStructure.md”）。删除没有数据的字段行。
+# 0. 退出程序。
 
 # 导入模块
 import os
@@ -12,6 +15,8 @@ import csv
 import re
 import shutil
 from pathlib import Path
+import yaml
+import datetime
 
 def sanitize_filename(name):
     """净化文件名中的特殊字符"""
@@ -34,6 +39,66 @@ def sanitize_filename(name):
     # 移除首尾空白
     return name.strip()
 
+def extract_yaml_block(content):
+    """从文件内容中提取YAML块"""
+    match = re.search(r'^---\n(.*?)\n---', content, flags=re.DOTALL)
+    return match.group(1) if match else ""
+
+def infer_field_type(value):
+    """根据字段值推断字段类型 - 空值默认为文本"""
+    if value is None:
+        return "文本"  # 空值默认为文本
+    
+    if isinstance(value, bool):
+        return "布尔"
+    
+    if isinstance(value, (int, float)):
+        return "数值"
+    
+    if isinstance(value, list):
+        return "列表"
+    
+    if isinstance(value, datetime.datetime):
+        return "日期时间"
+    
+    if isinstance(value, datetime.date):
+        return "日期"
+    
+    if isinstance(value, datetime.time):
+        return "时间"
+    
+    # 尝试解析日期时间格式
+    if isinstance(value, str):
+        try:
+            datetime.datetime.fromisoformat(value)
+            return "日期时间"
+        except ValueError:
+            pass
+        
+        try:
+            datetime.date.fromisoformat(value)
+            return "日期"
+        except ValueError:
+            pass
+        
+        try:
+            datetime.time.fromisoformat(value)
+            return "时间"
+        except ValueError:
+            pass
+        
+        # 检查布尔字符串
+        if value.lower() in ["true", "false"]:
+            return "布尔"
+        
+        # 检查数值字符串
+        if re.match(r"^[-+]?\d+$", value):
+            return "数值"
+        if re.match(r"^[-+]?\d*\.\d+$", value):
+            return "数值"
+    
+    return "文本"
+
 def main():
     while True:  # 添加循环，使程序能持续运行
         print("\n" + "="*50)
@@ -42,8 +107,11 @@ def main():
         print("2. 删除字段")
         print("3. 添加字段")
         print("4. 查找与替换")
-        print("5. 退出程序")
-        choice = input("请输入数字选择操作（1/2/3/4/5）：")
+        print("5. 生成数据结构文件")
+        print("6. 结构化数据文件")
+        print("7. 删除没有数据的字段名")
+        print("0. 退出程序")
+        choice = input("请输入数字选择操作（1/2/3/4/5/6/7/0）：")
         
         if choice == '1':
             generate_from_csv()
@@ -54,6 +122,12 @@ def main():
         elif choice == '4':
             find_and_replace()
         elif choice == '5':
+            generate_structure_file()
+        elif choice == '6':
+            restructure_files()
+        elif choice == '7':
+            delete_empty_fields()
+        elif choice == '0':
             print("程序已退出")
             break
         else:
@@ -83,9 +157,9 @@ def generate_from_csv():
                     for header, value in zip(headers, row):
                         # 处理多行内容
                         if '\n' in value:
-                            yaml_lines.append(f"{header}: |")
+                            yaml_lines.append(f"{header}: ")
                             for line in value.split('\n'):
-                                yaml_lines.append(f"  {line.strip()}")
+                                yaml_lines.append(f"  - {line.strip()}")
                         else:
                             yaml_lines.append(f"{header}: {value}")
                     yaml_lines.append("---\n")
@@ -260,6 +334,243 @@ def process_find_replace(file_path, find_content, replace_content):
             f.write(new_content)
         
         print(f"已更新：{file_path}")
+        return True
+    except Exception as e:
+        print(f"处理文件 {file_path} 时出错：{str(e)}")
+        return False
+
+def generate_structure_file():
+    """生成数据结构文件"""
+    source_dir = input(f"请输入源文件夹（默认：E:\\Documents\\Creations\\Articles\\Database\\）：") or "E:\\Documents\\Creations\\Articles\\Database\\"
+    output_file = Path(source_dir) / ".DatabaseStructure.md"
+    
+    # 存储所有字段及其类型
+    field_types = {}
+    # 存储字段顺序
+    field_order = []
+    
+    # 遍历所有Markdown文件
+    processed_files = 0
+    for root, _, files in os.walk(source_dir):
+        for file in files:
+            if file == ".DatabaseStructure.md" or not file.endswith('.md'):
+                continue
+                
+            file_path = Path(root) / file
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # 提取YAML块
+                yaml_block = extract_yaml_block(content)
+                if not yaml_block:
+                    print(f"跳过：{file_path}（未找到YAML块）")
+                    continue
+                
+                # 解析YAML内容
+                try:
+                    data = yaml.safe_load(yaml_block)
+                except Exception as e:
+                    print(f"解析YAML失败：{file_path} - {str(e)}")
+                    continue
+                
+                # 处理字段
+                for field, value in data.items():
+                    if field not in field_types:
+                        # 新字段，添加到字典和顺序列表
+                        field_types[field] = infer_field_type(value)
+                        field_order.append(field)
+                        processed_files += 1
+                
+            except Exception as e:
+                print(f"处理文件 {file_path} 时出错：{str(e)}")
+    
+    # 写入数据结构文件
+    try:
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write("---\n")
+            for field in field_order:
+                f.write(f"{field}: {field_types[field]}\n")
+            f.write("---\n")
+        print(f"\n数据结构文件已生成：{output_file}")
+        print(f"共处理 {processed_files} 个文件，发现 {len(field_order)} 个唯一字段")
+    except Exception as e:
+        print(f"写入数据结构文件时出错：{str(e)}")
+
+def restructure_files():
+    """根据数据结构文件重新组织数据文件"""
+    source_dir = input(f"请输入源文件夹（默认：E:\\Documents\\Creations\\Articles\\Database\\）：") or "E:\\Documents\\Creations\\Articles\\Database\\"
+    structure_file = Path(source_dir) / ".DatabaseStructure.md"
+    
+    # 读取数据结构文件
+    try:
+        with open(structure_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        yaml_block = extract_yaml_block(content)
+        if not yaml_block:
+            print(f"数据结构文件格式错误：{structure_file}")
+            return
+        
+        structure_data = yaml.safe_load(yaml_block)
+        if not structure_data:
+            print(f"数据结构文件内容为空：{structure_file}")
+            return
+        
+        # 获取字段顺序
+        field_order = list(structure_data.keys())
+    except Exception as e:
+        print(f"读取数据结构文件时出错：{str(e)}")
+        return
+    
+    # 处理所有数据文件
+    processed_count = 0
+    for root, _, files in os.walk(source_dir):
+        for file in files:
+            if file == ".DatabaseStructure.md" or not file.endswith('.md'):
+                continue
+                
+            file_path = Path(root) / file
+            if process_restructure_file(file_path, field_order):
+                processed_count += 1
+    
+    print(f"\n文件结构化完成！共处理 {processed_count} 个文件")
+
+def process_restructure_file(file_path, field_order):
+    """处理单个文件的结构化 - 修复了添加缺失字段的问题"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # 提取YAML块和文件其余部分
+        match = re.search(r'(^---\n.*?\n---)(.*)', content, flags=re.DOTALL)
+        if not match:
+            print(f"跳过：{file_path}（未找到YAML块）")
+            return False
+            
+        yaml_block = match.group(1)
+        rest_content = match.group(2)
+        
+        # 解析YAML内容
+        try:
+            data = yaml.safe_load(extract_yaml_block(yaml_block))
+        except Exception as e:
+            print(f"解析YAML失败：{file_path} - {str(e)}")
+            return False
+        
+        # 创建新YAML内容
+        new_yaml_lines = ["---"]
+        
+        # 按数据结构文件中的顺序添加字段
+        for field in field_order:
+            if field in data:
+                value = data[field]
+                
+                # 处理列表值
+                if isinstance(value, list):
+                    new_yaml_lines.append(f"{field}: ")
+                    for item in value:
+                        new_yaml_lines.append(f"  - {item}")
+                else:
+                    # 处理布尔值 - 保持原始大小写 (true/false)
+                    if isinstance(value, bool):
+                        # 保持小写形式
+                        new_yaml_lines.append(f"{field}: {str(value).lower()}")
+                    else:
+                        # 处理空值 - 留空
+                        if value is None:
+                            new_yaml_lines.append(f"{field}: ")
+                        else:
+                            new_yaml_lines.append(f"{field}: {value}")
+            else:
+                # 添加缺失字段
+                new_yaml_lines.append(f"{field}: ")
+        
+        new_yaml_lines.append("---")
+        new_content = "\n".join(new_yaml_lines) + rest_content
+        
+        # 写入文件
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        
+        print(f"已结构化：{file_path}")
+        return True
+    except Exception as e:
+        print(f"处理文件 {file_path} 时出错：{str(e)}")
+        return False
+
+def delete_empty_fields():
+    """删除没有数据的字段名"""
+    source_dir = input(f"请输入源文件夹（默认：E:\\Documents\\Creations\\Articles\\Database\\）：") or "E:\\Documents\\Creations\\Articles\\Database\\"
+    
+    processed_count = 0
+    # 遍历所有Markdown文件
+    for root, _, files in os.walk(source_dir):
+        for file in files:
+            if file == ".DatabaseStructure.md" or not file.endswith('.md'):
+                continue
+                
+            file_path = Path(root) / file
+            if process_delete_empty_fields(file_path):
+                processed_count += 1
+    print(f"\n空字段删除完成！共处理 {processed_count} 个文件")
+
+def process_delete_empty_fields(file_path):
+    """处理单个文件的空字段删除"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # 提取YAML块和文件其余部分
+        match = re.search(r'(^---\n.*?\n---)(.*)', content, flags=re.DOTALL)
+        if not match:
+            print(f"跳过：{file_path}（未找到YAML块）")
+            return False
+            
+        yaml_block = match.group(1)
+        rest_content = match.group(2)
+        
+        # 解析YAML内容
+        try:
+            data = yaml.safe_load(extract_yaml_block(yaml_block))
+        except Exception as e:
+            print(f"解析YAML失败：{file_path} - {str(e)}")
+            return False
+        
+        # 创建新YAML内容
+        new_yaml_lines = ["---"]
+        has_changes = False
+        
+        for field, value in data.items():
+            # 检查字段是否为空
+            is_empty = (
+                value is None or 
+                value == "" or 
+                (isinstance(value, list) and len(value) == 0)
+            )
+            
+            if not is_empty:
+                # 处理列表值
+                if isinstance(value, list):
+                    new_yaml_lines.append(f"{field}: ")
+                    for item in value:
+                        new_yaml_lines.append(f"  - {item}")
+                else:
+                    new_yaml_lines.append(f"{field}: {value}")
+            else:
+                has_changes = True
+        
+        new_yaml_lines.append("---")
+        new_content = "\n".join(new_yaml_lines) + rest_content
+        
+        # 如果没有变化则跳过
+        if not has_changes:
+            return False
+        
+        # 写入文件
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        
+        print(f"已清理空字段：{file_path}")
         return True
     except Exception as e:
         print(f"处理文件 {file_path} 时出错：{str(e)}")
