@@ -1,4 +1,4 @@
+评论: 
+---
 
-  - 动作
-  - 科幻
-  - 冒险
+![](./[BaseName].md.files/[BaseName]-cover.avif)

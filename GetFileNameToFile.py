@@ -28,11 +28,11 @@ def get_all_filenames(folder, output_file):
 
 def main():
     # 用户输入文件夹路径
-    folder = input("请输入要获取文件名的文件夹路径（默认当前文件夹）：").strip() or os.getcwd()
+    folder = input("请输入要获取文件名的文件夹路径（默认为“d:\\Works\\X\\”）：").strip() or or "d:\\Works\\X\\"
     # 用户输入输出文件名
     filename = input("请输入保存文件名的文件名（默认 'files.txt'）：").strip() or "files.txt"
     # 用户输入输出文件路径
-    path = input("请输入保存文件的路径（默认 't:\\X\\'）：").strip() or "t:\\X\\"
+    path = input("请输入保存文件的路径（默认为“d:\\Works\\X\\”）：").strip() or "d:\\Works\\X\\"
     # 拼接完整输出文件路径
     output_file = os.path.join(path, filename)
 
