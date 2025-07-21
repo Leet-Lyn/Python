@@ -1,6 +1,6 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
 # 在脚本开始前询问我源文件夹位置与目标文件夹位置。
-# 遍历源文件夹位置中所有视频文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4）。
+# 遍历源文件夹位置中所有视频文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4、ogv、ogm、ogg）。
 # 使用 ffmpeg 压缩，类似命令：ffmpeg -i input.mkv -map 0 -c:v libx265 -crf 25 -preset medium -c:a aac -q:a 0.64 -c:s copy output.mkv。
 # 视频参数为：x265 格式，Const.Qualty: Quality=25，Preset=Medium。音频参数为：aac 格式，遍历每个音轨，质量模式。q=0.64。字幕保持不变。
 # 生成的文件重新用 mkvmerge 再生成同名文件到目标文件夹位置。   
@@ -28,7 +28,7 @@ source_folder = ask_folder_location("请输入源文件夹位置", "d:\\Works\\I
 target_folder = ask_folder_location("请输入目标文件夹位置", "d:\\Works\\Out\\")
 
 # 支持的文件格式
-video_formats = (".mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg", ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4")
+video_formats = (".mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg", ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4", ".ogv", ".ogm", ".ogg")
 
 # 确保目标文件夹存在
 os.makedirs(target_folder, exist_ok=True)
