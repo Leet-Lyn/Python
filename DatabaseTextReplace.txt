@@ -1,5 +1,5 @@
-说明: 
+剧本: 
 评论: 
 ---
 
-![](./[BaseName].md.files/[BaseName]-cover.avif)
+![](./[BaseName].md.files/[BaseName]-screenshots.avif)

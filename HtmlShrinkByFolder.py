@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认为 d:\\Works\\In\\）与目标文件夹位置（默认为 d:\\Works\\Out\\）。
+# 在脚本开始前询问我源文件夹位置（默认为 d:\Works\Optimization\）与目标文件夹位置（默认为 e:\Documents\Literatures\Webpages\）。
 # 依次读取源文件夹下的所有 html 文件，进行下列操作，放在目标文件夹位置，保持文件夹及子文件结构。。
 # Html 文件内嵌的图片是（base64 格式）。我希望将它批量转成 html（zip）格式（要求生成的 html 还能被浏览器打开）。然后压缩图片。如果图片格式为 bmp、jpg、jpeg、png 或静态 webp 格式、或静态 avif 格式、静态 heic 格式、静态 heif 格式，则使用 magick 压缩成 avif 格式，使用类似命令：magick convert input.jpg -quality 50 output.avif。如果图片文件格式为 gif 或动态 webp 格式或 mp4 格式，则使用 magick 压缩成 gif 格式，类似命令：magick convert input.webp -fuzz 5% -quality 75 -layers Optimize output.gif。
 
@@ -259,6 +259,13 @@ def process_html_folder(src_folder, dst_folder, avif_quality=50):
     print("正在复制非HTML文件...")
     copy_non_html_files(src_folder, dst_folder)
     
+    # 检查源和目标是否相同
+    same_folder = os.path.abspath(src_folder) == os.path.abspath(dst_folder)
+    if same_folder:
+        print("警告：源文件夹和目标文件夹相同，将不会删除源文件！")
+    else:
+        print("注意：处理成功后源HTML文件将被删除")
+    
     # 处理所有HTML文件
     print("\n开始处理HTML文件...")
     html_files = []
@@ -273,11 +280,37 @@ def process_html_folder(src_folder, dst_folder, avif_quality=50):
     total_files = len(html_files)
     print(f"找到 {total_files} 个HTML文件需要处理")
     
+    # 记录处理结果
+    success_count = 0
+    error_count = 0
+    deleted_count = 0
+    
     for i, (src_path, dst_path) in enumerate(html_files, 1):
         print(f"\n[{i}/{total_files}] 正在处理: {os.path.relpath(src_path, src_folder)}")
-        process_html_file(src_path, dst_path, avif_quality)
+        success = process_html_file(src_path, dst_path, avif_quality)
+        
+        if success:
+            success_count += 1
+            # 检查目标文件是否存在且大小大于0
+            if os.path.exists(dst_path) and os.path.getsize(dst_path) > 0:
+                # 如果源和目标不同，则删除源文件
+                if not same_folder:
+                    try:
+                        os.remove(src_path)
+                        deleted_count += 1
+                        print(f"  已删除源文件: {src_path}")
+                    except Exception as e:
+                        print(f"  删除源文件失败: {str(e)}")
+                else:
+                    print("  警告：源和目标相同，跳过删除操作")
+            else:
+                print(f"  警告：目标文件无效，跳过删除: {dst_path}")
+        else:
+            error_count += 1
+            print(f"  处理失败，保留源文件: {src_path}")
     
     print("\n所有文件处理完成!")
+    print(f"成功: {success_count}, 失败: {error_count}, 删除源文件: {deleted_count}")
 
 def get_valid_directory(prompt, default_path):
     """获取有效的目录路径"""
@@ -318,6 +351,7 @@ if __name__ == "__main__":
     print("=== HTML图片压缩工具 ===")
     print("此工具将处理HTML文件中的内嵌图片")
     print("静态图片转换为AVIF格式，动态图片转换为AVIFS格式（质量50）")
+    print("处理成功后，源HTML文件将被删除（除非源和目标文件夹相同）")
     
     # 检查ffmpeg是否安装
     if not check_ffmpeg_installed():
@@ -326,8 +360,8 @@ if __name__ == "__main__":
         exit(1)
     
     # 设置默认路径
-    default_input = r"d:\Works\In"
-    default_output = r"d:\Works\Out"
+    default_input = r"d:\Works\Optimization"
+    default_output = r"e:\Documents\Literatures\Webpages"
     
     # 获取用户输入
     print(f"\n源文件夹位置 (默认: {default_input})")
@@ -365,7 +399,4 @@ if __name__ == "__main__":
         print(f"错误: {str(e)}")
         print("请确保ImageMagick已安装并添加到系统PATH环境变量")
     
-    print("处理完成!")
-    
-# 按下回车键退出。
-input("按回车键退出...")
+    print("处理完成！程序执行完毕，即将退出……")
