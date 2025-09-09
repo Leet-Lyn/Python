@@ -28,7 +28,7 @@ def get_all_filenames(folder, output_file):
 
 def main():
     # 用户输入文件夹路径
-    folder = input("请输入要获取文件名的文件夹路径（默认为“d:\\Works\\X\\”）：").strip() or or "d:\\Works\\X\\"
+    folder = input("请输入要获取文件名的文件夹路径（默认为“d:\\Works\\X\\”）：").strip() or "d:\\Works\\X\\"
     # 用户输入输出文件名
     filename = input("请输入保存文件名的文件名（默认 'files.txt'）：").strip() or "files.txt"
     # 用户输入输出文件路径

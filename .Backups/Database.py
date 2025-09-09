@@ -159,7 +159,7 @@ def main():
             print("无效选择，请重新输入")
 
 def generate_from_csv():
-    """从CSV生成Markdown文件 - 修改版：所有字段内容用双引号包绕并使用列表格式"""
+    """从CSV生成Markdown文件"""
     # 获取用户输入路径
     csv_path = input(f"请输入 CSV 文件路径（默认：D:\\Downloads\\CSV.csv）：") or "D:\\Downloads\\CSV.csv"
     output_dir = input(f"请输入目标文件夹（默认：E:\\Documents\\Creations\\Articles\\Database\\）：") or "E:\\Documents\\Creations\\Articles\\Database\\"
@@ -180,18 +180,13 @@ def generate_from_csv():
                     # 构建YAML内容
                     yaml_lines = ["---"]
                     for header, value in zip(headers, row):
-                        # 所有字段都使用列表格式，并用双引号包绕
-                        yaml_lines.append(f"{header}:")
-                        
-                        # 处理空值
-                        if not value.strip():
-                            yaml_lines.append('  - ""')
+                        # 处理多行内容
+                        if '\n' in value:
+                            yaml_lines.append(f"{header}: ")
+                            for line in value.split('\n'):
+                                yaml_lines.append(f"  - {line.strip()}")
                         else:
-                            # 分割多行内容
-                            lines = value.split('\n')
-                            for line in lines:
-                                yaml_lines.append(f'  - "{line}"')
-                    
+                            yaml_lines.append(f"{header}: {value}")
                     yaml_lines.append("---\n")
                     
                     # 获取并净化文件名
