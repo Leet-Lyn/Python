@@ -12,7 +12,7 @@ import os
 YT_DLP_PATH = r"d:\\ProApps\\Youtube-dl\\yt-dlp.exe"
 DEFAULT_LIST_FILE = r"e:\\Documents\\Creations\\Scripts\\Python\\BilibiliYt-dlpLists.txt"
 DEFAULT_COOKIES_FILE = r"d:\\ProApps\\Youtube-dl\\BilibiliYt-dlpCookies.txt"
-DEFAULT_PROXY = "127.0.0.1:10809"
+DEFAULT_PROXY = "127.0.0.1:10808"
 DEFAULT_SAVE_PATH = r"d:\\Downloads\\"
 
 def main():
@@ -42,7 +42,7 @@ def main():
             cookies = cookies_answer  # 用户自定义路径
 
     # 询问代理
-    # proxy_answer = input("是否使用代理？(y/N, 默认为“127.0.0.1:10809”): ").strip().lower()
+    # proxy_answer = input("是否使用代理？(y/N, 默认为“127.0.0.1:10808”): ").strip().lower()
     # proxy = DEFAULT_PROXY if proxy_answer in ("", "y") else None
 
     # 询问保存路径
