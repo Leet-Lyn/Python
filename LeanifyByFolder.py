@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认地址：d:\\Downloads\\）与目标文件夹位置（默认地址：d:\\Works\\Optimization\\）。
+# 在脚本开始前询问我源文件夹位置（默认地址：d:\\Works\\A\\）与目标文件夹位置（默认地址：d:\\Works\\B\\）。
 # 遍历源文件夹内所有子文件夹中的图片或文件。
 # 用 Leanify 进行压缩，生成的 文件放到到目标文件夹中以“源文件夹的子文件夹”中，保持文件夹及子文件结构。
 
@@ -13,8 +13,8 @@ def compress_files_with_leanify():
     使用 Leanify 压缩源文件夹中的所有文件，并将结果保存到目标文件夹中，保留源文件夹的子文件夹结构。
     """
     # 提示用户输入源文件夹和目标文件夹位置
-    input_path = input("请输入源文件夹位置（按回车键使用默认地址：d:\\Downloads\\）：").strip() or "d:\\Downloads\\"
-    output_path = input("请输入目标文件夹位置（按回车键使用默认地址：d:\\Works\\Optimization\\）：").strip() or "d:\\Works\\Optimization\\"
+    input_path = input("请输入源文件夹位置（按回车键使用默认地址：d:\\Works\\A\\）：").strip() or "d:\\Works\\A\\"
+    output_path = input("请输入目标文件夹位置（按回车键使用默认地址：d:\\Works\\B\\）：").strip() or "d:\\Works\\B\\"
 
     # 验证输入路径
     if not os.path.isdir(input_path):
