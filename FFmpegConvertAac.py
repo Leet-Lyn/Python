@@ -1,9 +1,9 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置与目标文件夹位置。
+# 在脚本开始前询问我源文件夹位置（默认“d:\\Works\\In\\”）与目标文件夹位置（默认“d:\\Works\\Out\\”）。
 # 遍历源文件夹位置中所有音频文件（mp3、m4a、wma、ogg、aac、ac3、rm、wav）。
 # 使用 ffmpeg 压缩。
 # 音频参数为：aac 格式，遍历每个音轨，质量模式。q=0.36。
-# 生成的文件重新用 mkvmerge 再生成同名文件到 目标文件夹位置。   
+# 生成的文件重新用 mkvmerge 再生成同名文件到 目标文件夹位置，文件夹结构保持一致。
 
 # 导入模块
 import os
@@ -24,8 +24,8 @@ def ask_folder_location(prompt, default_folder):
     return folder_path
 
 # 获取源文件夹和目标文件夹位置
-source_folder = ask_folder_location("请输入源文件夹位置", "d:\\Works\\In\\")
-target_folder = ask_folder_location("请输入目标文件夹位置", "d:\\Works\\Out\\")
+source_folder = ask_folder_location("请输入源文件夹位置（默认“d:\\Works\\In\\”）", "d:\\Works\\In\\")
+target_folder = ask_folder_location("请输入目标文件夹位置（默认“d:\\Works\\Out\\”）", "d:\\Works\\Out\\")
 
 # 支持的音频格式
 audio_formats = (".mp3", ".m4a", ".wma", ".ogg", ".aac", ".ac3", ".rm", ".wav")
@@ -33,40 +33,89 @@ audio_formats = (".mp3", ".m4a", ".wma", ".ogg", ".aac", ".ac3", ".rm", ".wav")
 # 确保目标文件夹存在
 os.makedirs(target_folder, exist_ok=True)
 
-def compress_audio(source_path, target_folder):
+def compress_and_remux_audio(source_path, target_folder, relative_path):
     """
-    压缩音频文件并保存到目标文件夹。
+    压缩音频并重新封装到目标文件夹，保持目录结构。
     :param source_path: 源音频文件路径
     :param target_folder: 目标文件夹路径
+    :param relative_path: 相对于源文件夹的路径
     """
-    # 获取文件名（不含扩展名）和扩展名
+    # 获取文件名（不含扩展名）
     file_name, _ = os.path.splitext(os.path.basename(source_path))
-    final_file_path = os.path.join(target_folder, f"{file_name}.aac")
     
-    # 构建 ffmpeg 命令
+    # 在目标文件夹中创建相同的目录结构
+    target_subfolder = os.path.join(target_folder, relative_path)
+    os.makedirs(target_subfolder, exist_ok=True)
+    
+    # 临时aac文件路径和最终mkv文件路径
+    temp_aac_path = os.path.join(target_subfolder, f"{file_name}_temp.aac")
+    final_mkv_path = os.path.join(target_subfolder, f"{file_name}.mkv")
+    
+    # 构建ffmpeg命令：压缩音频为aac格式
     ffmpeg_command = [
-        "ffmpeg", "-i", source_path,
-        "-c:a", "aac", "-q:a", "0.36",
-        "-map", "0:a",  # 仅保留音频流
-        final_file_path
+        "ffmpeg", 
+        "-i", source_path,           # 输入文件
+        "-c:a", "aac",               # 音频编码器为aac
+        "-q:a", "0.36",              # 音频质量设置为0.36
+        "-map", "0:a",               # 映射所有音频流
+        "-y",                        # 覆盖输出文件
+        temp_aac_path
     ]
     
     print(f"正在压缩音频: {source_path}")
     try:
-        subprocess.run(ffmpeg_command, check=True)
-        print(f"压缩完成: {final_file_path}")
+        # 执行ffmpeg命令
+        subprocess.run(ffmpeg_command, check=True, capture_output=True)
+        print(f"音频压缩完成: {temp_aac_path}")
     except subprocess.CalledProcessError as e:
-        print(f"音频压缩失败: {source_path}")
-        print(f"错误信息: {e}")
+        print(f"FFmpeg压缩失败: {source_path}")
+        print(f"错误信息: {e.stderr.decode('utf-8', errors='ignore') if e.stderr else str(e)}")
+        # 如果临时文件已创建，删除它
+        if os.path.exists(temp_aac_path):
+            os.remove(temp_aac_path)
+        return
+    except FileNotFoundError:
+        print("错误: 未找到ffmpeg，请确保ffmpeg已安装并添加到系统PATH")
+        return
+    
+    # 构建mkvmerge命令：将aac封装为mkv
+    mkvmerge_command = [
+        "mkvmerge", 
+        "-o", final_mkv_path,        # 输出文件
+        temp_aac_path                # 输入文件（压缩后的aac）
+    ]
+    
+    print(f"正在重新封装音频: {temp_aac_path}")
+    try:
+        # 执行mkvmerge命令
+        subprocess.run(mkvmerge_command, check=True, capture_output=True)
+        
+        # 删除临时aac文件
+        if os.path.exists(temp_aac_path):
+            os.remove(temp_aac_path)
+            print(f"临时文件已删除: {temp_aac_path}")
+            
+        print(f"处理完成: {final_mkv_path}")
+        
+    except subprocess.CalledProcessError as e:
+        print(f"mkvmerge封装失败: {temp_aac_path}")
+        print(f"错误信息: {e.stderr.decode('utf-8', errors='ignore') if e.stderr else str(e)}")
+        return
+    except FileNotFoundError:
+        print("错误: 未找到mkvmerge，请确保mkvtoolnix已安装并添加到系统PATH")
         return
 
-# 遍历源文件夹中的所有音频文件
+# 遍历源文件夹及其子文件夹中的所有音频文件
 for root, dirs, files in os.walk(source_folder):
     for file in files:
-        if file.lower().endswith(audio_formats):  # 忽略文件名大小写
+        if file.lower().endswith(audio_formats):  # 检查文件扩展名（忽略大小写）
             source_path = os.path.join(root, file)
-            # 压缩音频
-            compress_audio(source_path, target_folder)
+            
+            # 计算相对于源文件夹的路径
+            relative_path = os.path.relpath(root, source_folder)
+            
+            # 压缩并重新封装音频
+            compress_and_remux_audio(source_path, target_folder, relative_path)
 
 print("所有音频处理完成！")
 input("按回车键退出...")

@@ -2,7 +2,7 @@
 # 用 yt-dlp（"d:\\ProApps\\Youtube-dl\\yt-dlp.exe"）下载视频。
 # 首先询问我想下载单个链接还是列表文件中的链接？（如果输入的是网络链接，则下载该链接；按回车则为默认地址“e:\\Documents\\Creations\\Scripts\\Python\\Yt-dlpLists.txt”；如果输入的是本地链接，则下载该地址列表文件中的链接。）
 # 再询问我是否需要引入 cookies 文件？（按回车或输入“y”则为引入 cookies 文件，默认地址为"d:\\ProApps\\Youtube-dl\\Yt-dlpCookies.txt"；如果输入的是本地链接，则将该地址作为 cookies 文件地址；输入“n”则不引入 cookies 文件。）
-# 再询问我是否需要代理？（按回车或输入“y”则为代理，默认地址“127.0.0.1:10809”；输入“n”则不引入 cookies 文件。）
+# 再询问我是否需要代理？（按回车或输入“y”则为代理，默认地址“127.0.0.1:10808”；输入“n”则不引入 cookies 文件。）
 # 再询问我下载后文件存放的位置？（按回车则为默认地址“d:\\Downloads\\”；如果输入的是本地链接，则将该地址作为下载后文件存放的位置。）
 
 # 导入模块。
@@ -13,7 +13,7 @@ import os
 YT_DLP_PATH = r"d:\\ProApps\\Youtube-dl\\yt-dlp.exe"
 DEFAULT_LIST_FILE = r"e:\\Documents\\Creations\\Scripts\\Python\\Yt-dlpLists.txt"
 DEFAULT_COOKIES_FILE = r"d:\\ProApps\\Youtube-dl\\Yt-dlpCookies.txt"
-DEFAULT_PROXY = "127.0.0.1:10809"
+DEFAULT_PROXY = "127.0.0.1:10808"
 DEFAULT_SAVE_PATH = r"d:\\Downloads\\"
 
 def main():
@@ -43,7 +43,7 @@ def main():
             cookies = cookies_answer  # 用户自定义路径
 
     # 询问代理
-    proxy_answer = input("是否使用代理？(Y/n, 默认为“127.0.0.1:10809”): ").strip().lower()
+    proxy_answer = input("是否使用代理？(Y/n, 默认为“127.0.0.1:10808”): ").strip().lower()
     proxy = DEFAULT_PROXY if proxy_answer in ("", "y") else None
 
     # 询问保存路径

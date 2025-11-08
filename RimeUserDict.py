@@ -1,6 +1,6 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
 # 将当前剪贴板内的词组，存入变量 1 中。然后将其变量 1 中的汉语词组解析为汉语拼音，每个字用空格隔开；如词组间有英文字母，则该位置保留英文字母，英文字母和汉语拼音间用空格隔开。存入变量 2。
-# 将变量 1 与变量 2 用 utf-8 写入“d:\ProApps\Rime\config\dicts\user.dict.yaml”，用 tab 隔开，再添加数字（默认为10），也用 tab 隔开。添加为末尾新的行。
+# 将变量 1 与变量 2 用 utf-8 写入“d:\\ProApps\\Rime\\config\\dicts\\user.dict.yaml”，用 tab 隔开，再添加数字（默认为10），也用 tab 隔开。添加为末尾新的行。
 
 # 需安装第三方库，运行前请执行以下命令：
 # pip install pyperclip pypinyin

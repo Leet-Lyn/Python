@@ -1,6 +1,6 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认为 d:\Works\Optimization\）与目标文件夹位置（默认为 e:\Documents\Literatures\Webpages\）。
-# 依次读取源文件夹下的所有 html 文件，进行下列操作，放在目标文件夹位置，保持文件夹及子文件结构。。
+# 在脚本开始前询问我源文件夹位置（默认为“d:\\Works\\B\\”）与目标文件夹位置（默认为“e:\\Documents\\Literatures\\Webpages\\”）。
+# 依次读取源文件夹下的所有 html 文件，进行下列操作，放在目标文件夹位置，保持文件夹及子文件结构。
 # Html 文件内嵌的图片是（base64 格式）。我希望将它批量转成 html（zip）格式（要求生成的 html 还能被浏览器打开）。然后压缩图片。如果图片格式为 bmp、jpg、jpeg、png 或静态 webp 格式、或静态 avif 格式、静态 heic 格式、静态 heif 格式，则使用 magick 压缩成 avif 格式，使用类似命令：magick convert input.jpg -quality 50 output.avif。如果图片文件格式为 gif 或动态 webp 格式或 mp4 格式，则使用 magick 压缩成 gif 格式，类似命令：magick convert input.webp -fuzz 5% -quality 75 -layers Optimize output.gif。
 
 # 导入模块
@@ -359,16 +359,16 @@ if __name__ == "__main__":
         print("请从 https://ffmpeg.org/download.html 下载并安装ffmpeg")
         exit(1)
     
-    # 设置默认路径
-    default_input = r"d:\Works\Optimization"
+    # 设置默认路径 - 已修改为新的默认路径
+    default_input = r"d:\Works\B"
     default_output = r"e:\Documents\Literatures\Webpages"
     
     # 获取用户输入
     print(f"\n源文件夹位置 (默认: {default_input})")
-    src_folder = get_valid_directory("请输入源文件夹路径: ", default_input)
+    src_folder = get_valid_directory("请输入源文件夹路径（默认为“d:\\Works\\B\\”）: ", default_input)
     
     print(f"\n目标文件夹位置 (默认: {default_output})")
-    dst_folder = get_valid_directory("请输入目标文件夹路径: ", default_output)
+    dst_folder = get_valid_directory("请输入目标文件夹路径（默认为“e:\\Documents\\Literatures\\Webpages\\”）: ", default_output)
     
     # 使用固定压缩参数
     avif_quality = 50    # AVIF质量 (1-100, 默认50)

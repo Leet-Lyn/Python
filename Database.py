@@ -1,24 +1,6 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
 # 询问我想要做什么：
 # 1. 根据文件夹生成 excel 文件：在脚本开始前询问我源文件夹位置（默认为：e:\\Documents\\Creations\\Databases\\标准\\）。在其父文件夹中生成同名 xlsx 格式文件。第一行为字段名。第二行开始为数据内容，依次读取源文件夹位置内每一个 markdown 文件（markdown 格式文件，数据以 yaml 属性格式呈现如上文），将 markdown 中"---"包绕的属性根据每一字段名写入 xlsx 格式文件。写入 xlsx 文件中，每一行对应一个文件。
-# 2. 根据 excel 文件生成相应 markdown 文件：在脚本开始前询问我源 excel  文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）。在其父文件夹中生成同名文件夹。将字段名字设置为 markdown 文件名。每一行生成一个文件，并依次写入相应的 yaml 属性呈现如上文，在 markdown 中用"---"包绕。
-# 3. CSV 生成文件：在脚本开始前询问我源 CSV 文件位置（默认为：d:\\Downloads\\CSV.csv）与目标文件夹位置（默认为：e:\\Documents\\Creations\\Databases\\）。这个 CSV 格式，第一行为所有字段名，字段名用""包绕。不同字段名之间用,隔开。第二行开始每一以"开头的为每一条记录。每一个""包绕的为相应的字段数据（可包含数行）为每一条字段。独立的一条记录和字段内多行区别在于行首有无"。每一记录内字段名与字段内容一一对应。请生成每一条记录（markdown 格式 文件，数据以 yaml 属性格式呈现如上文，markdown 文件名为字段"名字"对应字段内容，）。在目标文件夹下生成子文件夹，子文件夹名为CSV格式的文件名（不包括后缀名），将生成的记录放在该子文件夹下。生成的文件名为字段"名字"对应字段内容，当字段"名字"对应字段内容出现不能成为文件名的内容如半角冒号":"，请用空格破折号空格" -"代替。其他的如半角问号"?"、半角反斜杠"\"、正斜杠"/"，用全角问号"？"、全角反斜杠"＼"、正斜杠"／"代替。半角双引号"""用半角波浪号"~"代替。竖线"|"用反单引号"`"代替。星号"*"用乘号"×"代替。<（小于）、>（大于）用书名号"《 》"代替。
-# 4. 删除字段：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\）。询问我需要删除某一字段名。遍历源文件夹位置中所有的文件及子文件夹内文件（md 格式），读取每一文件，找到这个字段后删除该字段即其配套的字段内容。
-# 5. 添加字段：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\）。询问我需要添加某一字段名，及添加在哪一个字段前。遍历源文件夹位置中所有的文件及子文件夹内文件（md 格式），读取每一文件，找到这个字段，在这行之前，添加要求的字段。
-# 6. 查找与替换：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\）。依次在屏幕中询问我查找内容及替换内容。遍历源文件夹位置中所有的文件及子文件夹内文件（md 格式），读取每一文件，找到存放查找内容，用替换内容进行替换。
-# 7. 查找与替换（正则表达式）：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\）。询问我存放查找内容的正则表达式文本位置（默认为：e:\\Documents\\Creations\\Scripts\\Python\\DatabaseRegexFind.txt）与存放替换内容的文本位置（默认为：e:\\Documents\\Creations\\Scripts\\Python\\DatabaseRegexReplace.txt）。遍历源文件夹位置中所有的文件及子文件夹内文件（md 格式），读取每一文件，找到存放查找内容，用替换内容进行替换。
-# 8. 元替换：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\）。遍历源文件夹位置中所有的文件及子文件夹内文件（md 格式），读取每一文件，将文件里的元数据标实替换 md 文件的元数据。（比如[FileName]表示全文件名，[BaseName]表示不含扩展名的文件名，[Extension]表示扩展名，[FolderName]表示父文件夹名，[FolderPath]表示父文件夹路径，[FilePath]表示文件路径，[DateCreated]表示文件生成日期时间，[DateModified]表示文件修改日期时间，[DateAccessed]表示文件修改时间，[Size]表示文件大小（适配 B、KB、MB、GB 形式，并精确到小数点后 4 位），[SizeBytes]表示文件大小（Bytes）。
-# 9. 生成数据结构文件：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\）。在该文件夹下生成一个 md 文件，文件名为".DatabaseStructure.md"。读取该文件夹中的其他每一文件（排除 ".DatabaseStructure.md"），将第一个文件里每一个的字段名，依次写入".DatabaseStructure.md"中。字段名后接一个半角冒号和空格（": "），在此之后，写着这个字段的字段类型（文本、数值、布尔、日期、时间、日期时间、列表），每一行一个字段。这些字段名首尾由一组三个破折号（"---"）分隔符包围。此后依次读取每一个文件，如文件里的字段名已经被".DatabaseStructure.md"记录，则不做处理；如文件里的字段名未被".DatabaseStructure.md"记录，则添加该字段。
-# 10. 结构化数据文件：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\）。读取该文件夹下的".DatabaseStructure.md"。这个就是后续文件的字段的数据结构。依次读取该文件夹中的其他每一文件（排除 ".DatabaseStructure.md"），将它的字段按照".DatabaseStructure.md"中字段名顺序重新排序；如果".DatabaseStructure.md"里的某一字段名有，而该文件中没有，就按顺序添加到该文件中；如果该文件有，而".DatabaseStructure.md"里没有的字段名，就删除该字段及其数据。
-# 11. 删除没有数据的字段名：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\）。依次读取该文件夹中的其他每一文件（排除 ".DatabaseStructure.md"）。删除没有数据的字段行。
-# 12. 双引号置换单引号：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\标准\\）。打开每个 markdown 文件，顺序读取文件，将每一行中除了第一个和倒数第一个双引号（"），其他的双引号改为单引号（'）。
-# 13. 属性内容处理：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\标准\\），再询问我属性名称。打开每个 markdown 文件，顺序找到该属性。询问我下一步：1.将该属性内容设置为空（""）。2.将该属性内容设置为什么？（询问我属性内容，所有 markdown 文件的属性均设置为该属性内容）。3. 将该属性内容每个单词大写。4.将该属性内容每个单词小写。5. 将该属性内容每个单词首字母大写，其余小写。6.将该属性内容（汉字、英文、或数字）用空格隔开。7.将该属性内容的汉字繁体中文转为简体中文。8. 所有半角标点符号转为全角标点符号。
-# 14.写入 excel 文件：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我“引用页”、“属于”、“主链接”的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 每一条记录新开一行。2. “Index”字段值为上一行 “Index”字段值+1（如上一行为空或为表头，则“Index”字段值为 1）。3. 将源文件夹内文件名写入“名字”与“原文件名”字段值。4. 将该文件复制到“d:\\Works\\In\\”与“z:\\”中，如果无法完成写入“z:\\”中，则提示我，并退出。写入“z:\\”后，系统会自动生成一个对应文件（自动加密的）。读取“d:\\Xyz\\”新生成的文件名，将其文件名（包括扩展名）写入“加密文件名”字段值。将“d:\\Xyz\\”新生成的文件移动到“d:\\Works\\Uploads\\”（在“d:\\Xyz\\”中不保留）。5. 将原来询问我的“引用页”、“属于”、“主链接”的值写入“引用页”、“属于”、“主链接”字段值。6. 计算并生成该文件的 Ed2K 链接。我安装了 RHash，位置“d:\\ProApps\\RHash\\hash.exe”。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "\\TS-464C\Temps\rustdesk-1.4.3-x86_64.exe"。生成如“ed2k://|file|rustdesk-1.4.3-x86_64.exe|23369352|DF952EEB0438E288409858E6C960E261|h=T7BJKLDRQ7VDCDKOO525FO7YHJCZVKDK|/” 的 ed2k 链接，写入“标准链接”字段值。7. 通过“标准链接”字段值，分别生成“大小”、“散列”字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
-# 0. 退出程序。
-
-# 请帮我写个中文的 Python 脚本，批注也是中文：
-# 询问我想要做什么：
-# 1. 根据文件夹生成 excel 文件：在脚本开始前询问我源文件夹位置（默认为：e:\\Documents\\Creations\\Databases\\标准\\）。在其父文件夹中生成同名 xlsx 格式文件。第一行为字段名。第二行开始为数据内容，依次读取源文件夹位置内每一个 markdown 文件（markdown 格式文件，数据以 yaml 属性格式呈现如上文），将 markdown 中"---"包绕的属性根据每一字段名写入 xlsx 格式文件。写入 xlsx 文件中，每一行对应一个文件。
 # 2. 根据 excel 文件生成相应 markdown 文件：在脚本开始前询问我源 xlsx 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）。在其父文件夹中生成同名文件夹。将字段名字设置为 markdown 文件名。每一行生成一个文件，并依次写入相应的 yaml 属性呈现如上文，在 markdown 中用"---"包绕。
 # 3. CSV 生成文件：在脚本开始前询问我源 CSV 文件位置（默认为：d:\\Downloads\\CSV.csv）与目标文件夹位置（默认为：e:\\Documents\\Creations\\Databases\\）。这个 CSV 格式，第一行为所有字段名，字段名用""包绕。不同字段名之间用,隔开。第二行开始每一以"开头的为每一条记录。每一个""包绕的为相应的字段数据（可包含数行）为每一条字段。独立的一条记录和字段内多行区别在于行首有无"。每一记录内字段名与字段内容一一对应。请生成每一条记录（markdown 格式 文件，数据以 yaml 属性格式呈现如上文，markdown 文件名为字段"名字"对应字段内容，）。在目标文件夹下生成子文件夹，子文件夹名为CSV格式的文件名（不包括后缀名），将生成的记录放在该子文件夹下。生成的文件名为字段"名字"对应字段内容，当字段"名字"对应字段内容出现不能成为文件名的内容如半角冒号":"，请用空格破折号空格" -"代替。其他的如半角问号"?"、半角反斜杠"\"、正斜杠"/"，用全角问号"？"、全角反斜杠"＼"、正斜杠"／"代替。半角双引号"""用半角波浪号"~"代替。竖线"|"用反单引号"`"代替。星号"*"用乘号"×"代替。<（小于）、>（大于）用书名号"《 》"代替。
 # 4. 删除字段：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\）。询问我需要删除某一字段名。遍历源文件夹位置中所有的文件及子文件夹内文件（md 格式），读取每一文件，找到这个字段后删除该字段即其配套的字段内容。
@@ -31,7 +13,7 @@
 # 11. 删除没有数据的字段名：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\）。依次读取该文件夹中的其他每一文件（排除 ".DatabaseStructure.md"）。删除没有数据的字段行。
 # 12. 双引号置换单引号：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\标准\\）。打开每个 markdown 文件，顺序读取文件，将每一行中除了第一个和倒数第一个双引号（"），其他的双引号改为单引号（'）。
 # 13. 属性内容处理：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\标准\\），再询问我属性名称。打开每个 markdown 文件，顺序找到该属性。询问我下一步：1.将该属性内容设置为空（""）。2.将该属性内容设置为什么？（询问我属性内容，所有 markdown 文件的属性均设置为该属性内容）。3. 将该属性内容每个单词大写。4.将该属性内容每个单词小写。5. 将该属性内容每个单词首字母大写，其余小写。6.将该属性内容（汉字、英文、或数字）用空格隔开。7.将该属性内容的汉字繁体中文转为简体中文。8. 所有半角标点符号转为全角标点符号。
-# 14. 写入 excel 文件：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 每一条记录新开一行。2. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。3. 将源文件夹内文件名写入"名字"与"原文件名"字段值。4. 将该文件复制到"d:\\Works\\In\\"与"z:\\"中，如果无法完成写入"z:\\"中，则提示我，并退出。写入"z:\\"后，系统会自动生成一个对应文件（自动加密的）。读取"d:\\Xyz\\"新生成的文件名，将其文件名（包括扩展名）写入"加密文件名"字段值。将"d:\\Xyz\\"新生成的文件移动到"d:\\Works\\Uploads\\"（在"d:\\Xyz\\"中不保留）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 计算并生成该文件的 Ed2K 链接。我安装了 RHash，位置"d:\\ProApps\\RHash\\hash.exe"。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "\\TS-464C\Temps\rustdesk-1.4.3-x86_64.exe"。生成如"ed2k://|file|rustdesk-1.4.3-x86_64.exe|23369352|DF952EEB0438E288409858E6C960E261|h=T7BJKLDRQ7VDCDKOO525FO7YHJCZVKDK|/" 的 ed2k 链接，写入"标准链接"字段值。7. 通过"标准链接"字段值，分别生成"大小"、"散列"字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
+# 14. 写入 excel 文件：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 每一条记录新开一行。2. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。3. 将源文件夹内文件名写入"名字"与"原文件名"字段值。4. 将该文件复制到"d:\\Works\\In\\"，并移动到"z:\\"中，如果无法完成写入"z:\\"中，则重命名原文件（从后删除1个字符（不包括扩展名）），再次尝试将原文件向目标文件夹移动。反复循环，直至能将原文件向目标文件夹移动。如果有重命名过文件，将修改过的文件名写入"矫正文件名"字段值中。写入"z:\\"后，系统会自动生成一个对应文件（自动加密的）。读取"d:\\Xyz\\"新生成的文件名，将其文件名（无扩展名）写入"加密文件名"字段值。将"d:\\Xyz\\"新生成的文件移动到"d:\\Works\\Uploads\\"（在"d:\\Xyz\\"中不保留）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 计算并生成该文件的 Ed2K 链接。生成的 ed2k 链接，写入"标准链接"字段值。7. 通过"标准链接"字段值，分别生成"大小"、"散列"字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
 # 0. 退出程序。
 
 # 导入模块
@@ -176,8 +158,8 @@ def main():
     while True:  # 添加循环，使程序能持续运行
         print("\n" + "="*50)
         print("请选择操作：")
-        print("1. 根据文件夹生成Excel文件")
-        print("2. 根据Excel生成Markdown文件夹")
+        print("1. 根据文件夹生成 Excel 文件")
+        print("2. 根据 Excel 生成 Markdown 文件夹")
         print("3. 从 CSV 生成 Markdown 文件")
         print("4. 删除字段")
         print("5. 添加字段")
@@ -189,7 +171,7 @@ def main():
         print("11. 删除没有数据的字段名")
         print("12. 双引号置换单引号")
         print("13. 属性内容处理")
-        print("14. 写入Excel文件（含ED2K链接生成）")
+        print("14. 写入 Excel 文件")
         print("0. 退出程序")
         choice = input("请输入数字选择操作（1/2/3/4/5/6/7/8/9/10/11/12/13/14/0）：")
         
@@ -849,7 +831,6 @@ def meta_replacement():
                 file_path = Path(root) / file
                 if process_meta_replacement(file_path):
                     processed_count += 1
-    
     print(f"\n元替换完成！共处理 {processed_count} 个文件")
 
 def process_meta_replacement(file_path):
@@ -1441,9 +1422,9 @@ def half_to_full_width(text):
     
     return result
 
-# 选项14：写入Excel文件（含ED2K链接生成）
+# 选项14：写入Excel文件（含ED2K链接生成）- 修改版
 def write_to_excel_with_ed2k():
-    """写入Excel文件并生成ED2K链接"""
+    """写入Excel文件并生成ED2K链接 - 修改版：支持文件名重试和文件夹结构保持，矫正文件名包含扩展名，过滤隐藏文件"""
     # 获取Excel文件位置和源文件夹位置
     excel_path = get_default_path("请输入Excel文件位置", "e:\\Documents\\Creations\\Databases\\标准.xlsx")
     source_dir = get_default_path("请输入源文件夹位置", "d:\\Downloads\\")
@@ -1477,18 +1458,75 @@ def write_to_excel_with_ed2k():
         if not last_index_values.empty:
             last_index = int(last_index_values.iloc[-1])
     
-    # 收集所有文件
+    # 收集所有文件，过滤隐藏文件
     all_files = []
+    hidden_files_patterns = ['desktop.ini', 'descript.ion', '.encfs6.xml', 'Thumbs.db']
+    
     for root, _, files in os.walk(source_dir):
         for file in files:
+            # 跳过隐藏文件
+            if any(file.lower() == pattern.lower() for pattern in hidden_files_patterns):
+                print(f"跳过隐藏文件: {file}")
+                continue
+            
+            # 跳过以点开头的隐藏文件
+            if file.startswith('.'):
+                print(f"跳过隐藏文件: {file}")
+                continue
+                
             file_path = os.path.join(root, file)
             all_files.append(file_path)
     
     if not all_files:
-        print("源文件夹中没有找到任何文件")
+        print("源文件夹中没有找到任何非隐藏文件")
         return
     
-    print(f"找到 {len(all_files)} 个文件，开始处理...")
+    print(f"找到 {len(all_files)} 个非隐藏文件，开始处理...")
+    
+    def try_move_to_z_drive(original_file, target_folder="z:\\"):
+        """尝试移动文件到Z盘，如果失败则重命名重试"""
+        # 分离文件名和扩展名
+        filename, file_extension = os.path.splitext(os.path.basename(original_file))
+        original_filename = filename + file_extension  # 保存原始完整文件名
+        
+        while True:
+            try:
+                # 构建目标文件路径
+                target_file = os.path.join(target_folder, f"{filename}{file_extension}")
+                
+                # 尝试移动文件
+                shutil.move(original_file, target_file)
+                print(f"文件已成功移动至：{target_file}")
+                
+                # 如果文件名有修改，返回修改后的完整文件名（包含扩展名）
+                corrected_name = None
+                current_fullname = f"{filename}{file_extension}"
+                if current_fullname != original_filename:
+                    corrected_name = current_fullname
+                
+                return target_file, corrected_name
+                
+            except Exception as e:
+                print(f"文件移动失败：{e}")
+                
+                # 判断是否需要缩短文件名
+                if len(filename) > 1:
+                    # 从文件名末尾删除一个字符
+                    filename = filename[:-1]
+                    new_original_file = os.path.join(os.path.dirname(original_file), f"{filename}{file_extension}")
+                    
+                    try:
+                        # 重命名原文件
+                        os.rename(original_file, new_original_file)
+                        original_file = new_original_file  # 更新原文件路径
+                        print(f"文件已重命名为：{original_file}")
+                    except Exception as rename_error:
+                        print(f"文件重命名失败：{rename_error}")
+                        return None, None
+                else:
+                    # 文件名无法再缩短
+                    print("文件名已无法缩短，无法移动文件。")
+                    return None, None
     
     # 处理每个文件
     for file_path in all_files:
@@ -1504,59 +1542,73 @@ def write_to_excel_with_ed2k():
             file_name = os.path.basename(file_path)
             base_name = os.path.splitext(file_name)[0]
             new_row['名字'] = base_name
-            new_row['原文件名'] = file_name
+            new_row['原文件名'] = file_name  # 包含完整文件名和扩展名
             
             # 4. 文件复制操作
+            corrected_filename = None
             try:
-                # 复制到 d:\Works\In\
-                dest_in = "d:\\Works\\In\\" + file_name
+                # 复制到 d:\Works\In\ 保持文件夹结构
+                relative_path = os.path.relpath(file_path, source_dir)
+                dest_in = os.path.join("d:\\Works\\In\\", relative_path)
+                
+                # 确保目标目录存在
+                os.makedirs(os.path.dirname(dest_in), exist_ok=True)
                 shutil.copy2(file_path, dest_in)
                 print(f"已复制到: {dest_in}")
                 
-                # 复制到 z:\
-                dest_z = "z:\\" + file_name
-                try:
-                    shutil.copy2(file_path, dest_z)
-                    print(f"已复制到: {dest_z}")
-                except Exception as e:
-                    print(f"无法复制到 z:\\: {e}")
+                # 移动到 z:\ 不保持文件夹结构，支持重试机制
+                z_drive_result = try_move_to_z_drive(file_path, "z:\\")
+                
+                if z_drive_result[0] is None:
+                    print(f"无法移动文件到Z盘: {file_name}")
                     print("操作已退出")
                     return
+                
+                # 记录矫正文件名（如果有）- 现在包含完整文件名和扩展名
+                if z_drive_result[1]:
+                    corrected_filename = z_drive_result[1]
+                    new_row['矫正文件名'] = corrected_filename  # 包含完整文件名和扩展名
+                else:
+                    new_row['矫正文件名'] = ""
                 
                 # 等待系统生成加密文件（假设在d:\Xyz\目录下）
                 time.sleep(2)  # 等待2秒让系统处理
                 
-                # 查找d:\Xyz\目录中的新文件
+                # 查找d:\Xyz\目录中的新文件，排除隐藏文件
                 xyz_dir = "d:\\Xyz\\"
+                encrypted_filename = ""
                 if os.path.exists(xyz_dir):
-                    # 获取所有文件
-                    xyz_files = [f for f in os.listdir(xyz_dir) if os.path.isfile(os.path.join(xyz_dir, f))]
+                    # 获取所有文件，排除隐藏文件
+                    xyz_files = [f for f in os.listdir(xyz_dir) 
+                                if os.path.isfile(os.path.join(xyz_dir, f)) and
+                                not any(f.lower() == pattern.lower() for pattern in hidden_files_patterns) and
+                                not f.startswith('.')]
                     
-                    # 过滤出可能是加密文件的文件（无扩展名的文件）
-                    encrypted_files = [f for f in xyz_files if '.' not in f]
-                    
-                    # 如果找不到无扩展名的文件，考虑其他可能的加密文件命名规则
-                    if not encrypted_files:
-                        # 这里可以根据实际情况添加其他识别加密文件的逻辑
-                        # 例如：文件名长度、字符组成等
-                        encrypted_files = xyz_files
-                
-                if encrypted_files:
-                    encrypted_filename = encrypted_files[0]  # 取第一个文件作为加密文件
-                    new_row['加密文件名'] = encrypted_filename
-                    
-                    # 移动加密文件到d:\Works\Uploads\
-                    source_encrypted = os.path.join(xyz_dir, encrypted_filename)
-                    dest_upload = "d:\\Works\\Uploads\\" + encrypted_filename
-                    shutil.move(source_encrypted, dest_upload)
-                    print(f"已移动加密文件到: {dest_upload}")
+                    if xyz_files:
+                        # 取第一个文件作为加密文件，并获取无扩展名的文件名
+                        encrypted_file = xyz_files[0]
+                        encrypted_filename = os.path.splitext(encrypted_file)[0]  # 只记录无扩展名的文件名
+                        new_row['加密文件名'] = encrypted_filename
+                        
+                        # 移动加密文件到d:\Works\Uploads\（不保持文件夹结构）
+                        source_encrypted = os.path.join(xyz_dir, encrypted_file)
+                        dest_upload = "d:\\Works\\Uploads\\" + encrypted_file
+                        
+                        # 确保目标目录存在
+                        os.makedirs(os.path.dirname(dest_upload), exist_ok=True)
+                        shutil.move(source_encrypted, dest_upload)
+                        print(f"已移动加密文件到: {dest_upload}")
+                    else:
+                        print("警告：未在d:\\Xyz\\目录中找到非隐藏的加密文件")
+                        new_row['加密文件名'] = ""
                 else:
-                    print("警告：未在d:\\Xyz\\目录中找到加密文件")
+                    print("警告：d:\\Xyz\\目录不存在")
                     new_row['加密文件名'] = ""
                     
             except Exception as e:
                 print(f"文件复制/移动操作失败: {e}")
                 new_row['加密文件名'] = ""
+                new_row['矫正文件名'] = ""
             
             # 5. 将询问的值写入相应字段
             new_row['引用页'] = reference_page
@@ -1568,11 +1620,17 @@ def write_to_excel_with_ed2k():
                 rhash_path = "d:\\ProApps\\RHash\\rhash.exe"
                 if os.path.exists(rhash_path):
                     # 使用RHash生成ED2K链接
+                    # 使用移动后的文件路径来计算哈希
+                    if corrected_filename:
+                        z_file_path = f"z:\\{corrected_filename}"  # 矫正文件名已包含扩展名
+                    else:
+                        z_file_path = f"z:\\{file_name}"  # 原文件名已包含扩展名
+                    
                     result = subprocess.run([
                         rhash_path, 
                         "--uppercase", 
                         "--ed2k-link", 
-                        file_path
+                        z_file_path
                     ], capture_output=True, text=True, encoding='utf-8')
                     
                     if result.returncode == 0:

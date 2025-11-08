@@ -1,9 +1,9 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置与目标文件夹位置。
-# 遍历源文件夹位置中所有视频文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4、ogv、ogm、ogg）。
+# 在脚本开始前询问我源文件夹位置（默认“d:\\Works\\In\\”）与目标文件夹位置（默认“d:\\Works\\Out\\”）。
+# 遍历源文件夹及其子文件夹位置中所有视频文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4、ogv、ogm、ogg）。
 # 使用 ffmpeg 压缩，类似命令：ffmpeg -i input.mkv -map 0 -c:v libsvtav1 -crf 32 -preset 5 -c:a aac -q:a 0.64 -c:s copy output.mkv。
 # 视频参数为：av1 格式，Const.Qualty: Quality=32，Preset=5。音频参数为：aac 格式，遍历每个音轨，质量模式。q=0.64。字幕保持不变。
-# 生成的文件重新用 mkvmerge 再生成同名文件到目标文件夹位置。   
+# 生成的文件重新用 mkvmerge 再生成同名文件到目标文件夹位置，文件夹结构保持一致。   
 
 # 导入模块
 import os
@@ -24,8 +24,8 @@ def ask_folder_location(prompt, default_folder):
     return folder_path
 
 # 获取源文件夹和目标文件夹位置
-source_folder = ask_folder_location("请输入源文件夹位置", "d:\\Works\\In\\")
-target_folder = ask_folder_location("请输入目标文件夹位置", "d:\\Works\\Out\\")
+source_folder = ask_folder_location("请输入源文件夹位置（默认“d:\\Works\\In\\”）", "d:\\Works\\In\\")
+target_folder = ask_folder_location("请输入目标文件夹位置（默认“d:\\Works\\Out\\”）", "d:\\Works\\Out\\")
 
 # 支持的文件格式
 video_formats = (".mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg", ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4", ".ogv", ".ogm", ".ogg")
@@ -33,16 +33,22 @@ video_formats = (".mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg", ".rm", 
 # 确保目标文件夹存在
 os.makedirs(target_folder, exist_ok=True)
 
-def compress_and_remux_video(source_path, target_folder):
+def compress_and_remux_video(source_path, target_folder, relative_path):
     """
-    压缩视频并重新封装到目标文件夹。
+    压缩视频并重新封装到目标文件夹，保持目录结构。
     :param source_path: 源视频文件路径
     :param target_folder: 目标文件夹路径
+    :param relative_path: 相对于源文件夹的路径
     """
     # 获取文件名和扩展名
     file_name, _ = os.path.splitext(os.path.basename(source_path))
-    temp_output_path = os.path.join(target_folder, f"{file_name}_temp.mkv")
-    final_output_path = os.path.join(target_folder, f"{file_name}.mkv")
+    
+    # 在目标文件夹中创建相同的目录结构
+    target_subfolder = os.path.join(target_folder, relative_path)
+    os.makedirs(target_subfolder, exist_ok=True)
+    
+    temp_output_path = os.path.join(target_subfolder, f"{file_name}_temp.mkv")
+    final_output_path = os.path.join(target_subfolder, f"{file_name}.mkv")
     
     # 构建 ffmpeg 命令
     ffmpeg_command = [
@@ -78,12 +84,16 @@ def compress_and_remux_video(source_path, target_folder):
 
     print(f"处理完成: {final_output_path}")
 
-# 遍历源文件夹中的所有视频文件
+# 遍历源文件夹及其子文件夹中的所有视频文件
 for root, dirs, files in os.walk(source_folder):
     for file in files:
         if file.lower().endswith(video_formats):  # 检查文件扩展名
             source_path = os.path.join(root, file)
-            compress_and_remux_video(source_path, target_folder)
+            
+            # 计算相对于源文件夹的路径
+            relative_path = os.path.relpath(root, source_folder)
+            
+            compress_and_remux_video(source_path, target_folder, relative_path)
 
 print("所有视频处理完成！")
 input("按回车键退出...")

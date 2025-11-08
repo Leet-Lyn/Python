@@ -1,4 +1,5 @@
-﻿# 获取文件夹下所有文件名，到一个文件内。
+﻿# 请帮我写个中文的 Python 脚本，批注也是中文：
+# 在脚本开始前询问我源文件夹位置（默认为“d:\\Works\\X\\”）。获取文件夹下所有文件名（包括扩展名），写到到一个文件内（默认为“d:\Works\0\files.txt”）。
 
 # 导入模块
 import os
@@ -6,6 +7,8 @@ import os
 def get_all_filenames(folder, output_file):
     """
     获取文件夹下所有文件的完整路径并保存到文件中。
+    :param folder: 要遍历的文件夹路径
+    :param output_file: 输出文件路径
     """
     # 检查文件夹是否存在
     if not os.path.exists(folder):
@@ -28,13 +31,10 @@ def get_all_filenames(folder, output_file):
 
 def main():
     # 用户输入文件夹路径
-    folder = input("请输入要获取文件名的文件夹路径（默认为“d:\\Works\\X\\”）：").strip() or "d:\\Works\\X\\"
-    # 用户输入输出文件名
-    filename = input("请输入保存文件名的文件名（默认 'files.txt'）：").strip() or "files.txt"
+    folder = input("请输入要获取文件名的文件夹路径（默认为'd:\\Works\\X\\'）：").strip() or "d:\\Works\\X\\"
+    
     # 用户输入输出文件路径
-    path = input("请输入保存文件的路径（默认为“d:\\Works\\X\\”）：").strip() or "d:\\Works\\X\\"
-    # 拼接完整输出文件路径
-    output_file = os.path.join(path, filename)
+    output_file = input("请输入保存文件名的文件路径（默认为'd:\\Works\\0\\files.txt'）：").strip() or "d:\\Works\\0\\files.txt"
 
     # 调用函数处理
     get_all_filenames(folder, output_file)

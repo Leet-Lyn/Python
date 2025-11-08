@@ -1,4 +1,6 @@
-﻿# 将文件夹下所有的 doc、xsl、ppt 文件转为 docx、xslx、pptx 文件。
+﻿# 请帮我写个中文的 Python 脚本，批注也是中文：
+# 在脚本开始前询问我源文件夹位置（默认“d:\\Works\\In\\”）与目标文件夹位置（默认“d:\\Works\\Out\\”）。
+# 将文件夹下所有的 doc、xsl、ppt 文件转为 docx、xslx、pptx 文件。
 
 # 导入模块
 import os
@@ -74,9 +76,9 @@ def restore_original_names(target_folder):
 
 def main():
     # 询问用户源文件夹路径
-    source_folder = input("请输入源文件夹路径（按回车则为“T:\\Temps\\”）：").strip() or "T:\\Temps\\"
+    source_folder = input("请输入源文件夹路径（按回车则为“d:\\Works\\In\\”）：").strip() or "d:\\Works\\In\\"
     # 询问用户目标文件夹路径
-    target_folder = input("请输入目标文件夹路径（按回车则为“T:\\XXX\\”）：").strip() or "T:\\XXX\\"
+    target_folder = input("请输入目标文件夹路径（按回车则为“d:\\Works\\Out\\”）：").strip() or "d:\\Works\\Out\\"
 
     if not os.path.exists(source_folder):
         print(f"源文件夹 '{source_folder}' 不存在。")

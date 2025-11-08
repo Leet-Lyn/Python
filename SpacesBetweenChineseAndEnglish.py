@@ -1,22 +1,32 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置。
+# 在脚本开始前询问我源文件夹位置（默认是：d:\\Works\\Downloads\\）。
 # 遍历源文件夹位置中所有文件，对文件名（不包括后缀名）进行重命名，要求如下：
-# 将 "-" 替换为 " "；将连续三个空格替换为 " - "。
-# 中文字符与英文单词之间要有空格。
+# 中文字符与英文单词之间要有空格。将 "-" 替换为 " "；将连续三个空格替换为 " - "。
 
 # 导入模块
 import os
 import re
 
-def get_valid_directory(prompt):
+def get_valid_directory():
     """
-    获取有效的文件夹路径。
+    获取有效的文件夹路径，支持默认值。
     """
+    default_folder = "d:\\Works\\Downloads\\"
+    prompt = f"请输入源文件夹位置（默认是：{default_folder}，直接回车使用默认值）："
+    
     while True:
         folder = input(prompt).strip()
+        
+        # 如果用户直接回车，使用默认值
+        if not folder:
+            folder = default_folder
+        
+        # 去除可能的首尾引号
+        folder = folder.strip('"\'')
+        
         if os.path.isdir(folder):
             return folder
-        print("输入的路径无效，请重新输入。")
+        print(f"输入的路径无效：{folder}，请重新输入。")
 
 def add_space_between_chinese_and_english(filename):
     """
@@ -73,7 +83,8 @@ def main():
     主程序入口。
     """
     print("=== 文件名批量重命名工具 ===")
-    source_folder = get_valid_directory("请输入源文件夹路径：")
+    source_folder = get_valid_directory()
+    print(f"使用的源文件夹：{source_folder}")
     rename_files_in_directory(source_folder)
     input("按回车键退出程序...")
 
