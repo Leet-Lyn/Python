@@ -13,7 +13,10 @@
 # 11. 删除没有数据的字段名：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\）。依次读取该文件夹中的其他每一文件（排除 ".DatabaseStructure.md"）。删除没有数据的字段行。
 # 12. 双引号置换单引号：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\标准\\）。打开每个 markdown 文件，顺序读取文件，将每一行中除了第一个和倒数第一个双引号（"），其他的双引号改为单引号（'）。
 # 13. 属性内容处理：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\标准\\），再询问我属性名称。打开每个 markdown 文件，顺序找到该属性。询问我下一步：1.将该属性内容设置为空（""）。2.将该属性内容设置为什么？（询问我属性内容，所有 markdown 文件的属性均设置为该属性内容）。3. 将该属性内容每个单词大写。4.将该属性内容每个单词小写。5. 将该属性内容每个单词首字母大写，其余小写。6.将该属性内容（汉字、英文、或数字）用空格隔开。7.将该属性内容的汉字繁体中文转为简体中文。8. 所有半角标点符号转为全角标点符号。
-# 14. 写入 excel 文件：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 每一条记录新开一行。2. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。3. 将源文件夹内文件名写入"名字"与"原文件名"字段值。4. 将该文件复制到"d:\\Works\\In\\"，并移动到"z:\\"中，如果无法完成写入"z:\\"中，则重命名原文件（从后删除1个字符（不包括扩展名）），再次尝试将原文件向目标文件夹移动。反复循环，直至能将原文件向目标文件夹移动。如果有重命名过文件，将修改过的文件名写入"矫正文件名"字段值中。写入"z:\\"后，系统会自动生成一个对应文件（自动加密的）。读取"d:\\Xyz\\"新生成的文件名，将其文件名（无扩展名）写入"加密文件名"字段值。将"d:\\Xyz\\"新生成的文件移动到"d:\\Works\\Uploads\\"（在"d:\\Xyz\\"中不保留）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 计算并生成该文件的 Ed2K 链接。生成的 ed2k 链接，写入"标准链接"字段值。7. 通过"标准链接"字段值，分别生成"大小"、"散列"字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
+# 21. 单文件写入：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 每一条记录新开一行。2. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。3. 将源文件夹内文件名写入"名字"与"原文件名"字段值。4. 将该文件移动到"d:\\Works\\In\\"（保持原来文件夹结构）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 计算并生成该文件的 Ed2K 链接。生成的 ed2k 链接，写入"标准链接"字段值。7. 通过"标准链接"字段值，分别生成"大小"、"散列"字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
+# 22. 多文件写入：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 新开一行。2. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。3. 将源文件夹名写入"名字"。将源文件夹内每个文件名写入临时文件“d:\Works\0\SourceName.txt”中（内容先清空，每行一个），最合合并写入"原文件名"字段值。4. 将该文件移动到"d:\\Works\\In\\"（保持原来文件夹结构）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 计算并生成该文件的 Ed2K 链接。生成的 ed2k 链接，写入临时文件“d:\Works\0\Ed2kList.txt”中（内容先清空，每行一个），最合合并写入"标准链接"字段值。7. 通过每个"标准链接"字段值，分别将分解出的"大小"、"散列"值，大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。写入临时文件“d:\Works\0\Ed2kList.size.txt”、“d:\Works\0\Ed2kList.hash.txt”中（内容先清空，每行一个），最合合并写入"大小"、"散列"字段值。
+# 23. 原来14 改成 23 单文件复杂写入：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 每一条记录新开一行。2. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。3. 将源文件夹内文件名写入"名字"与"原文件名"字段值。4. 将该文件移动到"d:\\Works\\In\\（保持原来文件夹结构）"，并移动到"z:\\"中，如果无法完成写入"z:\\"中，则重命名原文件（从后删除1个字符（不包括扩展名）），再次尝试将原文件向目标文件夹移动。反复循环，直至能将原文件向目标文件夹移动。如果有重命名过文件，将修改过的文件名写入"矫正文件名"字段值中。写入"z:\\"后，系统会自动生成一个对应文件（自动加密的）。读取"d:\\Xyz\\"新生成的文件名，将其文件名（无扩展名）写入"加密文件名"字段值。将"d:\\Xyz\\"新生成的文件移动到"d:\\Works\\Uploads\\"（在"d:\\Xyz\\"中不保留）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 计算并生成该文件的 Ed2K 链接。生成的 ed2k 链接，写入"标准链接"字段值。7. 通过"标准链接"字段值，分别生成"大小"、"散列"字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
+# 24. 多文件复杂写入：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 每一条记录新开一行。2. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。3. 将源文件夹名写入"名字"。将源文件夹内每个文件名写入临时文件“d:\Works\0\SourceName.txt”中（内容先清空，每行一个），最合合并写入"原文件名"字段值。4. 将该文件移动到"d:\\Works\\In\\（保持原来文件夹结构）"，并移动到"z:\\"中，如果无法完成写入"z:\\"中，则重命名原文件（从后删除1个字符（不包括扩展名）），再次尝试将原文件向目标文件夹移动。反复循环，直至能将原文件向目标文件夹移动。如果有重命名过文件，将修改过的文件名写入临时文件“d:\Works\0\ChangeName.txt”中（内容先清空，每行一个），最合合并写入"矫正文件名"字段值中。写入"z:\\"后，系统会自动生成一个对应文件（自动加密的）。读取"d:\\Xyz\\"新生成的文件名，将其文件名（无扩展名）写入临时文件“d:\Works\0\EncryptedName.txt”中（内容先清空，每行一个），最合合并写入"加密文件名"字段值中。将"d:\\Xyz\\"新生成的文件移动到"d:\\Works\\Uploads\\"（在"d:\\Xyz\\"中不保留）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 计算并生成该文件的 Ed2K 链接。生成的 ed2k 链接，写入临时文件“d:\Works\0\Ed2kList.txt”中（内容先清空，每行一个），最合合并写入"标准链接"字段值。7. 通过每个"标准链接"字段值，分别将分解出的"大小"、"散列"值，大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。写入临时文件“d:\Works\0\Ed2kList.size.txt”、“d:\Works\0\Ed2kList.hash.txt”中（内容先清空，每行一个），最合合并写入"大小"、"散列"字段值。
 # 0. 退出程序。
 
 # 导入模块
@@ -171,9 +174,12 @@ def main():
         print("11. 删除没有数据的字段名")
         print("12. 双引号置换单引号")
         print("13. 属性内容处理")
-        print("14. 写入 Excel 文件")
+        print("21. 单文件写入")
+        print("22. 多文件写入")
+        print("23. 单文件复杂写入")
+        print("24. 多文件复杂写入")
         print("0. 退出程序")
-        choice = input("请输入数字选择操作（1/2/3/4/5/6/7/8/9/10/11/12/13/14/0）：")
+        choice = input("请输入数字选择操作（1-13,21-24,0）：")
         
         if choice == '1':
             generate_excel_from_folder()
@@ -201,8 +207,14 @@ def main():
             replace_double_quotes()
         elif choice == '13':
             process_attribute_content()
-        elif choice == '14':
-            write_to_excel_with_ed2k()
+        elif choice == '21':
+            write_to_excel_single()
+        elif choice == '22':
+            write_to_excel_multiple()
+        elif choice == '23':
+            write_to_excel_complex_single()
+        elif choice == '24':
+            write_to_excel_complex_multiple()
         elif choice == '0':
             print("程序已退出")
             break
@@ -1422,9 +1434,9 @@ def half_to_full_width(text):
     
     return result
 
-# 选项14：写入Excel文件（含ED2K链接生成）- 修改版
-def write_to_excel_with_ed2k():
-    """写入Excel文件并生成ED2K链接 - 修改版：支持文件名重试和文件夹结构保持，矫正文件名包含扩展名，过滤隐藏文件"""
+# 功能21：单文件写入
+def write_to_excel_single():
+    """单文件写入功能 - 移动到In目录"""
     # 获取Excel文件位置和源文件夹位置
     excel_path = get_default_path("请输入Excel文件位置", "e:\\Documents\\Creations\\Databases\\标准.xlsx")
     source_dir = get_default_path("请输入源文件夹位置", "d:\\Downloads\\")
@@ -1483,51 +1495,6 @@ def write_to_excel_with_ed2k():
     
     print(f"找到 {len(all_files)} 个非隐藏文件，开始处理...")
     
-    def try_move_to_z_drive(original_file, target_folder="z:\\"):
-        """尝试移动文件到Z盘，如果失败则重命名重试"""
-        # 分离文件名和扩展名
-        filename, file_extension = os.path.splitext(os.path.basename(original_file))
-        original_filename = filename + file_extension  # 保存原始完整文件名
-        
-        while True:
-            try:
-                # 构建目标文件路径
-                target_file = os.path.join(target_folder, f"{filename}{file_extension}")
-                
-                # 尝试移动文件
-                shutil.move(original_file, target_file)
-                print(f"文件已成功移动至：{target_file}")
-                
-                # 如果文件名有修改，返回修改后的完整文件名（包含扩展名）
-                corrected_name = None
-                current_fullname = f"{filename}{file_extension}"
-                if current_fullname != original_filename:
-                    corrected_name = current_fullname
-                
-                return target_file, corrected_name
-                
-            except Exception as e:
-                print(f"文件移动失败：{e}")
-                
-                # 判断是否需要缩短文件名
-                if len(filename) > 1:
-                    # 从文件名末尾删除一个字符
-                    filename = filename[:-1]
-                    new_original_file = os.path.join(os.path.dirname(original_file), f"{filename}{file_extension}")
-                    
-                    try:
-                        # 重命名原文件
-                        os.rename(original_file, new_original_file)
-                        original_file = new_original_file  # 更新原文件路径
-                        print(f"文件已重命名为：{original_file}")
-                    except Exception as rename_error:
-                        print(f"文件重命名失败：{rename_error}")
-                        return None, None
-                else:
-                    # 文件名无法再缩短
-                    print("文件名已无法缩短，无法移动文件。")
-                    return None, None
-    
     # 处理每个文件
     for file_path in all_files:
         try:
@@ -1542,132 +1509,38 @@ def write_to_excel_with_ed2k():
             file_name = os.path.basename(file_path)
             base_name = os.path.splitext(file_name)[0]
             new_row['名字'] = base_name
-            new_row['原文件名'] = file_name  # 包含完整文件名和扩展名
+            new_row['原文件名'] = file_name
             
-            # 4. 文件复制操作
-            corrected_filename = None
+            # 4. 将该文件移动到"d:\Works\In\"（保持原来文件夹结构）
             try:
-                # 复制到 d:\Works\In\ 保持文件夹结构
+                # 移动到 d:\Works\In\ 保持文件夹结构
                 relative_path = os.path.relpath(file_path, source_dir)
                 dest_in = os.path.join("d:\\Works\\In\\", relative_path)
                 
                 # 确保目标目录存在
                 os.makedirs(os.path.dirname(dest_in), exist_ok=True)
-                shutil.copy2(file_path, dest_in)
-                print(f"已复制到: {dest_in}")
-                
-                # 移动到 z:\ 不保持文件夹结构，支持重试机制
-                z_drive_result = try_move_to_z_drive(file_path, "z:\\")
-                
-                if z_drive_result[0] is None:
-                    print(f"无法移动文件到Z盘: {file_name}")
-                    print("操作已退出")
-                    return
-                
-                # 记录矫正文件名（如果有）- 现在包含完整文件名和扩展名
-                if z_drive_result[1]:
-                    corrected_filename = z_drive_result[1]
-                    new_row['矫正文件名'] = corrected_filename  # 包含完整文件名和扩展名
-                else:
-                    new_row['矫正文件名'] = ""
-                
-                # 等待系统生成加密文件（假设在d:\Xyz\目录下）
-                time.sleep(2)  # 等待2秒让系统处理
-                
-                # 查找d:\Xyz\目录中的新文件，排除隐藏文件
-                xyz_dir = "d:\\Xyz\\"
-                encrypted_filename = ""
-                if os.path.exists(xyz_dir):
-                    # 获取所有文件，排除隐藏文件
-                    xyz_files = [f for f in os.listdir(xyz_dir) 
-                                if os.path.isfile(os.path.join(xyz_dir, f)) and
-                                not any(f.lower() == pattern.lower() for pattern in hidden_files_patterns) and
-                                not f.startswith('.')]
-                    
-                    if xyz_files:
-                        # 取第一个文件作为加密文件，并获取无扩展名的文件名
-                        encrypted_file = xyz_files[0]
-                        encrypted_filename = os.path.splitext(encrypted_file)[0]  # 只记录无扩展名的文件名
-                        new_row['加密文件名'] = encrypted_filename
-                        
-                        # 移动加密文件到d:\Works\Uploads\（不保持文件夹结构）
-                        source_encrypted = os.path.join(xyz_dir, encrypted_file)
-                        dest_upload = "d:\\Works\\Uploads\\" + encrypted_file
-                        
-                        # 确保目标目录存在
-                        os.makedirs(os.path.dirname(dest_upload), exist_ok=True)
-                        shutil.move(source_encrypted, dest_upload)
-                        print(f"已移动加密文件到: {dest_upload}")
-                    else:
-                        print("警告：未在d:\\Xyz\\目录中找到非隐藏的加密文件")
-                        new_row['加密文件名'] = ""
-                else:
-                    print("警告：d:\\Xyz\\目录不存在")
-                    new_row['加密文件名'] = ""
-                    
+                shutil.move(file_path, dest_in)
+                print(f"已移动到: {dest_in}")
             except Exception as e:
-                print(f"文件复制/移动操作失败: {e}")
-                new_row['加密文件名'] = ""
-                new_row['矫正文件名'] = ""
+                print(f"文件移动失败: {e}")
             
-            # 5. 将询问的值写入相应字段
+            # 5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入相应字段
             new_row['引用页'] = reference_page
             new_row['属于'] = belongs_to
             new_row['主链接'] = main_link
             
-            # 6. 计算并生成ED2K链接
+            # 6. 计算并生成该文件的 Ed2K 链接
             try:
-                rhash_path = "d:\\ProApps\\RHash\\rhash.exe"
-                if os.path.exists(rhash_path):
-                    # 使用RHash生成ED2K链接
-                    # 使用移动后的文件路径来计算哈希
-                    if corrected_filename:
-                        z_file_path = f"z:\\{corrected_filename}"  # 矫正文件名已包含扩展名
-                    else:
-                        z_file_path = f"z:\\{file_name}"  # 原文件名已包含扩展名
-                    
-                    result = subprocess.run([
-                        rhash_path, 
-                        "--uppercase", 
-                        "--ed2k-link", 
-                        z_file_path
-                    ], capture_output=True, text=True, encoding='utf-8')
-                    
-                    if result.returncode == 0:
-                        ed2k_link = result.stdout.strip()
-                        new_row['标准链接'] = ed2k_link
-                        
-                        # 7. 通过ED2K链接解析大小和散列
-                        if ed2k_link.startswith("ed2k://|file|"):
-                            # 对链接进行百分号解码
-                            decoded_link = urllib.parse.unquote(ed2k_link)
-                            parts = decoded_link.split('|')
-                            
-                            if len(parts) >= 5:
-                                # 文件大小（字节）
-                                filesize = parts[3]
-                                # 哈希值
-                                filehash = parts[4].upper()
-                                
-                                # 格式化文件大小
-                                formatted_size = format_file_size(filesize)
-                                
-                                new_row['大小'] = formatted_size
-                                new_row['散列'] = filehash
-                            else:
-                                new_row['大小'] = ""
-                                new_row['散列'] = ""
-                        else:
-                            new_row['大小'] = ""
-                            new_row['散列'] = ""
-                    else:
-                        print(f"生成ED2K链接失败: {result.stderr}")
-                        new_row['标准链接'] = ""
-                        new_row['大小'] = ""
-                        new_row['散列'] = ""
+                # 使用移动后的文件计算ED2K
+                ed2k_link = generate_ed2k_link(dest_in)
+                new_row['标准链接'] = ed2k_link
+                
+                # 7. 通过"标准链接"字段值，分别生成"大小"、"散列"字段值
+                if ed2k_link:
+                    size, hash_value = parse_ed2k_link(ed2k_link)
+                    new_row['大小'] = size
+                    new_row['散列'] = hash_value
                 else:
-                    print(f"RHash未找到于: {rhash_path}")
-                    new_row['标准链接'] = ""
                     new_row['大小'] = ""
                     new_row['散列'] = ""
             except Exception as e:
@@ -1693,6 +1566,715 @@ def write_to_excel_with_ed2k():
         print(f"新增 {len(all_files)} 条记录")
     except Exception as e:
         print(f"保存Excel文件失败: {e}")
+
+# 功能22：多文件写入
+def write_to_excel_multiple():
+    """多文件写入功能 - 将整个文件夹作为一个记录"""
+    # 获取Excel文件位置和源文件夹位置
+    excel_path = get_default_path("请输入Excel文件位置", "e:\\Documents\\Creations\\Databases\\标准.xlsx")
+    source_dir = get_default_path("请输入源文件夹位置", "d:\\Downloads\\")
+    
+    # 询问引用页、属于、主链接的值
+    reference_page = input("请输入引用页的值（按回车则为空）：").strip()
+    belongs_to = input("请输入属于的值（按回车则为空）：").strip()
+    main_link = input("请输入主链接的值（按回车则为空）：").strip()
+    
+    # 检查Excel文件是否存在
+    if not os.path.exists(excel_path):
+        print(f"错误：Excel文件 '{excel_path}' 不存在")
+        return
+    
+    # 检查源文件夹是否存在
+    if not os.path.exists(source_dir):
+        print(f"错误：源文件夹 '{source_dir}' 不存在")
+        return
+    
+    # 读取Excel文件
+    try:
+        df = pd.read_excel(excel_path, engine='openpyxl')
+    except Exception as e:
+        print(f"读取Excel文件失败: {e}")
+        return
+    
+    # 获取最后一个Index值
+    last_index = 0
+    if 'Index' in df.columns and not df.empty:
+        last_index_values = df['Index'].dropna()
+        if not last_index_values.empty:
+            last_index = int(last_index_values.iloc[-1])
+    
+    # 收集所有文件，过滤隐藏文件
+    all_files = []
+    hidden_files_patterns = ['desktop.ini', 'descript.ion', '.encfs6.xml', 'Thumbs.db']
+    
+    for root, _, files in os.walk(source_dir):
+        for file in files:
+            # 跳过隐藏文件
+            if any(file.lower() == pattern.lower() for pattern in hidden_files_patterns):
+                continue
+            if file.startswith('.'):
+                continue
+                
+            file_path = os.path.join(root, file)
+            all_files.append(file_path)
+    
+    if not all_files:
+        print("源文件夹中没有找到任何非隐藏文件")
+        return
+    
+    print(f"找到 {len(all_files)} 个非隐藏文件，开始处理...")
+    
+    # 创建临时目录
+    temp_dir = "d:\\Works\\0\\"
+    ensure_dir(temp_dir)
+    
+    # 1. 新开一行
+    new_row = {}
+    
+    # 2. Index字段值为上一行Index字段值+1
+    last_index += 1
+    new_row['Index'] = last_index
+    
+    # 3. 将源文件夹名写入"名字"，将文件名列表写入临时文件并合并到"原文件名"
+    folder_name = os.path.basename(source_dir.rstrip(os.sep))
+    new_row['名字'] = folder_name
+    
+    # 写入临时文件
+    source_name_file = os.path.join(temp_dir, "SourceName.txt")
+    with open(source_name_file, 'w', encoding='utf-8') as f:
+        for file_path in all_files:
+            file_name = os.path.basename(file_path)
+            f.write(f"{file_name}\n")
+    
+    # 读取临时文件内容并合并
+    with open(source_name_file, 'r', encoding='utf-8') as f:
+        source_names = f.read().strip()
+    new_row['原文件名'] = source_names
+    
+    # 4. 将该文件移动到"d:\Works\In\"（保持原来文件夹结构）
+    for file_path in all_files:
+        try:
+            relative_path = os.path.relpath(file_path, source_dir)
+            dest_in = os.path.join("d:\\Works\\In\\", relative_path)
+            os.makedirs(os.path.dirname(dest_in), exist_ok=True)
+            shutil.move(file_path, dest_in)
+            print(f"已移动: {os.path.basename(file_path)}")
+        except Exception as e:
+            print(f"文件移动失败 {file_path}: {e}")
+    
+    # 5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入相应字段
+    new_row['引用页'] = reference_page
+    new_row['属于'] = belongs_to
+    new_row['主链接'] = main_link
+    
+    # 6. 计算并生成每个文件的 Ed2K 链接，写入临时文件并合并
+    ed2k_list_file = os.path.join(temp_dir, "Ed2kList.txt")
+    with open(ed2k_list_file, 'w', encoding='utf-8') as f:
+        for file_path in all_files:
+            try:
+                # 使用移动后的文件计算ED2K
+                relative_path = os.path.relpath(file_path, source_dir)
+                dest_in = os.path.join("d:\\Works\\In\\", relative_path)
+                ed2k_link = generate_ed2k_link(dest_in)
+                if ed2k_link:
+                    f.write(f"{ed2k_link}\n")
+                else:
+                    f.write("\n")
+            except Exception as e:
+                print(f"计算ED2K链接失败 {file_path}: {e}")
+                f.write("\n")
+    
+    # 读取临时文件内容并合并
+    with open(ed2k_list_file, 'r', encoding='utf-8') as f:
+        ed2k_links = f.read().strip()
+    new_row['标准链接'] = ed2k_links
+    
+    # 7. 解析每个ED2K链接，生成大小和散列值
+    size_list_file = os.path.join(temp_dir, "Ed2kList.size.txt")
+    hash_list_file = os.path.join(temp_dir, "Ed2kList.hash.txt")
+    
+    with open(ed2k_list_file, 'r', encoding='utf-8') as f_ed2k, \
+         open(size_list_file, 'w', encoding='utf-8') as f_size, \
+         open(hash_list_file, 'w', encoding='utf-8') as f_hash:
+        
+        for ed2k_link in f_ed2k:
+            ed2k_link = ed2k_link.strip()
+            if ed2k_link:
+                size, hash_value = parse_ed2k_link(ed2k_link)
+                f_size.write(f"{size}\n")
+                f_hash.write(f"{hash_value}\n")
+            else:
+                f_size.write("\n")
+                f_hash.write("\n")
+    
+    # 读取临时文件内容并合并
+    with open(size_list_file, 'r', encoding='utf-8') as f:
+        sizes = f.read().strip()
+    with open(hash_list_file, 'r', encoding='utf-8') as f:
+        hashes = f.read().strip()
+    
+    new_row['大小'] = sizes
+    new_row['散列'] = hashes
+    
+    # 将新行添加到DataFrame
+    new_df = pd.DataFrame([new_row])
+    df = pd.concat([df, new_df], ignore_index=True)
+    
+    # 保存更新后的Excel文件
+    try:
+        df.to_excel(excel_path, index=False, engine='openpyxl')
+        print(f"成功更新Excel文件: {excel_path}")
+        print(f"新增 1 条记录（包含 {len(all_files)} 个文件）")
+    except Exception as e:
+        print(f"保存Excel文件失败: {e}")
+
+# 功能23：单文件复杂写入
+def write_to_excel_complex_single():
+    """单文件复杂写入功能 - 包含移动到In目录和复制到Z盘"""
+    # 获取Excel文件位置和源文件夹位置
+    excel_path = get_default_path("请输入Excel文件位置", "e:\\Documents\\Creations\\Databases\\标准.xlsx")
+    source_dir = get_default_path("请输入源文件夹位置", "d:\\Downloads\\")
+    
+    # 询问引用页、属于、主链接的值
+    reference_page = input("请输入引用页的值（按回车则为空）：").strip()
+    belongs_to = input("请输入属于的值（按回车则为空）：").strip()
+    main_link = input("请输入主链接的值（按回车则为空）：").strip()
+    
+    # 检查Excel文件是否存在
+    if not os.path.exists(excel_path):
+        print(f"错误：Excel文件 '{excel_path}' 不存在")
+        return
+    
+    # 检查源文件夹是否存在
+    if not os.path.exists(source_dir):
+        print(f"错误：源文件夹 '{source_dir}' 不存在")
+        return
+    
+    # 读取Excel文件
+    try:
+        df = pd.read_excel(excel_path, engine='openpyxl')
+    except Exception as e:
+        print(f"读取Excel文件失败: {e}")
+        return
+    
+    # 获取最后一个Index值
+    last_index = 0
+    if 'Index' in df.columns and not df.empty:
+        last_index_values = df['Index'].dropna()
+        if not last_index_values.empty:
+            last_index = int(last_index_values.iloc[-1])
+    
+    # 收集所有文件，过滤隐藏文件
+    all_files = []
+    hidden_files_patterns = ['desktop.ini', 'descript.ion', '.encfs6.xml', 'Thumbs.db']
+    
+    for root, _, files in os.walk(source_dir):
+        for file in files:
+            # 跳过隐藏文件
+            if any(file.lower() == pattern.lower() for pattern in hidden_files_patterns):
+                print(f"跳过隐藏文件: {file}")
+                continue
+            
+            # 跳过以点开头的隐藏文件
+            if file.startswith('.'):
+                print(f"跳过隐藏文件: {file}")
+                continue
+                
+            file_path = os.path.join(root, file)
+            all_files.append(file_path)
+    
+    if not all_files:
+        print("源文件夹中没有找到任何非隐藏文件")
+        return
+    
+    print(f"找到 {len(all_files)} 个非隐藏文件，开始处理...")
+    
+    def copy_to_z_drive_with_retry(original_file, target_folder="z:\\"):
+        """复制文件到Z盘，如果失败则重命名重试"""
+        # 分离文件名和扩展名
+        filename, file_extension = os.path.splitext(os.path.basename(original_file))
+        original_filename = filename + file_extension  # 保存原始完整文件名
+        
+        while True:
+            try:
+                # 构建目标文件路径
+                target_file = os.path.join(target_folder, f"{filename}{file_extension}")
+                
+                # 尝试复制文件
+                shutil.copy2(original_file, target_file)
+                print(f"文件已成功复制至：{target_file}")
+                
+                # 如果文件名有修改，返回修改后的完整文件名（包含扩展名）
+                corrected_name = None
+                current_fullname = f"{filename}{file_extension}"
+                if current_fullname != original_filename:
+                    corrected_name = current_fullname
+                
+                return target_file, corrected_name
+                
+            except Exception as e:
+                print(f"文件复制失败：{e}")
+                
+                # 判断是否需要缩短文件名
+                if len(filename) > 1:
+                    # 从文件名末尾删除一个字符
+                    filename = filename[:-1]
+                    print(f"尝试缩短文件名: {filename}{file_extension}")
+                else:
+                    # 文件名无法再缩短
+                    print("文件名已无法缩短，无法复制文件。")
+                    return None, None
+    
+    def wait_for_encrypted_file_and_move(xyz_dir="d:\\Xyz\\", upload_dir="d:\\Works\\Uploads\\"):
+        """等待加密文件生成并移动到上传目录"""
+        max_attempts = 10
+        attempt = 0
+        
+        while attempt < max_attempts:
+            # 查找d:\Xyz\目录中的新文件，排除隐藏文件
+            if os.path.exists(xyz_dir):
+                # 获取所有文件，排除隐藏文件
+                xyz_files = [f for f in os.listdir(xyz_dir) 
+                            if os.path.isfile(os.path.join(xyz_dir, f)) and
+                            not any(f.lower() == pattern.lower() for pattern in hidden_files_patterns) and
+                            not f.startswith('.')]
+                
+                if xyz_files:
+                    # 取第一个文件作为加密文件，并获取无扩展名的文件名
+                    encrypted_file = xyz_files[0]
+                    encrypted_filename = os.path.splitext(encrypted_file)[0]  # 只记录无扩展名的文件名
+                    
+                    # 移动加密文件到d:\Works\Uploads\（不保持文件夹结构）
+                    source_encrypted = os.path.join(xyz_dir, encrypted_file)
+                    dest_upload = os.path.join(upload_dir, encrypted_file)
+                    
+                    # 确保目标目录存在
+                    os.makedirs(os.path.dirname(dest_upload), exist_ok=True)
+                    
+                    try:
+                        shutil.move(source_encrypted, dest_upload)
+                        print(f"已移动加密文件到: {dest_upload}")
+                        return encrypted_filename
+                    except Exception as e:
+                        print(f"移动加密文件失败: {e}")
+                        attempt += 1
+                        time.sleep(2)  # 等待2秒后重试
+                else:
+                    print(f"等待加密文件生成... ({attempt + 1}/{max_attempts})")
+                    attempt += 1
+                    time.sleep(2)  # 等待2秒后重试
+            else:
+                print(f"Xyz目录不存在: {xyz_dir}")
+                return None
+        
+        print("等待加密文件超时")
+        return None
+    
+    # 处理每个文件
+    for file_path in all_files:
+        try:
+            # 1. 每一条记录新开一行
+            new_row = {}
+            
+            # 2. Index字段值为上一行Index字段值+1
+            last_index += 1
+            new_row['Index'] = last_index
+            
+            # 3. 将源文件夹内文件名写入"名字"与"原文件名"字段值
+            file_name = os.path.basename(file_path)
+            base_name = os.path.splitext(file_name)[0]
+            new_row['名字'] = base_name
+            new_row['原文件名'] = file_name  # 包含完整文件名和扩展名
+            
+            # 4. 计算并生成ED2K链接（在移动和重命名之前）
+            try:
+                ed2k_link = generate_ed2k_link(file_path)
+                new_row['标准链接'] = ed2k_link
+                
+                # 通过ED2K链接解析大小和散列
+                if ed2k_link:
+                    size, hash_value = parse_ed2k_link(ed2k_link)
+                    new_row['大小'] = size
+                    new_row['散列'] = hash_value
+                else:
+                    new_row['大小'] = ""
+                    new_row['散列'] = ""
+            except Exception as e:
+                print(f"计算ED2K链接时出错: {e}")
+                new_row['标准链接'] = ""
+                new_row['大小'] = ""
+                new_row['散列'] = ""
+            
+            # 5. 文件移动和复制操作
+            corrected_filename = None
+            encrypted_filename = None
+            
+            try:
+                # 先移动到 d:\Works\In\ 保持文件夹结构
+                relative_path = os.path.relpath(file_path, source_dir)
+                dest_in = os.path.join("d:\\Works\\In\\", relative_path)
+                
+                # 确保目标目录存在
+                os.makedirs(os.path.dirname(dest_in), exist_ok=True)
+                shutil.move(file_path, dest_in)
+                print(f"已移动到: {dest_in}")
+                
+                # 然后复制到 z:\ 不保持文件夹结构，支持重试机制
+                z_drive_result = copy_to_z_drive_with_retry(dest_in, "z:\\")
+                
+                if z_drive_result[0] is None:
+                    print(f"无法复制文件到Z盘: {file_name}")
+                    new_row['矫正文件名'] = ""
+                    new_row['加密文件名'] = ""
+                else:
+                    # 记录矫正文件名（如果有）- 现在包含完整文件名和扩展名
+                    if z_drive_result[1]:
+                        corrected_filename = z_drive_result[1]
+                        new_row['矫正文件名'] = corrected_filename  # 包含完整文件名和扩展名
+                    else:
+                        new_row['矫正文件名'] = ""
+                    
+                    # 等待系统生成加密文件并移动
+                    encrypted_filename = wait_for_encrypted_file_and_move()
+                    if encrypted_filename:
+                        new_row['加密文件名'] = encrypted_filename
+                    else:
+                        new_row['加密文件名'] = ""
+                    
+            except Exception as e:
+                print(f"文件移动/复制操作失败: {e}")
+                new_row['加密文件名'] = ""
+                new_row['矫正文件名'] = ""
+            
+            # 6. 将原来询问我的"引用页"、"属于"、"主链接"的值写入相应字段
+            new_row['引用页'] = reference_page
+            new_row['属于'] = belongs_to
+            new_row['主链接'] = main_link
+            
+            # 将新行添加到DataFrame
+            new_df = pd.DataFrame([new_row])
+            df = pd.concat([df, new_df], ignore_index=True)
+            
+            print(f"已处理文件: {file_name} (Index: {last_index})")
+            
+        except Exception as e:
+            print(f"处理文件 {file_path} 时出错: {e}")
+            continue
+    
+    # 保存更新后的Excel文件
+    try:
+        df.to_excel(excel_path, index=False, engine='openpyxl')
+        print(f"成功更新Excel文件: {excel_path}")
+        print(f"新增 {len(all_files)} 条记录")
+    except Exception as e:
+        print(f"保存Excel文件失败: {e}")
+
+# 功能24：多文件复杂写入
+def write_to_excel_complex_multiple():
+    """多文件复杂写入功能 - 将整个文件夹作为一个记录，包含复杂处理"""
+    # 获取Excel文件位置和源文件夹位置
+    excel_path = get_default_path("请输入Excel文件位置", "e:\\Documents\\Creations\\Databases\\标准.xlsx")
+    source_dir = get_default_path("请输入源文件夹位置", "d:\\Downloads\\")
+    
+    # 询问引用页、属于、主链接的值
+    reference_page = input("请输入引用页的值（按回车则为空）：").strip()
+    belongs_to = input("请输入属于的值（按回车则为空）：").strip()
+    main_link = input("请输入主链接的值（按回车则为空）：").strip()
+    
+    # 检查Excel文件是否存在
+    if not os.path.exists(excel_path):
+        print(f"错误：Excel文件 '{excel_path}' 不存在")
+        return
+    
+    # 检查源文件夹是否存在
+    if not os.path.exists(source_dir):
+        print(f"错误：源文件夹 '{source_dir}' 不存在")
+        return
+    
+    # 读取Excel文件
+    try:
+        df = pd.read_excel(excel_path, engine='openpyxl')
+    except Exception as e:
+        print(f"读取Excel文件失败: {e}")
+        return
+    
+    # 获取最后一个Index值
+    last_index = 0
+    if 'Index' in df.columns and not df.empty:
+        last_index_values = df['Index'].dropna()
+        if not last_index_values.empty:
+            last_index = int(last_index_values.iloc[-1])
+    
+    # 收集所有文件，过滤隐藏文件
+    all_files = []
+    hidden_files_patterns = ['desktop.ini', 'descript.ion', '.encfs6.xml', 'Thumbs.db']
+    
+    for root, _, files in os.walk(source_dir):
+        for file in files:
+            # 跳过隐藏文件
+            if any(file.lower() == pattern.lower() for pattern in hidden_files_patterns):
+                continue
+            if file.startswith('.'):
+                continue
+                
+            file_path = os.path.join(root, file)
+            all_files.append(file_path)
+    
+    if not all_files:
+        print("源文件夹中没有找到任何非隐藏文件")
+        return
+    
+    print(f"找到 {len(all_files)} 个非隐藏文件，开始处理...")
+    
+    # 创建临时目录
+    temp_dir = "d:\\Works\\0\\"
+    ensure_dir(temp_dir)
+    
+    # 1. 新开一行
+    new_row = {}
+    
+    # 2. Index字段值为上一行Index字段值+1
+    last_index += 1
+    new_row['Index'] = last_index
+    
+    # 3. 将源文件夹名写入"名字"，将文件名列表写入临时文件并合并到"原文件名"
+    folder_name = os.path.basename(source_dir.rstrip(os.sep))
+    new_row['名字'] = folder_name
+    
+    # 写入临时文件
+    source_name_file = os.path.join(temp_dir, "SourceName.txt")
+    with open(source_name_file, 'w', encoding='utf-8') as f:
+        for file_path in all_files:
+            file_name = os.path.basename(file_path)
+            f.write(f"{file_name}\n")
+    
+    # 读取临时文件内容并合并
+    with open(source_name_file, 'r', encoding='utf-8') as f:
+        source_names = f.read().strip()
+    new_row['原文件名'] = source_names
+    
+    # 4. 计算并生成每个文件的 Ed2K 链接，写入临时文件并合并
+    ed2k_list_file = os.path.join(temp_dir, "Ed2kList.txt")
+    with open(ed2k_list_file, 'w', encoding='utf-8') as f:
+        for file_path in all_files:
+            try:
+                ed2k_link = generate_ed2k_link(file_path)
+                if ed2k_link:
+                    f.write(f"{ed2k_link}\n")
+                else:
+                    f.write("\n")
+            except Exception as e:
+                print(f"计算ED2K链接失败 {file_path}: {e}")
+                f.write("\n")
+    
+    # 读取临时文件内容并合并
+    with open(ed2k_list_file, 'r', encoding='utf-8') as f:
+        ed2k_links = f.read().strip()
+    new_row['标准链接'] = ed2k_links
+    
+    # 5. 解析每个ED2K链接，生成大小和散列值
+    size_list_file = os.path.join(temp_dir, "Ed2kList.size.txt")
+    hash_list_file = os.path.join(temp_dir, "Ed2kList.hash.txt")
+    
+    with open(ed2k_list_file, 'r', encoding='utf-8') as f_ed2k, \
+         open(size_list_file, 'w', encoding='utf-8') as f_size, \
+         open(hash_list_file, 'w', encoding='utf-8') as f_hash:
+        
+        for ed2k_link in f_ed2k:
+            ed2k_link = ed2k_link.strip()
+            if ed2k_link:
+                size, hash_value = parse_ed2k_link(ed2k_link)
+                f_size.write(f"{size}\n")
+                f_hash.write(f"{hash_value}\n")
+            else:
+                f_size.write("\n")
+                f_hash.write("\n")
+    
+    # 读取临时文件内容并合并
+    with open(size_list_file, 'r', encoding='utf-8') as f:
+        sizes = f.read().strip()
+    with open(hash_list_file, 'r', encoding='utf-8') as f:
+        hashes = f.read().strip()
+    
+    new_row['大小'] = sizes
+    new_row['散列'] = hashes
+    
+    # 6. 文件移动和复制操作
+    change_name_file = os.path.join(temp_dir, "ChangeName.txt")
+    encrypted_name_file = os.path.join(temp_dir, "EncryptedName.txt")
+    
+    with open(change_name_file, 'w', encoding='utf-8') as f_change, \
+         open(encrypted_name_file, 'w', encoding='utf-8') as f_encrypted:
+        
+        for file_path in all_files:
+            try:
+                # 先移动到 d:\Works\In\ 保持文件夹结构
+                relative_path = os.path.relpath(file_path, source_dir)
+                dest_in = os.path.join("d:\\Works\\In\\", relative_path)
+                os.makedirs(os.path.dirname(dest_in), exist_ok=True)
+                shutil.move(file_path, dest_in)
+                print(f"已移动: {os.path.basename(file_path)}")
+                
+                # 然后复制到 z:\ 不保持文件夹结构，支持重试机制
+                corrected_filename = copy_to_z_drive_simple(dest_in, "z:\\")
+                if corrected_filename:
+                    f_change.write(f"{corrected_filename}\n")
+                else:
+                    f_change.write(f"{os.path.basename(file_path)}\n")
+                
+                # 等待系统生成加密文件并移动
+                encrypted_filename = wait_for_encrypted_file_and_move()
+                if encrypted_filename:
+                    f_encrypted.write(f"{encrypted_filename}\n")
+                else:
+                    f_encrypted.write("\n")
+                    
+            except Exception as e:
+                print(f"文件处理失败 {file_path}: {e}")
+                f_change.write("\n")
+                f_encrypted.write("\n")
+    
+    # 读取临时文件内容并合并
+    with open(change_name_file, 'r', encoding='utf-8') as f:
+        change_names = f.read().strip()
+    new_row['矫正文件名'] = change_names
+    
+    with open(encrypted_name_file, 'r', encoding='utf-8') as f:
+        encrypted_names = f.read().strip()
+    new_row['加密文件名'] = encrypted_names
+    
+    # 7. 将原来询问我的"引用页"、"属于"、"主链接"的值写入相应字段
+    new_row['引用页'] = reference_page
+    new_row['属于'] = belongs_to
+    new_row['主链接'] = main_link
+    
+    # 将新行添加到DataFrame
+    new_df = pd.DataFrame([new_row])
+    df = pd.concat([df, new_df], ignore_index=True)
+    
+    # 保存更新后的Excel文件
+    try:
+        df.to_excel(excel_path, index=False, engine='openpyxl')
+        print(f"成功更新Excel文件: {excel_path}")
+        print(f"新增 1 条记录（包含 {len(all_files)} 个文件）")
+    except Exception as e:
+        print(f"保存Excel文件失败: {e}")
+
+def copy_to_z_drive_simple(original_file, target_folder="z:\\"):
+    """简化版的复制文件到Z盘函数，用于多文件处理"""
+    filename, file_extension = os.path.splitext(os.path.basename(original_file))
+    original_filename = filename + file_extension
+    
+    while True:
+        try:
+            target_file = os.path.join(target_folder, f"{filename}{file_extension}")
+            shutil.copy2(original_file, target_file)
+            print(f"文件已复制至：{target_file}")
+            
+            current_fullname = f"{filename}{file_extension}"
+            if current_fullname != original_filename:
+                return current_fullname
+            return original_filename
+            
+        except Exception:
+            if len(filename) > 1:
+                filename = filename[:-1]
+                print(f"尝试缩短文件名: {filename}{file_extension}")
+            else:
+                return None
+
+def wait_for_encrypted_file_and_move(xyz_dir="d:\\Xyz\\", upload_dir="d:\\Works\\Uploads\\"):
+    """等待加密文件生成并移动到上传目录"""
+    max_attempts = 10
+    attempt = 0
+    
+    while attempt < max_attempts:
+        # 查找d:\Xyz\目录中的新文件，排除隐藏文件
+        if os.path.exists(xyz_dir):
+            # 获取所有文件，排除隐藏文件
+            xyz_files = [f for f in os.listdir(xyz_dir) 
+                        if os.path.isfile(os.path.join(xyz_dir, f)) and
+                        not any(f.lower() == pattern.lower() for pattern in ['desktop.ini', 'descript.ion', '.encfs6.xml', 'Thumbs.db']) and
+                        not f.startswith('.')]
+            
+            if xyz_files:
+                # 取第一个文件作为加密文件，并获取无扩展名的文件名
+                encrypted_file = xyz_files[0]
+                encrypted_filename = os.path.splitext(encrypted_file)[0]  # 只记录无扩展名的文件名
+                
+                # 移动加密文件到d:\Works\Uploads\（不保持文件夹结构）
+                source_encrypted = os.path.join(xyz_dir, encrypted_file)
+                dest_upload = os.path.join(upload_dir, encrypted_file)
+                
+                # 确保目标目录存在
+                os.makedirs(os.path.dirname(dest_upload), exist_ok=True)
+                
+                try:
+                    shutil.move(source_encrypted, dest_upload)
+                    print(f"已移动加密文件到: {dest_upload}")
+                    return encrypted_filename
+                except Exception as e:
+                    print(f"移动加密文件失败: {e}")
+                    attempt += 1
+                    time.sleep(2)  # 等待2秒后重试
+            else:
+                print(f"等待加密文件生成... ({attempt + 1}/{max_attempts})")
+                attempt += 1
+                time.sleep(2)  # 等待2秒后重试
+        else:
+            print(f"Xyz目录不存在: {xyz_dir}")
+            return None
+    
+    print("等待加密文件超时")
+    return None
+
+def generate_ed2k_link(file_path):
+    """生成文件的ED2K链接"""
+    try:
+        rhash_path = "d:\\ProApps\\RHash\\rhash.exe"
+        if os.path.exists(rhash_path) and os.path.exists(file_path):
+            result = subprocess.run([
+                rhash_path, 
+                "--uppercase", 
+                "--ed2k-link", 
+                file_path
+            ], capture_output=True, text=True, encoding='utf-8')
+            
+            if result.returncode == 0:
+                return result.stdout.strip()
+        return ""
+    except Exception as e:
+        print(f"生成ED2K链接失败 {file_path}: {e}")
+        return ""
+
+def parse_ed2k_link(ed2k_link):
+    """解析ED2K链接，提取文件大小和哈希值"""
+    if not ed2k_link.startswith("ed2k://|file|"):
+        return "", ""
+    
+    try:
+        # 对链接进行百分号解码
+        decoded_link = urllib.parse.unquote(ed2k_link)
+        parts = decoded_link.split('|')
+        
+        if len(parts) >= 5:
+            # 文件大小（字节）
+            filesize_str = parts[3]
+            # 哈希值
+            filehash = parts[4].upper()
+            
+            # 格式化文件大小
+            try:
+                filesize_bytes = int(filesize_str)
+                formatted_size = format_file_size(filesize_bytes)
+            except ValueError:
+                formatted_size = ""
+            
+            return formatted_size, filehash
+        return "", ""
+    except Exception as e:
+        print(f"解析ED2K链接失败: {e}")
+        return "", ""
 
 if __name__ == "__main__":
     main()
