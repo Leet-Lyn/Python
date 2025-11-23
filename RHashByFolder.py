@@ -93,13 +93,11 @@ def process_directory(source_dir, target_file):
                     print(f"  ✗ 生成链接失败")
         
         # 显示统计信息
-        print("\n" + "=" * 50)
         print(f"处理完成!")
         print(f"总文件数: {total_files}")
         print(f"成功生成: {success_files}")
         print(f"失败: {total_files - success_files}")
         print(f"ed2k链接已保存到: {target_file}")
-        print("=" * 50)
         
     except Exception as e:
         print(f"处理文件夹时发生错误: {e}")
@@ -140,11 +138,9 @@ def main():
             os.makedirs(target_dir, exist_ok=True)
         
         # 确认信息
-        print("\n" + "-" * 40)
         print("确认信息:")
         print(f"源文件夹: {source_dir}")
         print(f"目标文件: {target_file}")
-        print("-" * 40)
         
         confirm = input("是否开始处理? (y/n): ").strip().lower()
         if confirm not in ['y', 'yes', '是']:

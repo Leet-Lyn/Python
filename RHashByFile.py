@@ -51,7 +51,6 @@ def main():
     while True:
         try:
             # 询问用户输入文件路径
-            print("\n" + "-" * 40)
             file_path = input("请输入源文件路径（输入'quit'退出程序）: ").strip()
             
             # 检查是否退出
@@ -73,11 +72,8 @@ def main():
             
             if ed2k_link:
                 # 显示在屏幕上
-                print("\n" + "=" * 40)
                 print("生成的ED2K链接:")
-                print("=" * 40)
                 print(ed2k_link)
-                print("=" * 40)
                 
                 # 写入剪贴板
                 try:

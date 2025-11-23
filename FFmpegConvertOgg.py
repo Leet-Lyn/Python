@@ -51,12 +51,12 @@ def compress_and_remux_audio(source_path, target_folder, relative_path):
     temp_ogg_path = os.path.join(target_subfolder, f"{file_name}_temp.ogg")
     final_mkv_path = os.path.join(target_subfolder, f"{file_name}.mkv")
     
-    # 构建ffmpeg命令：压缩音频为ogg格式[citation:2]
+    # 构建ffmpeg命令：压缩音频为ogg格式
     ffmpeg_command = [
         "ffmpeg", 
         "-i", source_path,           # 输入文件
         "-c:a", "libvorbis",         # 音频编码器为libvorbis（ogg）
-        "-q:a", "4",                 # 音频质量设置为4[citation:2]
+        "-q:a", "4",                 # 音频质量设置为4
         "-map", "0:a",               # 映射所有音频流
         "-y",                        # 覆盖输出文件
         temp_ogg_path
@@ -78,7 +78,7 @@ def compress_and_remux_audio(source_path, target_folder, relative_path):
         print("错误: 未找到ffmpeg，请确保ffmpeg已安装并添加到系统PATH")
         return
     
-    # 构建mkvmerge命令：将ogg封装为mkv[citation:3]
+    # 构建mkvmerge命令：将ogg封装为mkv
     mkvmerge_command = [
         "mkvmerge", 
         "-o", final_mkv_path,        # 输出文件
@@ -94,6 +94,15 @@ def compress_and_remux_audio(source_path, target_folder, relative_path):
         if os.path.exists(temp_ogg_path):
             os.remove(temp_ogg_path)
             print(f"临时文件已删除: {temp_ogg_path}")
+        
+        # 检查最终输出文件是否存在且大小合理
+        if os.path.exists(final_mkv_path) and os.path.getsize(final_mkv_path) > 0:
+            # 删除源文件
+            os.remove(source_path)
+            print(f"已删除源文件: {source_path}")
+        else:
+            print(f"警告: 最终输出文件可能有问题，保留源文件: {source_path}")
+            return
             
         print(f"处理完成: {final_mkv_path}")
         
@@ -101,11 +110,15 @@ def compress_and_remux_audio(source_path, target_folder, relative_path):
         print(f"mkvmerge封装失败: {temp_ogg_path}")
         print(f"错误信息: {e.stderr.decode('utf-8', errors='ignore') if e.stderr else str(e)}")
         return
+    except Exception as e:
+        print(f"删除源文件时出错: {source_path}")
+        print(f"错误信息: {e}")
+        return
     except FileNotFoundError:
         print("错误: 未找到mkvmerge，请确保mkvtoolnix已安装并添加到系统PATH")
         return
 
-# 遍历源文件夹及其子文件夹中的所有音频文件[citation:1]
+# 遍历源文件夹及其子文件夹中的所有音频文件
 for root, dirs, files in os.walk(source_folder):
     for file in files:
         if file.lower().endswith(audio_formats):  # 检查文件扩展名（忽略大小写）

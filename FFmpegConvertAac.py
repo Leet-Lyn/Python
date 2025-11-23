@@ -1,6 +1,6 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
 # 在脚本开始前询问我源文件夹位置（默认“d:\\Works\\In\\”）与目标文件夹位置（默认“d:\\Works\\Out\\”）。
-# 遍历源文件夹位置中所有音频文件（mp3、m4a、wma、ogg、aac、ac3、rm、wav）。
+# 遍历源文件夹及其子文件夹位置中所有音频文件（mp3、m4a、wma、ogg、aac、ac3、rm、wav）。
 # 使用 ffmpeg 压缩。
 # 音频参数为：aac 格式，遍历每个音轨，质量模式。q=0.36。
 # 生成的文件重新用 mkvmerge 再生成同名文件到 目标文件夹位置，文件夹结构保持一致。
@@ -94,12 +94,25 @@ def compress_and_remux_audio(source_path, target_folder, relative_path):
         if os.path.exists(temp_aac_path):
             os.remove(temp_aac_path)
             print(f"临时文件已删除: {temp_aac_path}")
+        
+        # 检查最终输出文件是否存在且大小合理
+        if os.path.exists(final_mkv_path) and os.path.getsize(final_mkv_path) > 0:
+            # 删除源文件
+            os.remove(source_path)
+            print(f"已删除源文件: {source_path}")
+        else:
+            print(f"警告: 最终输出文件可能有问题，保留源文件: {source_path}")
+            return
             
         print(f"处理完成: {final_mkv_path}")
         
     except subprocess.CalledProcessError as e:
         print(f"mkvmerge封装失败: {temp_aac_path}")
         print(f"错误信息: {e.stderr.decode('utf-8', errors='ignore') if e.stderr else str(e)}")
+        return
+    except Exception as e:
+        print(f"删除源文件时出错: {source_path}")
+        print(f"错误信息: {e}")
         return
     except FileNotFoundError:
         print("错误: 未找到mkvmerge，请确保mkvtoolnix已安装并添加到系统PATH")

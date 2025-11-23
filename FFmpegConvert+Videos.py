@@ -77,8 +77,22 @@ def compress_and_remux_video(source_path, target_folder, relative_path):
     try:
         subprocess.run(mkvmerge_command, check=True)
         os.remove(temp_output_path)  # 删除临时文件
+        
+        # 检查最终输出文件是否存在且大小合理
+        if os.path.exists(final_output_path) and os.path.getsize(final_output_path) > 0:
+            # 删除源文件
+            os.remove(source_path)
+            print(f"已删除源文件: {source_path}")
+        else:
+            print(f"警告: 最终输出文件可能有问题，保留源文件: {source_path}")
+            return
+            
     except subprocess.CalledProcessError as e:
         print(f"mkvmerge 封装失败: {temp_output_path}")
+        print(f"错误信息: {e}")
+        return
+    except Exception as e:
+        print(f"删除源文件时出错: {source_path}")
         print(f"错误信息: {e}")
         return
 
