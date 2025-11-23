@@ -47,10 +47,7 @@ def main():
     """
     主函数：循环询问文件路径并生成ed2k链接
     """
-    print("=" * 60)
-    print("ED2K链接生成工具")
-    print("=" * 60)
-    
+
     while True:
         try:
             # 询问用户输入文件路径
