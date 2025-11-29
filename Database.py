@@ -15,8 +15,9 @@
 # 13. 属性内容处理：在脚本开始前询问我源文件夹位置，文件夹内储存着上述结构的数据（默认为：e:\\Documents\\Creations\\Databases\\标准\\），再询问我属性名称。打开每个 markdown 文件，顺序找到该属性。询问我下一步：1.将该属性内容设置为空（""）。2.将该属性内容设置为什么？（询问我属性内容，所有 markdown 文件的属性均设置为该属性内容）。3. 将该属性内容每个单词大写。4.将该属性内容每个单词小写。5. 将该属性内容每个单词首字母大写，其余小写。6.将该属性内容（汉字、英文、或数字）用空格隔开。7.将该属性内容的汉字繁体中文转为简体中文。8. 所有半角标点符号转为全角标点符号。
 # 21. 单文件写入：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 每一条记录新开一行。2. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。3. 将源文件夹内文件名写入"名字"与"原文件名"字段值。4. 将该文件移动到"d:\\Works\\In\\"（保持原来文件夹结构）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 计算并生成该文件的 Ed2K 链接。生成的 ed2k 链接，写入"标准链接"字段值。7. 通过"标准链接"字段值，分别生成"大小"、"散列"字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
 # 22. 多文件写入：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 新开一行。2. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。3. 将源文件夹名写入"名字"。将源文件夹内每个文件名写入临时文件“d:\Works\0\SourceName.txt”中（内容先清空，每行一个），最合合并写入"原文件名"字段值。4. 将该文件移动到"d:\\Works\\In\\"（保持原来文件夹结构）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 计算并生成该文件的 Ed2K 链接。生成的 ed2k 链接，写入临时文件“d:\Works\0\Ed2kList.txt”中（内容先清空，每行一个），最合合并写入"标准链接"字段值。7. 通过每个"标准链接"字段值，分别将分解出的"大小"、"散列"值，大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。写入临时文件“d:\Works\0\Ed2kList.size.txt”、“d:\Works\0\Ed2kList.hash.txt”中（内容先清空，每行一个），最合合并写入"大小"、"散列"字段值。
-# 23. 原来14 改成 23 单文件复杂写入：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 每一条记录新开一行。2. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。3. 将源文件夹内文件名写入"名字"与"原文件名"字段值。4. 将该文件移动到"d:\\Works\\In\\（保持原来文件夹结构）"，并移动到"z:\\"中，如果无法完成写入"z:\\"中，则重命名原文件（从后删除1个字符（不包括扩展名）），再次尝试将原文件向目标文件夹移动。反复循环，直至能将原文件向目标文件夹移动。如果有重命名过文件，将修改过的文件名写入"矫正文件名"字段值中。写入"z:\\"后，系统会自动生成一个对应文件（自动加密的）。读取"d:\\Xyz\\"新生成的文件名，将其文件名（无扩展名）写入"加密文件名"字段值。将"d:\\Xyz\\"新生成的文件移动到"d:\\Works\\Uploads\\"（在"d:\\Xyz\\"中不保留）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 计算并生成该文件的 Ed2K 链接。生成的 ed2k 链接，写入"标准链接"字段值。7. 通过"标准链接"字段值，分别生成"大小"、"散列"字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
+# 23. 单文件复杂写入：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 每一条记录新开一行。2. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。3. 将源文件夹内文件名写入"名字"与"原文件名"字段值。4. 将该文件移动到"d:\\Works\\In\\（保持原来文件夹结构）"，并移动到"z:\\"中，如果无法完成写入"z:\\"中，则重命名原文件（从后删除1个字符（不包括扩展名）），再次尝试将原文件向目标文件夹移动。反复循环，直至能将原文件向目标文件夹移动。如果有重命名过文件，将修改过的文件名写入"矫正文件名"字段值中。写入"z:\\"后，系统会自动生成一个对应文件（自动加密的）。读取"d:\\Xyz\\"新生成的文件名，将其文件名（无扩展名）写入"加密文件名"字段值。将"d:\\Xyz\\"新生成的文件移动到"d:\\Works\\Uploads\\"（在"d:\\Xyz\\"中不保留）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 计算并生成该文件的 Ed2K 链接。生成的 ed2k 链接，写入"标准链接"字段值。7. 通过"标准链接"字段值，分别生成"大小"、"散列"字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
 # 24. 多文件复杂写入：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Downloads\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。1. 每一条记录新开一行。2. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。3. 将源文件夹名写入"名字"。将源文件夹内每个文件名写入临时文件“d:\Works\0\SourceName.txt”中（内容先清空，每行一个），最合合并写入"原文件名"字段值。4. 将该文件移动到"d:\\Works\\In\\（保持原来文件夹结构）"，并移动到"z:\\"中，如果无法完成写入"z:\\"中，则重命名原文件（从后删除1个字符（不包括扩展名）），再次尝试将原文件向目标文件夹移动。反复循环，直至能将原文件向目标文件夹移动。如果有重命名过文件，将修改过的文件名写入临时文件“d:\Works\0\ChangeName.txt”中（内容先清空，每行一个），最合合并写入"矫正文件名"字段值中。写入"z:\\"后，系统会自动生成一个对应文件（自动加密的）。读取"d:\\Xyz\\"新生成的文件名，将其文件名（无扩展名）写入临时文件“d:\Works\0\EncryptedName.txt”中（内容先清空，每行一个），最合合并写入"加密文件名"字段值中。将"d:\\Xyz\\"新生成的文件移动到"d:\\Works\\Uploads\\"（在"d:\\Xyz\\"中不保留）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 计算并生成该文件的 Ed2K 链接。生成的 ed2k 链接，写入临时文件“d:\Works\0\Ed2kList.txt”中（内容先清空，每行一个），最合合并写入"标准链接"字段值。7. 通过每个"标准链接"字段值，分别将分解出的"大小"、"散列"值，大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。写入临时文件“d:\Works\0\Ed2kList.size.txt”、“d:\Works\0\Ed2kList.hash.txt”中（内容先清空，每行一个），最合合并写入"大小"、"散列"字段值。
+# 25. 重命名即生成 nfo 文件：在脚本开始前询问我 excel 文件位置（默认为：e:\\Documents\\Creations\\Databases\\标准.xlsx）与源文件夹位置（默认为：d:\\Works\\In\\）。读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。"原文件名"字段值对应着源文件夹中到每一个文件名字。依次根据每一行到"原文件名"找到源文件夹中到每一个文件，将其改名为同一行中的“现文件名”。根据“现文件名”生成同名“*.nfo”文件。nfo 文件内写入的内容：UTF-8编码，<?xml version="1.0" encoding="UTF-8" standalone="yes"?><movie>  <title> </title></movie>，将该行中的“名字”字段填入“<title> </title>”内的“ ”。
 # 0. 退出程序。
 
 # 导入模块
@@ -178,8 +179,9 @@ def main():
         print("22. 多文件写入")
         print("23. 单文件复杂写入")
         print("24. 多文件复杂写入")
+        print("25. 重命名并生成 nfo 文件")
         print("0. 退出程序")
-        choice = input("请输入数字选择操作（1-13,21-24,0）：")
+        choice = input("请输入数字选择操作（1-13,21-25,0）：")
         
         if choice == '1':
             generate_excel_from_folder()
@@ -215,6 +217,8 @@ def main():
             write_to_excel_complex_single()
         elif choice == '24':
             write_to_excel_complex_multiple()
+        elif choice == '25':
+            rename_and_generate_nfo()
         elif choice == '0':
             print("程序已退出")
             break
@@ -2275,6 +2279,107 @@ def parse_ed2k_link(ed2k_link):
     except Exception as e:
         print(f"解析ED2K链接失败: {e}")
         return "", ""
+
+# 功能25：重命名并生成nfo文件
+def rename_and_generate_nfo():
+    """重命名文件并生成nfo文件"""
+    # 获取Excel文件位置和源文件夹位置
+    excel_path = get_default_path("请输入Excel文件位置", "e:\\Documents\\Creations\\Databases\\标准.xlsx")
+    source_dir = get_default_path("请输入源文件夹位置", "d:\\Works\\In\\")
+    
+    # 检查Excel文件是否存在
+    if not os.path.exists(excel_path):
+        print(f"错误：Excel文件 '{excel_path}' 不存在")
+        return
+    
+    # 检查源文件夹是否存在
+    if not os.path.exists(source_dir):
+        print(f"错误：源文件夹 '{source_dir}' 不存在")
+        return
+    
+    # 读取Excel文件
+    try:
+        df = pd.read_excel(excel_path, engine='openpyxl')
+    except Exception as e:
+        print(f"读取Excel文件失败: {e}")
+        return
+    
+    # 检查必要的字段是否存在
+    required_columns = ["原文件名", "现文件名", "名字"]
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    if missing_columns:
+        print(f"错误：Excel文件中缺少以下必要字段: {', '.join(missing_columns)}")
+        return
+    
+    # 处理每一行
+    processed_count = 0
+    for index, row in df.iterrows():
+        try:
+            # 获取原文件名、现文件名和名字
+            original_filename = row.get("原文件名", "")
+            new_filename = row.get("现文件名", "")
+            name_value = row.get("名字", "")
+            
+            # 跳过空值
+            if pd.isna(original_filename) or pd.isna(new_filename) or pd.isna(name_value):
+                continue
+            
+            original_filename = str(original_filename).strip()
+            new_filename = str(new_filename).strip()
+            name_value = str(name_value).strip()
+            
+            if not original_filename or not new_filename or not name_value:
+                continue
+            
+            # 查找源文件
+            found_files = []
+            for root, _, files in os.walk(source_dir):
+                for file in files:
+                    if file == original_filename:
+                        found_files.append(os.path.join(root, file))
+            
+            if not found_files:
+                print(f"未找到文件: {original_filename}")
+                continue
+            
+            if len(found_files) > 1:
+                print(f"找到多个同名文件，使用第一个: {original_filename}")
+            
+            source_file = found_files[0]
+            
+            # 重命名文件
+            try:
+                # 构建新文件路径
+                source_dir_path = os.path.dirname(source_file)
+                new_file_path = os.path.join(source_dir_path, new_filename)
+                
+                # 重命名文件
+                os.rename(source_file, new_file_path)
+                print(f"已重命名: {original_filename} -> {new_filename}")
+                
+                # 生成nfo文件
+                nfo_filename = os.path.splitext(new_filename)[0] + ".nfo"
+                nfo_file_path = os.path.join(source_dir_path, nfo_filename)
+                
+                # 创建nfo文件内容
+                nfo_content = f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<movie>\n  <title>{name_value}</title>\n</movie>'
+                
+                # 写入nfo文件
+                with open(nfo_file_path, 'w', encoding='utf-8') as f:
+                    f.write(nfo_content)
+                
+                print(f"已生成nfo文件: {nfo_filename}")
+                processed_count += 1
+                
+            except Exception as e:
+                print(f"重命名文件失败 {original_filename}: {e}")
+                continue
+                
+        except Exception as e:
+            print(f"处理第 {index+1} 行时出错: {e}")
+            continue
+    
+    print(f"\n重命名并生成nfo文件完成！共处理 {processed_count} 个文件")
 
 if __name__ == "__main__":
     main()

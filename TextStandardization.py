@@ -1,6 +1,6 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
 # 对文本格式进行格式化处理。
-# 再脚本开始，提示我处理方案。如果我输入的是回车。则对剪贴板内的文本进行格式化处理，重新写入剪贴板；如果我输入的是一段文字（允许回车，以 Crtl＋回车结束），则对这一段文字进行格式化处理，重新写入剪贴板；如果我输入的是某一文件的路径（要求真实存在），则对该文件内的文本进行格式化处理。
+# 在脚本开始，提示我处理方案。如果我输入的是回车。则对剪贴板内的文本进行格式化处理，重新写入剪贴板；如果我输入的是一段文字（以 Crtl＋回车代替回车换行，以回车结束），则对这一段文字进行格式化处理，重新写入剪贴板；如果我输入的是某一文件的路径（要求真实存在），则对该文件内的文本进行格式化处理。
 # 格式化要求：
 # 1. 繁体汉字转简体汉字。
 # 2. 汉字、英文单词、数字，彼此之间有空格。
@@ -12,7 +12,7 @@ import re
 import pyperclip  # 用于剪贴板操作
 from opencc import OpenCC  # 用于简繁转换
 
-# 初始化 OpenCC 转换器（简体到繁体）
+# 初始化 OpenCC 转换器（繁体到简体）
 cc = OpenCC('t2s')  
 
 def format_text(text):
@@ -21,7 +21,7 @@ def format_text(text):
     :param text: 原始文本。
     :return: 格式化后的文本。
     """
-    # 简体转繁体
+    # 繁体转简体
     text = cc.convert(text)
     
     # 汉字与英文单词、数字之间加空格
@@ -52,71 +52,95 @@ def to_halfwidth(char):
     mapping = {'，': ',', '。': '.', '！': '!', '？': '?'}
     return mapping.get(char, char)
 
-def process_clipboard():
+def get_user_input():
     """
-    处理剪贴板内的文本。
+    获取用户输入并判断处理方案
     """
-    text = pyperclip.paste()
-    if not text.strip():
-        print("剪贴板内无内容，请重新复制后重试。")
-        return
-    formatted_text = format_text(text)
-    pyperclip.copy(formatted_text)
-    print("剪贴板内的文本已格式化处理并重新写入剪贴板。")
-
-def process_manual_input():
-    """
-    处理用户手动输入的文本。
-    """
-    print("请输入需要格式化的文本（输入 Ctrl+回车结束）：")
-    text = []
-    while True:
+    print("请选择处理方案：")
+    print("1. 直接按回车 - 处理剪贴板内容")
+    print("2. 输入文本（以Ctrl+回车代替回车换行，以回车结束）- 处理输入文本")
+    print("3. 输入文件路径 - 处理文件内容")
+    
+    user_input = input("请输入: ").strip()
+    
+    if user_input == "":
+        # 处理剪贴板内容
         try:
-            line = input()
-            text.append(line)
-        except EOFError:  # 捕获 Ctrl+回车
-            break
-    text = "\n".join(text)
-    if not text.strip():
-        print("输入的文本为空，操作终止。")
-        return
-    formatted_text = format_text(text)
-    pyperclip.copy(formatted_text)
-    print("输入的文本已格式化处理并写入剪贴板。")
-
-def process_file(file_path):
-    """
-    处理指定文件的文本。
-    :param file_path: 文件路径。
-    """
-    if not os.path.isfile(file_path):
-        print(f"文件路径 {file_path} 不存在或不是一个文件。")
-        return
-    with open(file_path, 'r', encoding='utf-8') as file:
-        text = file.read()
-    formatted_text = format_text(text)
-    with open(file_path, 'w', encoding='utf-8') as file:
-        file.write(formatted_text)
-    print(f"文件 {file_path} 的文本已格式化处理并覆盖写回。")
+            text = pyperclip.paste()
+            if not text:
+                print("剪贴板为空！")
+                return None
+            print(f"从剪贴板获取文本，共{len(text)}个字符")
+            return text
+        except Exception as e:
+            print(f"读取剪贴板失败: {e}")
+            return None
+    elif os.path.exists(user_input):
+        # 处理文件内容
+        try:
+            with open(user_input, 'r', encoding='utf-8') as f:
+                text = f.read()
+            print(f"从文件 '{user_input}' 读取文本，共{len(text)}个字符")
+            return text
+        except Exception as e:
+            print(f"读取文件失败: {e}")
+            return None
+    else:
+        # 处理直接输入的文本
+        print("请输入文本（使用Ctrl+回车换行，单独回车结束）:")
+        lines = []
+        while True:
+            try:
+                line = input()
+                if line == "":
+                    break
+                lines.append(line)
+            except EOFError:
+                # 捕获Ctrl+Z或Ctrl+D等结束输入信号
+                break
+        text = '\n'.join(lines)
+        return text if text else None
 
 def main():
     """
-    主函数：根据用户选择执行对应的操作。
+    主函数
     """
-    print("请选择处理方式：")
-    print("1. 直接按回车处理剪贴板内的文本")
-    print("2. 输入一段文字（支持多行，Ctrl+回车结束）")
-    print("3. 输入一个文件路径（要求真实存在）")
+    print("=== 文本格式化工具 ===")
     
-    choice = input("请输入选择（默认：处理剪贴板）：").strip()
-
-    if not choice:  # 默认处理剪贴板
-        process_clipboard()
-    elif os.path.isfile(choice):  # 输入文件路径
-        process_file(choice)
-    else:  # 输入文本
-        print("检测到输入内容为手动文本...")
-        process_manual_input()
+    # 获取输入文本
+    text = get_user_input()
+    if not text:
+        print("未获取到有效文本，程序退出")
+        return
+    
+    # 处理文本
+    formatted_text = format_text(text)
+    
+    if formatted_text and formatted_text != text:
+        # 将结果写入剪贴板
+        try:
+            pyperclip.copy(formatted_text)
+            print(f"\n处理完成！结果已写入剪贴板")
+            print("处理后的文本预览:")
+            print("-" * 40)
+            print(formatted_text)
+            print("-" * 40)
+        except Exception as e:
+            print(f"写入剪贴板失败: {e}")
+    else:
+        print("文本未发生变化")
 
 if __name__ == "__main__":
+    # 检查依赖
+    try:
+        import pyperclip
+    except ImportError:
+        print("请先安装 pyperclip 模块: pip install pyperclip")
+        exit(1)
+    
+    try:
+        from opencc import OpenCC
+    except ImportError:
+        print("请先安装 opencc 模块: pip install opencc-python-reimplemented")
+        exit(1)
     main()
