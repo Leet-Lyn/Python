@@ -86,7 +86,6 @@ def main():
         print(f"写入文件时出错：{str(e)}")
 
     print("\n处理完成！")
-    input("按回车键退出...")
 
 # 示例测试函数
 def test_pinyin_conversion():
@@ -126,7 +125,6 @@ def test_pinyin_conversion():
                 if is_chinese(char):
                     pinyin = lazy_pinyin(char, style=Style.TONE)[0]
                     print(f"  '{char}' -> {pinyin}")
-        print("-" * 50)
 
 if __name__ == "__main__":
     # 运行测试函数查看拼音转换效果
