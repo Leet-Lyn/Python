@@ -6,6 +6,10 @@
 # pip install pyperclip pypinyin
 
 # 导入模块
+"""
+功能：将剪贴板中的中文词组转换为带符号声调的拼音，并添加到Rime用户词典
+用法：运行脚本前请确保已安装所需库：pip install pyperclip pypinyin
+"""
 import pyperclip
 from pypinyin import lazy_pinyin, Style
 
@@ -34,6 +38,12 @@ def split_mixed_text(text):
     
     return blocks
 
+def convert_to_tone_pinyin(text):
+    """将中文字符串转换为带符号声调的拼音"""
+    # 使用Style.TONE获取带符号声调的拼音
+    pinyin_list = lazy_pinyin(text, style=Style.TONE)
+    return pinyin_list
+
 def main():
     # 从剪贴板获取内容
     clipboard_content = pyperclip.paste().strip()
@@ -46,10 +56,10 @@ def main():
     pinyin_blocks = []
     
     for block in text_blocks:
-        if is_chinese(block[0]):
-            # 中文转拼音，无音标格式
-            pinyin = ' '.join(lazy_pinyin(block, style=Style.NORMAL))
-            pinyin_blocks.append(pinyin)
+        if block and is_chinese(block[0]):
+            # 中文转带符号声调的拼音
+            pinyin_list = convert_to_tone_pinyin(block)
+            pinyin_blocks.append(' '.join(pinyin_list))
         else:
             # 英文保留原样
             pinyin_blocks.append(block)
@@ -60,18 +70,67 @@ def main():
     # 构建写入内容
     output_line = f"{clipboard_content}\t{pinyin_result}\t10\n"
     
-    # 写入文件（请确保路径存在）
+    # 写入文件
     file_path = r'd:\ProApps\Rime\config\dicts\user.dict.yaml'
     try:
         with open(file_path, 'a', encoding='utf-8') as f:
             f.write(output_line)
-        # 新增反馈信息：显示实际添加内容
-        print(f"成功添加：'{clipboard_content}' → '{pinyin_result}'")
+        print(f"成功添加到词典：")
+        print(f"  词组：{clipboard_content}")
+        print(f"  拼音：{pinyin_result}")
+        print(f"  已写入：{file_path}")
+    except FileNotFoundError:
+        print(f"错误：文件路径不存在，请检查路径：{file_path}")
+        print("请确保目录存在：d:\\ProApps\\Rime\\config\\dicts\\")
     except Exception as e:
         print(f"写入文件时出错：{str(e)}")
 
-    print("处理完成！")
+    print("\n处理完成！")
     input("按回车键退出...")
 
+# 示例测试函数
+def test_pinyin_conversion():
+    """测试拼音转换功能"""
+    test_cases = [
+        "你好世界",
+        "hello世界",
+        "拼音pinyin",
+        "测试声调",
+        "中国",
+        "北京欢迎你",
+        "a测试b",
+    ]
+    
+    print("拼音转换测试（带符号声调）：")
+    print("-" * 50)
+    
+    for test in test_cases:
+        text_blocks = split_mixed_text(test)
+        pinyin_blocks = []
+        
+        for block in text_blocks:
+            if block and is_chinese(block[0]):
+                pinyin_list = lazy_pinyin(block, style=Style.TONE)
+                pinyin_blocks.append(' '.join(pinyin_list))
+            else:
+                pinyin_blocks.append(block)
+        
+        result = ' '.join(pinyin_blocks)
+        print(f"原文：{test}")
+        print(f"拼音：{result}")
+        
+        # 显示每个字符的拼音详细信息
+        if any(is_chinese(char) for char in test):
+            print("详细转换：")
+            for char in test:
+                if is_chinese(char):
+                    pinyin = lazy_pinyin(char, style=Style.TONE)[0]
+                    print(f"  '{char}' -> {pinyin}")
+        print("-" * 50)
+
 if __name__ == "__main__":
+    # 运行测试函数查看拼音转换效果
+    # test_pinyin_conversion()
+    
+    # 如果需要实际运行主程序，取消下面一行的注释
     main()
