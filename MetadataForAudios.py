@@ -1,394 +1,605 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认“e:\\Documents\\Audios\\Musics\\Singles\\”）与目标文件夹位置（默认“e:\\Documents\\Audios\\Musics\\Singles\\”）。
+# 在脚本开始前询问我源文件夹位置（默认“d:\\Works\\In\\”）。
 # 遍历源文件夹及其子文件夹位置中所有音频文件（mp3、m4a、wma、ogg、aac、ac3、rm、wav）。
-# 读取每一个音频文件所有元数据写入以改文件夹名为文件名的 xls 文件中。
+# 读取每一个音频文件所有元数据写入以该文件夹名为文件名的 xls 文件中。
+# 标签有：标题（TITLE）、歌手（ARTIST）、作曲（COMPOSER）、作词（LYRICIST）、专辑（ALBUM）、专辑作者（ALBUMARTIST）、年份（YEAR）、流派（GENRE）、碟号（DISCNUMBER）、音轨（TRACK）。
+# 将文件重命名为[歌手][标题].扩展名。如果有多个歌手，则重命名为[歌手1&歌手2][标题].扩展名。
+# 同时将内嵌的封面导出为同名 jpg 文件（640*640大小），同时将内嵌的歌词导出为同名 lrc 文件。
 
 # 导入模块
 import os
 import sys
 import xlwt
-from pathlib import Path
-from datetime import datetime
-import mutagen  # 用于读取音频元数据
-from mutagen.easyid3 import EasyID3
+import re
+from PIL import Image
+import io
+from mutagen import File
+from mutagen.id3 import ID3, APIC, USLT
 from mutagen.mp4 import MP4
 from mutagen.asf import ASF
 from mutagen.oggvorbis import OggVorbis
 from mutagen.flac import FLAC
-from mutagen.wave import WAVE
+import traceback
 
 """
-音频文件元数据提取脚本
-功能：遍历指定文件夹中的音频文件，提取元数据并保存到Excel文件
-支持的音频格式：mp3, m4a, wma, ogg, aac, ac3, rm, wav
+音频文件处理脚本
+功能：重命名音频文件、提取元数据到Excel、导出封面和歌词
+重命名规则：[歌手][标题].扩展名，多个歌手用&连接
 """
 
-# 支持的音频文件扩展名
-AUDIO_EXTENSIONS = {
-    '.mp3', '.m4a', '.wma', '.ogg', '.aac', 
-    '.ac3', '.rm', '.wav', '.flac'
-}
+def get_user_input():
+    """获取用户输入的源文件夹路径"""
+    default_path = "d:\\Works\\In\\"
+    user_input = input(f"请输入源文件夹位置（直接回车使用默认值 '{default_path}'）：").strip()
+    
+    if user_input == "":
+        source_folder = default_path
+    else:
+        source_folder = user_input
+    
+    # 标准化路径
+    source_folder = os.path.normpath(source_folder)
+    
+    # 检查文件夹是否存在
+    if not os.path.exists(source_folder):
+        print(f"错误：文件夹 '{source_folder}' 不存在！")
+        sys.exit(1)
+    
+    return source_folder
 
-def get_user_input(prompt, default_path):
-    """
-    获取用户输入的文件夹路径
+def get_audio_files(folder_path):
+    """递归获取文件夹中所有音频文件"""
+    audio_extensions = {'.mp3', '.m4a', '.wma', '.ogg', '.aac', '.ac3', '.rm', '.wav'}
+    audio_files = []
     
-    参数:
-        prompt: 提示信息
-        default_path: 默认路径
-        
-    返回:
-        用户输入的路径或默认路径
-    """
-    user_input = input(f"{prompt} (默认: {default_path}): ").strip()
-    if not user_input:
-        return default_path
-    return user_input
-
-def find_audio_files(source_folder):
-    """
-    递归查找源文件夹中的所有音频文件
-    
-    参数:
-        source_folder: 源文件夹路径
-        
-    返回:
-        字典，键为文件夹路径，值为该文件夹下的音频文件列表
-    """
-    audio_files_by_folder = {}
-    
-    # 遍历源文件夹及其所有子文件夹
-    for root, dirs, files in os.walk(source_folder):
-        audio_files = []
-        
+    for root, dirs, files in os.walk(folder_path):
         for file in files:
-            # 获取文件扩展名并转换为小写
-            ext = os.path.splitext(file)[1].lower()
-            
-            # 检查是否为支持的音频文件
-            if ext in AUDIO_EXTENSIONS:
-                file_path = os.path.join(root, file)
-                audio_files.append(file_path)
-        
-        # 如果当前文件夹有音频文件，则添加到字典中
-        if audio_files:
-            audio_files_by_folder[root] = audio_files
+            file_ext = os.path.splitext(file)[1].lower()
+            if file_ext in audio_extensions:
+                full_path = os.path.join(root, file)
+                audio_files.append(full_path)
     
-    return audio_files_by_folder
+    return audio_files
 
-def get_audio_metadata(file_path):
-    """
-    读取音频文件的元数据
+def clean_filename(text):
+    """清理文件名，移除非法字符"""
+    if not text:
+        return ""
     
-    参数:
-        file_path: 音频文件路径
+    # 定义非法字符（Windows文件名中不允许的字符）
+    illegal_chars = r'[<>:"/\\|?*\x00-\x1F]'
+    # 移除非法字符
+    cleaned = re.sub(illegal_chars, '', str(text))
+    # 替换空格为下划线（可选）
+    cleaned = cleaned.replace(' ', '_')
+    # 移除首尾空白
+    cleaned = cleaned.strip()
+    
+    return cleaned
+
+def rename_audio_file(file_path, artist, title):
+    """根据歌手和标题重命名音频文件"""
+    if not artist and not title:
+        return file_path, False, "缺少歌手和标题信息"
+    
+    # 获取文件目录和扩展名
+    dir_name = os.path.dirname(file_path)
+    ext = os.path.splitext(file_path)[1]
+    
+    # 清理歌手和标题
+    artist_clean = clean_filename(artist)
+    title_clean = clean_filename(title)
+    
+    # 处理多个歌手的情况
+    if artist_clean:
+        # 分割歌手（支持多种分隔符）
+        separators = ['/', ';', '&', '、', ',', '，', '\\|']
+        for sep in separators:
+            if sep in artist_clean:
+                artists = [a.strip() for a in artist_clean.split(sep) if a.strip()]
+                if len(artists) > 1:
+                    # 用&连接多个歌手
+                    artist_clean = '&'.join(artists)
+                    break
+    
+    # 构建新文件名
+    if artist_clean and title_clean:
+        new_filename = f"[{artist_clean}][{title_clean}]{ext}"
+    elif artist_clean:
+        new_filename = f"[{artist_clean}]{ext}"
+    elif title_clean:
+        new_filename = f"[{title_clean}]{ext}"
+    else:
+        return file_path, False, "无法生成新文件名"
+    
+    # 构建完整的新文件路径
+    new_file_path = os.path.join(dir_name, new_filename)
+    
+    # 检查新文件名是否已存在（处理重名）
+    counter = 1
+    original_new_file_path = new_file_path
+    while os.path.exists(new_file_path) and new_file_path != file_path:
+        name_part, ext_part = os.path.splitext(original_new_file_path)
+        new_file_path = f"{name_part}_{counter}{ext_part}"
+        counter += 1
+    
+    # 重命名文件
+    try:
+        os.rename(file_path, new_file_path)
+        return new_file_path, True, "重命名成功"
+    except Exception as e:
+        return file_path, False, f"重命名失败: {str(e)}"
+
+def extract_metadata(file_path):
+    """提取音频文件的元数据"""
+    try:
+        # 根据文件扩展名使用不同的解析方法
+        file_ext = os.path.splitext(file_path)[1].lower()
         
-    返回:
-        字典，包含音频文件的元数据
-    """
-    metadata = {
-        '文件名': os.path.basename(file_path),
-        '文件路径': file_path,
-        '文件大小(MB)': round(os.path.getsize(file_path) / (1024 * 1024), 2),
-        '修改时间': datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
-    }
+        if file_ext == '.mp3':
+            return extract_mp3_metadata(file_path)
+        elif file_ext == '.m4a':
+            return extract_m4a_metadata(file_path)
+        elif file_ext == '.wma':
+            return extract_wma_metadata(file_path)
+        elif file_ext == '.ogg':
+            return extract_ogg_metadata(file_path)
+        elif file_ext in ['.flac', '.aac', '.ac3', '.rm', '.wav']:
+            return extract_generic_metadata(file_path)
+        else:
+            return {}
+            
+    except Exception as e:
+        print(f"提取元数据时出错 {file_path}: {str(e)}")
+        return {}
+
+def extract_mp3_metadata(file_path):
+    """提取MP3文件元数据"""
+    metadata = {}
     
     try:
-        # 根据文件扩展名使用不同的方法读取元数据
-        ext = os.path.splitext(file_path)[1].lower()
+        audio = ID3(file_path)
         
-        if ext == '.mp3':
-            audio = EasyID3(file_path)
-            # 常见的MP3元数据标签
-            tags = {
-                '标题': 'title',
-                '艺术家': 'artist',
-                '专辑': 'album',
-                '专辑艺术家': 'albumartist',
-                '作曲': 'composer',
-                '年代': 'date',
-                '流派': 'genre',
-                '音轨号': 'tracknumber',
-                '光盘号': 'discnumber',
-                '比特率': 'bitrate',
-                '时长': 'length'
-            }
-            
-        elif ext == '.m4a':
-            audio = MP4(file_path)
-            # MP4/M4A元数据标签
-            tags = {
-                '标题': '\xa9nam',
-                '艺术家': '\xa9ART',
-                '专辑': '\xa9alb',
-                '专辑艺术家': 'aART',
-                '作曲': '\xa9wrt',
-                '年代': '\xa9day',
-                '流派': '\xa9gen',
-                '音轨号': 'trkn',
-                '光盘号': 'disk',
-                '时长': None  # MP4文件没有直接的时长标签
-            }
-            
-        elif ext == '.wma':
-            audio = ASF(file_path)
-            # WMA元数据标签
-            tags = {
-                '标题': 'Title',
-                '艺术家': 'Author',
-                '专辑': 'WM/AlbumTitle',
-                '专辑艺术家': 'WM/AlbumArtist',
-                '作曲': 'WM/Composer',
-                '年代': 'WM/Year',
-                '流派': 'WM/Genre',
-                '音轨号': 'WM/TrackNumber',
-                '时长': None
-            }
-            
-        elif ext == '.ogg':
-            audio = OggVorbis(file_path)
-            # OGG元数据标签
-            tags = {
-                '标题': 'title',
-                '艺术家': 'artist',
-                '专辑': 'album',
-                '专辑艺术家': 'albumartist',
-                '作曲': 'composer',
-                '年代': 'date',
-                '流派': 'genre',
-                '音轨号': 'tracknumber',
-                '时长': None
-            }
-            
-        elif ext in ['.flac', '.wav']:
-            # FLAC和WAV文件使用相同的处理方式
-            if ext == '.flac':
-                audio = FLAC(file_path)
-            else:  # .wav
-                audio = WAVE(file_path)
-            
-            tags = {
-                '标题': 'title',
-                '艺术家': 'artist',
-                '专辑': 'album',
-                '专辑艺术家': 'albumartist',
-                '作曲': 'composer',
-                '年代': 'date',
-                '流派': 'genre',
-                '音轨号': 'tracknumber',
-                '光盘号': 'discnumber',
-                '时长': None
-            }
-            
-        else:  # 其他格式如.aac, .ac3, .rm等
-            # 使用mutagen通用方法读取
-            audio = mutagen.File(file_path)
-            tags = {}
-            if audio:
-                # 获取所有可用标签
-                for key in audio.keys():
-                    tags[key] = key
-            else:
-                return metadata
+        # 提取文本标签
+        metadata['标题'] = str(audio.get('TIT2', [''])[0]) if 'TIT2' in audio else ''
+        metadata['歌手'] = str(audio.get('TPE1', [''])[0]) if 'TPE1' in audio else ''
+        metadata['作曲'] = str(audio.get('TCOM', [''])[0]) if 'TCOM' in audio else ''
+        metadata['作词'] = str(audio.get('TEXT', [''])[0]) if 'TEXT' in audio else ''
+        metadata['专辑'] = str(audio.get('TALB', [''])[0]) if 'TALB' in audio else ''
+        metadata['专辑作者'] = str(audio.get('TPE2', [''])[0]) if 'TPE2' in audio else ''
+        metadata['年份'] = str(audio.get('TDRC', [''])[0]) if 'TDRC' in audio else ''
+        metadata['流派'] = str(audio.get('TCON', [''])[0]) if 'TCON' in audio else ''
+        metadata['碟号'] = str(audio.get('TPOS', [''])[0]) if 'TPOS' in audio else ''
+        metadata['音轨'] = str(audio.get('TRCK', [''])[0]) if 'TRCK' in audio else ''
         
-        # 提取元数据
-        for display_name, tag_name in tags.items():
-            if tag_name:
-                try:
-                    if tag_name == 'bitrate':
-                        # 比特率特殊处理
-                        if hasattr(audio.info, 'bitrate'):
-                            metadata[display_name] = f"{audio.info.bitrate // 1000} kbps"
-                    elif tag_name == 'length':
-                        # 时长特殊处理
-                        if hasattr(audio.info, 'length'):
-                            length = audio.info.length
-                            minutes = int(length // 60)
-                            seconds = int(length % 60)
-                            metadata[display_name] = f"{minutes}:{seconds:02d}"
-                    else:
-                        # 普通标签处理
-                        value = audio.get(tag_name, [None])[0]
-                        if value:
-                            metadata[display_name] = str(value)
-                except (KeyError, IndexError, AttributeError):
-                    # 如果标签不存在，跳过
-                    pass
+        # 提取封面
+        if 'APIC:' in audio:
+            for key in audio.keys():
+                if key.startswith('APIC'):
+                    metadata['封面'] = audio[key].data
+                    break
         
-        # 尝试获取通用信息（时长、比特率等）
-        if hasattr(audio, 'info'):
-            info = audio.info
-            if hasattr(info, 'length') and '时长' not in metadata:
-                length = info.length
-                minutes = int(length // 60)
-                seconds = int(length % 60)
-                metadata['时长'] = f"{minutes}:{seconds:02d}"
-                
-            if hasattr(info, 'bitrate') and '比特率' not in metadata:
-                metadata['比特率'] = f"{info.bitrate // 1000} kbps" if info.bitrate else "未知"
-                
-            if hasattr(info, 'sample_rate') and '采样率' not in metadata:
-                metadata['采样率'] = f"{info.sample_rate} Hz"
-    
+        # 提取歌词
+        if 'USLT::' in audio:
+            for key in audio.keys():
+                if key.startswith('USLT'):
+                    metadata['歌词'] = audio[key].text
+                    break
+        
     except Exception as e:
-        # 如果读取元数据失败，记录错误信息
-        metadata['错误信息'] = f"读取元数据失败: {str(e)}"
+        # 如果ID3标签读取失败，尝试使用通用方法
+        return extract_generic_metadata(file_path)
     
     return metadata
 
-def create_excel_for_folder(folder_path, audio_files, target_folder):
-    """
-    为指定文件夹创建Excel文件并写入元数据
+def extract_m4a_metadata(file_path):
+    """提取M4A文件元数据"""
+    metadata = {}
     
-    参数:
-        folder_path: 文件夹路径
-        audio_files: 该文件夹下的音频文件列表
-        target_folder: 目标文件夹路径
+    try:
+        audio = MP4(file_path)
         
-    返回:
-        Excel文件路径
-    """
-    # 获取文件夹名作为Excel文件名
-    folder_name = os.path.basename(folder_path)
-    if not folder_name:
-        folder_name = "根目录"
-    
-    # 创建Excel工作簿和工作表
-    workbook = xlwt.Workbook(encoding='utf-8')
-    worksheet = workbook.add_sheet('音频元数据')
-    
-    # 设置列标题
-    headers = [
-        '文件名', '文件路径', '文件大小(MB)', '修改时间',
-        '标题', '艺术家', '专辑', '专辑艺术家', '作曲',
-        '年代', '流派', '音轨号', '光盘号', '时长',
-        '比特率', '采样率', '错误信息'
-    ]
-    
-    # 写入标题行
-    for col, header in enumerate(headers):
-        worksheet.write(0, col, header)
-    
-    # 写入音频文件元数据
-    for row, file_path in enumerate(audio_files, start=1):
-        metadata = get_audio_metadata(file_path)
+        # MP4标签映射
+        tag_map = {
+            '标题': '\xa9nam',
+            '歌手': '\xa9ART',
+            '作曲': '\xa9wrt',
+            '作词': '\xa9lyr',
+            '专辑': '\xa9alb',
+            '专辑作者': 'aART',
+            '年份': '\xa9day',
+            '流派': '\xa9gen',
+            '碟号': 'disk',
+            '音轨': 'trkn'
+        }
         
+        for key, tag in tag_map.items():
+            if tag in audio:
+                value = audio[tag]
+                if isinstance(value, list) and len(value) > 0:
+                    metadata[key] = str(value[0])
+                else:
+                    metadata[key] = str(value)
+            else:
+                metadata[key] = ''
+        
+        # 提取封面
+        if 'covr' in audio:
+            metadata['封面'] = audio['covr'][0]
+        
+        # 提取歌词
+        if '\xa9lyr' in audio:
+            metadata['歌词'] = str(audio['\xa9lyr'][0])
+            
+    except Exception as e:
+        print(f"提取M4A元数据失败 {file_path}: {str(e)}")
+    
+    return metadata
+
+def extract_wma_metadata(file_path):
+    """提取WMA文件元数据"""
+    metadata = {}
+    
+    try:
+        audio = ASF(file_path)
+        
+        # WMA标签映射
+        tag_map = {
+            '标题': 'Title',
+            '歌手': 'Author',
+            '作曲': 'Composer',
+            '作词': 'Lyricist',
+            '专辑': 'WM/AlbumTitle',
+            '专辑作者': 'WM/AlbumArtist',
+            '年份': 'WM/Year',
+            '流派': 'WM/Genre',
+            '碟号': 'WM/PartOfSet',
+            '音轨': 'WM/TrackNumber'
+        }
+        
+        for key, tag in tag_map.items():
+            if tag in audio:
+                value = audio[tag]
+                if isinstance(value, list) and len(value) > 0:
+                    metadata[key] = str(value[0])
+                else:
+                    metadata[key] = str(value)
+            else:
+                metadata[key] = ''
+        
+        # 提取封面
+        if 'WM/Picture' in audio:
+            for picture in audio['WM/Picture']:
+                if picture.type == 3:  # 3表示封面图片
+                    metadata['封面'] = picture.data
+                    break
+        
+        # 提取歌词
+        if 'Lyrics' in audio:
+            metadata['歌词'] = str(audio['Lyrics'][0])
+            
+    except Exception as e:
+        print(f"提取WMA元数据失败 {file_path}: {str(e)}")
+    
+    return metadata
+
+def extract_ogg_metadata(file_path):
+    """提取OGG文件元数据"""
+    metadata = {}
+    
+    try:
+        audio = OggVorbis(file_path)
+        
+        # OGG标签映射
+        tag_map = {
+            '标题': 'title',
+            '歌手': 'artist',
+            '作曲': 'composer',
+            '作词': 'lyricist',
+            '专辑': 'album',
+            '专辑作者': 'albumartist',
+            '年份': 'date',
+            '流派': 'genre',
+            '碟号': 'discnumber',
+            '音轨': 'tracknumber'
+        }
+        
+        for key, tag in tag_map.items():
+            if tag in audio:
+                value = audio[tag]
+                if isinstance(value, list) and len(value) > 0:
+                    metadata[key] = str(value[0])
+                else:
+                    metadata[key] = str(value)
+            else:
+                metadata[key] = ''
+        
+        # 提取封面（OGG通常将封面存储在metadata_block_picture中）
+        if 'metadata_block_picture' in audio:
+            metadata['封面'] = audio['metadata_block_picture'][0]
+        elif 'coverart' in audio:
+            metadata['封面'] = audio['coverart'][0]
+        
+        # 提取歌词
+        if 'lyrics' in audio:
+            metadata['歌词'] = str(audio['lyrics'][0])
+            
+    except Exception as e:
+        print(f"提取OGG元数据失败 {file_path}: {str(e)}")
+    
+    return metadata
+
+def extract_generic_metadata(file_path):
+    """使用通用方法提取音频文件元数据"""
+    metadata = {}
+    
+    try:
+        audio = File(file_path, easy=True)
+        
+        if audio is None:
+            return metadata
+        
+        # 通用标签提取
+        tag_map = {
+            '标题': 'title',
+            '歌手': 'artist',
+            '作曲': 'composer',
+            '作词': 'lyricist',
+            '专辑': 'album',
+            '专辑作者': 'albumartist',
+            '年份': 'date',
+            '流派': 'genre',
+            '碟号': 'discnumber',
+            '音轨': 'tracknumber'
+        }
+        
+        for key, tag in tag_map.items():
+            if tag in audio:
+                value = audio[tag]
+                if isinstance(value, list) and len(value) > 0:
+                    metadata[key] = str(value[0])
+                else:
+                    metadata[key] = str(value)
+            else:
+                metadata[key] = ''
+        
+        # 尝试提取封面（非easy模式）
+        audio_detailed = File(file_path)
+        if audio_detailed is not None:
+            # 对于FLAC文件
+            if isinstance(audio_detailed, FLAC):
+                if audio_detailed.pictures:
+                    for picture in audio_detailed.pictures:
+                        if picture.type == 3:  # 封面图片
+                            metadata['封面'] = picture.data
+                            break
+            
+            # 对于其他格式
+            elif hasattr(audio_detailed, 'tags'):
+                tags = audio_detailed.tags
+                for key in tags.keys():
+                    if 'APIC' in key or 'PIC' in key or 'picture' in key.lower():
+                        if hasattr(tags[key], 'data'):
+                            metadata['封面'] = tags[key].data
+                            break
+        
+        # 提取歌词
+        if 'unsyncedlyrics' in audio:
+            metadata['歌词'] = str(audio['unsyncedlyrics'][0])
+        elif 'lyrics' in audio:
+            metadata['歌词'] = str(audio['lyrics'][0])
+            
+    except Exception as e:
+        print(f"通用方法提取元数据失败 {file_path}: {str(e)}")
+    
+    return metadata
+
+def save_cover_image(cover_data, output_path, size=(640, 640)):
+    """保存封面图片"""
+    try:
+        # 从字节数据创建图像
+        image = Image.open(io.BytesIO(cover_data))
+        
+        # 转换为RGB模式（如果必要）
+        if image.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', image.size, (255, 255, 255))
+            if image.mode == 'P':
+                image = image.convert('RGBA')
+            background.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
+            image = background
+        
+        # 调整大小到640x640
+        image.thumbnail(size, Image.Resampling.LANCZOS)
+        
+        # 创建640x640的画布
+        new_image = Image.new('RGB', size, (255, 255, 255))
+        
+        # 将缩略图粘贴到中心
+        offset = ((size[0] - image.size[0]) // 2, (size[1] - image.size[1]) // 2)
+        new_image.paste(image, offset)
+        
+        # 保存为JPG
+        new_image.save(output_path, 'JPEG', quality=90)
+        return True
+        
+    except Exception as e:
+        print(f"保存封面图片失败 {output_path}: {str(e)}")
+        return False
+
+def save_lyrics(lyrics_text, output_path):
+    """保存歌词文件"""
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(lyrics_text)
+        return True
+    except Exception as e:
+        print(f"保存歌词文件失败 {output_path}: {str(e)}")
+        return False
+
+def create_excel_report(folder_path, metadata_list):
+    """创建Excel报告"""
+    try:
+        # 获取文件夹名作为Excel文件名
+        folder_name = os.path.basename(folder_path)
+        if not folder_name:
+            folder_name = "音频元数据"
+        
+        excel_path = os.path.join(folder_path, f"{folder_name}_元数据.xls")
+        
+        # 创建Excel工作簿
+        workbook = xlwt.Workbook(encoding='utf-8')
+        worksheet = workbook.add_sheet('音频元数据')
+        
+        # 定义列标题
+        headers = ['原文件名', '新文件名', '重命名状态', '标题', '歌手', '作曲', '作词', '专辑', 
+                   '专辑作者', '年份', '流派', '碟号', '音轨', '封面导出', '歌词导出']
+        
+        # 设置列宽
+        column_widths = [40, 40, 15, 30, 30, 20, 20, 30, 20, 10, 15, 10, 10, 10, 10]
+        for i, width in enumerate(column_widths):
+            worksheet.col(i).width = 256 * width
+        
+        # 写入标题行
         for col, header in enumerate(headers):
-            value = metadata.get(header, '')
-            worksheet.write(row, col, value)
-    
-    # 自动调整列宽（简单实现）
-    for col in range(len(headers)):
-        worksheet.col(col).width = 256 * 20  # 20个字符宽度
-    
-    # 保存Excel文件
-    excel_filename = f"{folder_name}_音频元数据.xls"
-    excel_path = os.path.join(target_folder, excel_filename)
-    
-    # 确保目标文件夹存在
-    os.makedirs(target_folder, exist_ok=True)
-    
-    # 处理文件名冲突
-    counter = 1
-    while os.path.exists(excel_path):
-        excel_filename = f"{folder_name}_音频元数据_{counter}.xls"
-        excel_path = os.path.join(target_folder, excel_filename)
-        counter += 1
-    
-    workbook.save(excel_path)
-    return excel_path
+            worksheet.write(0, col, header)
+        
+        # 写入数据行
+        for row, item in enumerate(metadata_list, start=1):
+            worksheet.write(row, 0, item['原文件名'])
+            worksheet.write(row, 1, item['新文件名'])
+            worksheet.write(row, 2, item['重命名状态'])
+            worksheet.write(row, 3, item['标题'])
+            worksheet.write(row, 4, item['歌手'])
+            worksheet.write(row, 5, item['作曲'])
+            worksheet.write(row, 6, item['作词'])
+            worksheet.write(row, 7, item['专辑'])
+            worksheet.write(row, 8, item['专辑作者'])
+            worksheet.write(row, 9, item['年份'])
+            worksheet.write(row, 10, item['流派'])
+            worksheet.write(row, 11, item['碟号'])
+            worksheet.write(row, 12, item['音轨'])
+            worksheet.write(row, 13, item['封面导出'])
+            worksheet.write(row, 14, item['歌词导出'])
+        
+        # 保存Excel文件
+        workbook.save(excel_path)
+        print(f"Excel报告已保存: {excel_path}")
+        return excel_path
+        
+    except Exception as e:
+        print(f"创建Excel报告失败: {str(e)}")
+        return None
 
 def main():
     """主函数"""
-    print("=" * 60)
-    print("音频文件元数据提取工具")
-    print("=" * 60)
+    print("音频文件处理工具")
     
-    # 设置默认路径
-    default_source = "e:\\Documents\\Audios\\Musics\\Singles\\"
-    default_target = "e:\\Documents\\Audios\\Musics\\Singles\\"
+    # 1. 获取源文件夹路径
+    source_folder = get_user_input()
+    print(f"正在扫描文件夹: {source_folder}")
     
-    # 获取用户输入
-    source_folder = get_user_input("请输入源文件夹位置", default_source)
-    target_folder = get_user_input("请输入目标文件夹位置", default_target)
+    # 2. 获取所有音频文件
+    audio_files = get_audio_files(source_folder)
     
-    # 检查源文件夹是否存在
-    if not os.path.exists(source_folder):
-        print(f"错误: 源文件夹不存在: {source_folder}")
-        return
-    
-    # 规范化路径
-    source_folder = os.path.normpath(source_folder)
-    target_folder = os.path.normpath(target_folder)
-    
-    print(f"\n正在扫描源文件夹: {source_folder}")
-    print("正在查找音频文件...")
-    
-    # 查找所有音频文件
-    audio_files_by_folder = find_audio_files(source_folder)
-    
-    if not audio_files_by_folder:
+    if not audio_files:
         print("未找到任何音频文件！")
         return
     
-    # 统计信息
-    total_folders = len(audio_files_by_folder)
-    total_files = sum(len(files) for files in audio_files_by_folder.values())
+    print(f"找到 {len(audio_files)} 个音频文件")
     
-    print(f"找到 {total_files} 个音频文件，分布在 {total_folders} 个文件夹中")
-    print(f"目标文件夹: {target_folder}")
-    print("-" * 60)
+    # 3. 询问是否继续
+    response = input(f"是否继续处理 {len(audio_files)} 个文件？(y/n): ").strip().lower()
+    if response not in ['y', 'yes', '是']:
+        print("操作已取消")
+        return
     
-    # 处理每个文件夹
-    created_files = []
-    for i, (folder_path, audio_files) in enumerate(audio_files_by_folder.items(), start=1):
-        folder_name = os.path.basename(folder_path) or "根目录"
-        print(f"处理文件夹 {i}/{total_folders}: {folder_name} ({len(audio_files)} 个文件)")
+    # 4. 处理每个音频文件
+    metadata_list = []
+    renamed_count = 0
+    
+    for i, file_path in enumerate(audio_files, 1):
+        print(f"\n处理文件中 ({i}/{len(audio_files)}): {os.path.basename(file_path)}")
         
-        try:
-            excel_path = create_excel_for_folder(folder_path, audio_files, target_folder)
-            created_files.append(excel_path)
-            print(f"  已创建: {os.path.basename(excel_path)}")
-        except Exception as e:
-            print(f"  错误: 处理文件夹 {folder_name} 时出错: {str(e)}")
+        # 提取元数据
+        metadata = extract_metadata(file_path)
+        
+        # 记录原文件名
+        original_filename = os.path.basename(file_path)
+        
+        # 重命名文件
+        artist = metadata.get('歌手', '')
+        title = metadata.get('标题', '')
+        
+        if artist or title:
+            new_file_path, rename_success, rename_message = rename_audio_file(file_path, artist, title)
+            if rename_success:
+                renamed_count += 1
+                print(f"  重命名: {original_filename} -> {os.path.basename(new_file_path)}")
+                current_file_path = new_file_path
+                current_filename = os.path.basename(new_file_path)
+            else:
+                print(f"  重命名失败: {rename_message}")
+                current_file_path = file_path
+                current_filename = original_filename
+        else:
+            print("  无法重命名：缺少歌手或标题信息")
+            current_file_path = file_path
+            current_filename = original_filename
+            rename_message = "缺少歌手或标题信息"
+        
+        # 准备记录项
+        item = {
+            '原文件名': original_filename,
+            '新文件名': os.path.basename(current_file_path),
+            '重命名状态': '成功' if (artist or title) and '成功' in rename_message else '失败',
+            '标题': title,
+            '歌手': artist,
+            '作曲': metadata.get('作曲', ''),
+            '作词': metadata.get('作词', ''),
+            '专辑': metadata.get('专辑', ''),
+            '专辑作者': metadata.get('专辑作者', ''),
+            '年份': metadata.get('年份', ''),
+            '流派': metadata.get('流派', ''),
+            '碟号': metadata.get('碟号', ''),
+            '音轨': metadata.get('音轨', ''),
+            '封面导出': '否',
+            '歌词导出': '否'
+        }
+        
+        # 导出封面图片
+        if '封面' in metadata and metadata['封面']:
+            cover_path = os.path.splitext(current_file_path)[0] + '.jpg'
+            if save_cover_image(metadata['封面'], cover_path):
+                item['封面导出'] = '是'
+                print(f"  封面导出: {os.path.basename(cover_path)}")
+        
+        # 导出歌词
+        if '歌词' in metadata and metadata['歌词']:
+            lyrics_path = os.path.splitext(current_file_path)[0] + '.lrc'
+            if save_lyrics(metadata['歌词'], lyrics_path):
+                item['歌词导出'] = '是'
+                print(f"  歌词导出: {os.path.basename(lyrics_path)}")
+        
+        metadata_list.append(item)
     
-    # 完成提示
-    print("-" * 60)
-    print(f"处理完成！")
-    print(f"共创建 {len(created_files)} 个Excel文件:")
-    for excel_file in created_files:
-        print(f"  {excel_file}")
+    # 5. 创建Excel报告
+    if metadata_list:
+        excel_file = create_excel_report(source_folder, metadata_list)
+        if excel_file:
+            print(f"\n处理完成！")
+            print(f"总计处理文件: {len(metadata_list)}")
+            print(f"成功重命名文件: {renamed_count}")
+            print(f"导出封面的文件: {sum(1 for item in metadata_list if item['封面导出'] == '是')}")
+            print(f"导出歌词的文件: {sum(1 for item in metadata_list if item['歌词导出'] == '是')}")
+            print(f"Excel报告位置: {excel_file}")
     
-    # 询问是否打开目标文件夹
-    open_folder = input("\n是否要打开目标文件夹？(y/n): ").strip().lower()
-    if open_folder == 'y':
-        try:
-            os.startfile(target_folder)  # Windows系统
-        except:
-            try:
-                # 其他操作系统
-                import subprocess
-                subprocess.run(['open', target_folder])  # macOS
-            except:
-                try:
-                    subprocess.run(['xdg-open', target_folder])  # Linux
-                except:
-                    print("无法自动打开文件夹，请手动访问。")
+    print("\n程序执行完毕！")
 
 if __name__ == "__main__":
-    # 检查必要的库
     try:
-        import mutagen
-    except ImportError:
-        print("错误: 需要安装 mutagen 库")
-        print("请运行: pip install mutagen")
-        sys.exit(1)
-    
-    try:
-        import xlwt
-    except ImportError:
-        print("错误: 需要安装 xlwt 库")
-        print("请运行: pip install xlwt")
-        sys.exit(1)
-    
-    main()
+        main()
+    except KeyboardInterrupt:
+        print("\n用户中断操作")
+    except Exception as e:
+        print(f"\n程序执行出错: {str(e)}")
+        traceback.print_exc()

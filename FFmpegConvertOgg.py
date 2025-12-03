@@ -24,8 +24,8 @@ def ask_folder_location(prompt, default_folder):
     return folder_path
 
 # 获取源文件夹和目标文件夹位置
-source_folder = ask_folder_location("请输入源文件夹位置（默认“d:\\Works\\In\\”）", "d:\\Works\\In\\")
-target_folder = ask_folder_location("请输入目标文件夹位置（默认“d:\\Works\\Out\\”）", "d:\\Works\\Out\\")
+source_folder = ask_folder_location("请输入源文件夹位置", "d:\\Works\\In\\")
+target_folder = ask_folder_location("请输入目标文件夹位置", "d:\\Works\\Out\\")
 
 # 支持的音频格式
 audio_formats = (".mp3", ".m4a", ".wma", ".ogg", ".aac", ".ac3", ".rm", ".wav")
@@ -33,9 +33,10 @@ audio_formats = (".mp3", ".m4a", ".wma", ".ogg", ".aac", ".ac3", ".rm", ".wav")
 # 确保目标文件夹存在
 os.makedirs(target_folder, exist_ok=True)
 
-def compress_and_remux_audio(source_path, target_folder, relative_path):
+def compress_audio_to_ogg(source_path, target_folder, relative_path):
     """
-    压缩音频并重新封装到目标文件夹，保持目录结构。
+    压缩音频文件为OGG格式并保存到目标文件夹，保持目录结构。
+    成功后删除源文件。
     :param source_path: 源音频文件路径
     :param target_folder: 目标文件夹路径
     :param relative_path: 相对于源文件夹的路径
@@ -47,9 +48,10 @@ def compress_and_remux_audio(source_path, target_folder, relative_path):
     target_subfolder = os.path.join(target_folder, relative_path)
     os.makedirs(target_subfolder, exist_ok=True)
     
-    # 临时ogg文件路径和最终mkv文件路径
-    temp_ogg_path = os.path.join(target_subfolder, f"{file_name}_temp.ogg")
-    final_mkv_path = os.path.join(target_subfolder, f"{file_name}.mkv")
+    # 目标OGG文件路径
+    target_ogg_path = os.path.join(target_subfolder, f"{file_name}.ogg")
+    
+    print(f"正在压缩音频: {source_path}")
     
     # 构建ffmpeg命令：压缩音频为ogg格式
     ffmpeg_command = [
@@ -59,66 +61,49 @@ def compress_and_remux_audio(source_path, target_folder, relative_path):
         "-q:a", "4",                 # 音频质量设置为4
         "-map", "0:a",               # 映射所有音频流
         "-y",                        # 覆盖输出文件
-        temp_ogg_path
+        target_ogg_path
     ]
     
-    print(f"正在压缩音频: {source_path}")
     try:
-        # 执行ffmpeg命令
-        subprocess.run(ffmpeg_command, check=True, capture_output=True)
-        print(f"音频压缩完成: {temp_ogg_path}")
+        # 执行ffmpeg命令，避免编码问题
+        result = subprocess.run(
+            ffmpeg_command, 
+            check=True, 
+            capture_output=True, 
+            encoding='utf-8',
+            errors='ignore'
+        )
+        
+        # 检查目标文件是否存在且大小合理
+        if os.path.exists(target_ogg_path) and os.path.getsize(target_ogg_path) > 0:
+            print(f"音频压缩完成: {target_ogg_path}")
+            
+            # 删除源文件
+            try:
+                os.remove(source_path)
+                print(f"已删除源文件: {source_path}")
+            except Exception as e:
+                print(f"删除源文件时出错 {source_path}: {e}")
+        else:
+            print(f"警告: 输出文件可能有问题，保留源文件: {source_path}")
+            
     except subprocess.CalledProcessError as e:
         print(f"FFmpeg压缩失败: {source_path}")
-        print(f"错误信息: {e.stderr.decode('utf-8', errors='ignore') if e.stderr else str(e)}")
-        # 如果临时文件已创建，删除它
-        if os.path.exists(temp_ogg_path):
-            os.remove(temp_ogg_path)
+        if e.stderr:
+            print(f"错误信息: {e.stderr}")
         return
     except FileNotFoundError:
         print("错误: 未找到ffmpeg，请确保ffmpeg已安装并添加到系统PATH")
         return
-    
-    # 构建mkvmerge命令：将ogg封装为mkv
-    mkvmerge_command = [
-        "mkvmerge", 
-        "-o", final_mkv_path,        # 输出文件
-        temp_ogg_path                # 输入文件（压缩后的ogg）
-    ]
-    
-    print(f"正在重新封装音频: {temp_ogg_path}")
-    try:
-        # 执行mkvmerge命令
-        subprocess.run(mkvmerge_command, check=True, capture_output=True)
-        
-        # 删除临时ogg文件
-        if os.path.exists(temp_ogg_path):
-            os.remove(temp_ogg_path)
-            print(f"临时文件已删除: {temp_ogg_path}")
-        
-        # 检查最终输出文件是否存在且大小合理
-        if os.path.exists(final_mkv_path) and os.path.getsize(final_mkv_path) > 0:
-            # 删除源文件
-            os.remove(source_path)
-            print(f"已删除源文件: {source_path}")
-        else:
-            print(f"警告: 最终输出文件可能有问题，保留源文件: {source_path}")
-            return
-            
-        print(f"处理完成: {final_mkv_path}")
-        
-    except subprocess.CalledProcessError as e:
-        print(f"mkvmerge封装失败: {temp_ogg_path}")
-        print(f"错误信息: {e.stderr.decode('utf-8', errors='ignore') if e.stderr else str(e)}")
-        return
     except Exception as e:
-        print(f"删除源文件时出错: {source_path}")
+        print(f"处理文件时出错: {source_path}")
         print(f"错误信息: {e}")
-        return
-    except FileNotFoundError:
-        print("错误: 未找到mkvmerge，请确保mkvtoolnix已安装并添加到系统PATH")
         return
 
 # 遍历源文件夹及其子文件夹中的所有音频文件
+processed_count = 0
+error_count = 0
+
 for root, dirs, files in os.walk(source_folder):
     for file in files:
         if file.lower().endswith(audio_formats):  # 检查文件扩展名（忽略大小写）
@@ -127,8 +112,13 @@ for root, dirs, files in os.walk(source_folder):
             # 计算相对于源文件夹的路径
             relative_path = os.path.relpath(root, source_folder)
             
-            # 压缩并重新封装音频
-            compress_and_remux_audio(source_path, target_folder, relative_path)
+            # 压缩音频为OGG格式
+            compress_audio_to_ogg(source_path, target_folder, relative_path)
+            
+            # 更新计数器
+            processed_count += 1
 
-print("所有音频处理完成！")
+print(f"\n音频处理完成！")
+print(f"已处理文件数量: {processed_count}")
+
 input("按回车键退出...")
