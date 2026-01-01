@@ -1,88 +1,208 @@
-﻿# 请帮我写个中文的 Python 脚本，批注也是中文：
-# 用 yt-dlp（"d:\\ProApps\\Youtube-dl\\yt-dlp.exe"）下载视频。
-# 首先询问我想下载单个链接还是列表文件中的链接？（如果输入的是网络链接，则下载该链接；按回车则为默认地址“e:\\Documents\\Creations\\Scripts\\Python\\Yt-dlpLists.txt”；如果输入的是本地链接，则下载该地址列表文件中的链接。）
-# 再询问我是否需要引入 cookies 文件？（按回车或输入“y”则为引入 cookies 文件，默认地址为"d:\\ProApps\\Youtube-dl\\Yt-dlpCookies.txt"；如果输入的是本地链接，则将该地址作为 cookies 文件地址；输入“n”则不引入 cookies 文件。）
-# 再询问我是否需要代理？（按回车或输入“y”则为代理，默认地址“127.0.0.1:10808”；输入“n”则不引入 cookies 文件。）
-# 再询问我下载后文件存放的位置？（按回车则为默认地址“d:\\Downloads\\”；如果输入的是本地链接，则将该地址作为下载后文件存放的位置。）
+﻿# 请帮我写个中文的 Python 脚本，批注也是中文，但是变量参数不要是中文：
+# 用 yt-dlp（"d:\ProApps\Youtube-dl\yt-dlp.exe"）下载视频。
+# 首先询问下载的链接？（如果输入的是网络链接，则下载该链接（可以是多行。不是多次输入而是输入一次，往往是从剪贴板粘贴，可以包含多行）。按回车则为默认地址“e:\Documents\Creations\Scripts\Attachment\Yt-dlpLists.txt”；如果输入的是本地链接，则下载该地址列表文件中的链接。）
+# 引入本地 cookies：“e:\Documents\Creations\Scripts\Attachment\Yt-dlpCookies.txt”
+# 每一个链接都尝试 2 次。第一次尝试不使用代理，如果未成功下载，则再次使用代理下载。。代理地址：“http://127.0.0.1:10808”
+# 再询问我下载后文件存放的位置？（按回车则为默认地址“d:\Works\Downloads\Yt-dlp”；如果输入的是本地链接，则将该地址作为下载后文件存放的位置。）
+# 询问我 excel 文件位置（默认为：“e:\Documents\Creations\Scripts\Attachment\视频.xlsx”）。
+# 进行下载，类似命令：
+# 
+# 读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。每下载一个视频，每一条记录新开一行。
+# "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。
+# 将下载的文件名写入"名字"与"原文件名"字段值。
+# 下载的链接写入"引用页"。
+# 计算并生成下载的视频文件（仅仅是视频文件）的 Ed2K 链接。安装了 RHash，位置“d:\ProApps\RHash\rhash.exe”。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "文件地址"。生成的 ed2k 链接，写入"标准链接"字段值。
+# 通过"主链接"字段值。分别生成"大小"、"散列"字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
+# 所有结束后，再从最开始询问我下载的链接，循环进行。
+# 输入“q”退出。
 
-# 导入模块。
-import subprocess
+# 导入模块
 import os
+import re
+import subprocess
+import urllib.parse
+import pandas as pd
 
-# 定义默认路径
-YT_DLP_PATH = r"d:\\ProApps\\Youtube-dl\\yt-dlp.exe"
-DEFAULT_LIST_FILE = r"e:\\Documents\\Creations\\Scripts\\Python\\Yt-dlpLists.txt"
-DEFAULT_COOKIES_FILE = r"d:\\ProApps\\Youtube-dl\\Yt-dlpCookies.txt"
-DEFAULT_PROXY = "127.0.0.1:10808"
-DEFAULT_SAVE_PATH = r"d:\\Downloads\\"
+# =========================
+# 配置路径
+# =========================
+
+YTDLP_PATH = r"d:\ProApps\Youtube-dl\yt-dlp.exe"
+COOKIES_PATH = r"e:\Documents\Creations\Scripts\Attachment\Yt-dlpCookies.txt"
+PROXY_URL = "http://127.0.0.1:10808"
+
+DEFAULT_URL_LIST = r"e:\Documents\Creations\Scripts\Attachment\Yt-dlpLists.txt"
+DEFAULT_OUTPUT_DIR = r"d:\Works\Downloads\Yt-dlp"
+DEFAULT_EXCEL_PATH = r"e:\Documents\Creations\Scripts\Attachment\视频.xlsx"
+
+RHASH_PATH = r"d:\ProApps\RHash\rhash.exe"
+
+VIDEO_EXTENSIONS = {".mp4", ".mkv", ".webm", ".flv", ".avi", ".mov"}
+
+# =========================
+# 工具函数
+# =========================
+
+def format_size(size_bytes):
+    size = float(size_bytes)
+    for unit in ["B", "KB", "MB", "GB"]:
+        if size < 1024:
+            return f"{size:.4f} {unit}"
+        size /= 1024
+    return f"{size:.4f} TB"
+
+def extract_urls(text):
+    """从文本中提取所有 http/https 链接"""
+    urls = re.findall(r"https?://[^\s]+", text)
+    return [u.rstrip(";,") for u in urls]
+
+def read_url_input(user_input):
+    if not user_input:
+        if os.path.exists(DEFAULT_URL_LIST):
+            with open(DEFAULT_URL_LIST, "r", encoding="utf-8") as f:
+                content = f.read()
+            return extract_urls(content)
+        return []
+    if os.path.exists(user_input):
+        with open(user_input, "r", encoding="utf-8") as f:
+            content = f.read()
+        return extract_urls(content)
+    return extract_urls(user_input)
+
+def run_ytdlp(url, output_dir, use_proxy):
+    cmd = [
+        YTDLP_PATH,
+        "--cookies", COOKIES_PATH,
+        "-P", output_dir,
+        "--write-thumbnail",
+        "--convert-thumbnails", "jpg",
+        "--write-subs",
+        "--write-auto-subs",
+        "--sub-langs", "all",
+        "--sub-format", "srt",
+        "--write-info-json",
+        url
+    ]
+    if use_proxy:
+        cmd.extend(["--proxy", PROXY_URL])
+
+    print(f"{'='*10} 开始下载 {'代理' if use_proxy else '直连'}: {url} {'='*10}")
+    result = subprocess.run(cmd)
+    if result.returncode == 0:
+        print(f"下载成功: {url}")
+        return True
+    else:
+        print(f"下载失败: {url} {'使用代理' if not use_proxy else ''}")
+        return False
+
+def find_latest_video(output_dir):
+    videos = []
+    for name in os.listdir(output_dir):
+        path = os.path.join(output_dir, name)
+        if os.path.isfile(path) and os.path.splitext(name)[1].lower() in VIDEO_EXTENSIONS:
+            videos.append(path)
+    return max(videos, key=os.path.getmtime) if videos else None
+
+def generate_ed2k(file_path):
+    cmd = [RHASH_PATH, "--uppercase", "--ed2k-link", file_path]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, text=True)
+    return result.stdout.strip()
+
+def parse_ed2k(ed2k_link):
+    decoded = urllib.parse.unquote(ed2k_link)
+    parts = decoded.split("|")
+    if len(parts) >= 5:
+        return parts[2], parts[3], parts[4].upper()
+    return os.path.basename(ed2k_link), "0", ""
+
+# =========================
+# Excel 相关函数
+# =========================
+
+def load_or_create_excel(path):
+    if os.path.exists(path):
+        try:
+            df = pd.read_excel(path, engine='openpyxl')
+        except Exception as e:
+            print(f"读取Excel失败: {e}")
+            df = pd.DataFrame()
+    else:
+        df = pd.DataFrame(columns=["Index", "名字", "原文件名", "引用页",
+                                   "标准链接", "大小", "散列", "主链接"])
+        df.to_excel(path, index=False, engine='openpyxl')
+    return df
+
+def get_next_index(df):
+    if 'Index' in df.columns and not df.empty:
+        last_index_values = df['Index'].dropna()
+        if not last_index_values.empty:
+            return int(last_index_values.iloc[-1]) + 1
+    return 1
+
+# =========================
+# 主程序
+# =========================
 
 def main():
-    # 询问下载方式
-    input_link = input("请输入视频链接或列表文件路径（直接回车使用默认列表文件“e:\\Documents\\Creations\\Scripts\\Python\\Yt-dlpLists.txt”）：").strip()
-    if not input_link:
-        # 使用默认列表文件
-        batch_file = DEFAULT_LIST_FILE
-        is_batch = True
-    elif input_link.startswith(("http://", "https://")):
-        # 单个链接
-        url = input_link
-        is_batch = False
-    else:
-        # 本地列表文件
-        batch_file = input_link
-        is_batch = True
-
-    # 询问Cookies
-    cookies_answer = input("是否使用Cookies文件？(Y/n, 默认“d:\\ProApps\\Youtube-dl\\Yt-dlpCookies.txt”): ").strip().lower()
-    if cookies_answer == "n":
-        cookies = None
-    else:
-        if cookies_answer in ("", "y"):
-            cookies = DEFAULT_COOKIES_FILE
-        else:
-            cookies = cookies_answer  # 用户自定义路径
-
-    # 询问代理
-    proxy_answer = input("是否使用代理？(Y/n, 默认为“127.0.0.1:10808”): ").strip().lower()
-    proxy = DEFAULT_PROXY if proxy_answer in ("", "y") else None
-
-    # 询问保存路径
-    save_path = input(f"请输入保存路径（直接回车使用默认路径“d:\\Downloads\\”）：").strip()
-    if not save_path:
-        save_path = DEFAULT_SAVE_PATH
-    os.makedirs(save_path, exist_ok=True)  # 自动创建目录
-
-    # 构建命令
-    command = [YT_DLP_PATH]
+    df = load_or_create_excel(DEFAULT_EXCEL_PATH)
     
-    # 核心新增功能：封面+字幕
-    command += [
-        "--write-thumbnail",    # 下载封面图
-        "--write-subs",        # 下载字幕
-        "--sub-langs", "all",  # 所有可用语言
-        "--convert-subs", "srt"# 转换为通用字幕格式
-    ]
-    
-    # 添加代理
-    if proxy:
-        command.extend(["--proxy", proxy])
-    
-    # 添加Cookies
-    if cookies:
-        command.extend(["--cookies", cookies])
-    
-    # 添加下载链接/列表文件
-    if is_batch:
-        command.extend(["--batch-file", batch_file])
-    else:
-        command.append(url)
-    
-    # 添加输出模板
-    command.extend(["-o", os.path.join(save_path, "%(title)s.%(ext)s")])
+    while True:
+        print("\n==============================")
+        user_input = input(
+            "请输入下载链接（支持粘贴多个链接，一行多个或多行，回车使用默认列表，输入 q 退出）：\n"
+        ).strip()
+        if user_input.lower() == 'q':
+            print("程序已退出。")
+            break
 
-    # 执行下载
-    print("\\n执行命令：", " ".join(command))
-    subprocess.run(command)
+        urls = read_url_input(user_input)
+        if not urls:
+            print("未找到有效链接，跳过本轮。")
+            continue
+
+        output_dir = input(f"请输入下载保存路径（回车使用默认：{DEFAULT_OUTPUT_DIR}）：").strip() or DEFAULT_OUTPUT_DIR
+        os.makedirs(output_dir, exist_ok=True)
+
+        for url in urls:
+            print(f"\n开始处理链接: {url}")
+            success = run_ytdlp(url, output_dir, False)
+            if not success:
+                print("首次下载失败，使用代理重试...")
+                success = run_ytdlp(url, output_dir, True)
+                if not success:
+                    print("代理下载仍失败，跳过该链接。")
+                    continue
+
+            video_path = find_latest_video(output_dir)
+            if not video_path:
+                print("未找到视频文件，跳过该链接。")
+                continue
+
+            ed2k = generate_ed2k(video_path)
+            name, size, hash_value = parse_ed2k(ed2k)
+
+            # 准备新行
+            next_idx = get_next_index(df)
+            new_row = {
+                "Index": next_idx,
+                "名字": name,
+                "原文件名": os.path.basename(video_path),
+                "引用页": url,
+                "标准链接": ed2k,
+                "大小": format_size(size),
+                "散列": hash_value,
+                "主链接": ed2k
+            }
+
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            # 保存 Excel
+            try:
+                df.to_excel(DEFAULT_EXCEL_PATH, index=False, engine='openpyxl')
+                print(f"已写入 Excel: {DEFAULT_EXCEL_PATH}")
+            except Exception as e:
+                print(f"写入Excel失败: {e}")
+
+        print("\n本轮任务完成。")
 
 if __name__ == "__main__":
     main()
