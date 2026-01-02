@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认地址“d:\\Works\\A\\”）与目标文件夹位置（默认地址“d:\\Works\\B\\”）。
+# 在脚本开始前询问我源文件夹位置（默认地址“d:\\Works\\In\\”）与目标文件夹位置（默认地址“d:\\Works\\Out\\”）。
 # 遍历源文件夹内所有子文件夹中的视频文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4、ogv、ogm、ogg）。
 # 使用 mkvmerge.exe 转换成 mkv 格式。类似“for %%i in (*.*) do "d:\Program Files\MKVToolNix\mkvmerge.exe" -o "%%~ni.mkv" "%%~nxi"”。
 # 生成的文件放到到目标文件夹中以“源文件夹的子文件夹”中，保持文件夹及子文件结构。
@@ -14,14 +14,14 @@ def get_user_input():
     获取用户输入的源文件夹和目标文件夹路径
     """
     # 获取源文件夹路径
-    default_source = "d:\\Works\\A\\"
+    default_source = "d:\\Works\\In\\"
     source_folder = input(f"请输入源文件夹位置（默认：{default_source}）: ").strip()
     if not source_folder:
         source_folder = default_source
     source_folder = source_folder.rstrip('\\/')
     
     # 获取目标文件夹路径
-    default_target = "d:\\Works\\B\\"
+    default_target = "d:\\Works\\Out\\"
     target_folder = input(f"请输入目标文件夹位置（默认：{default_target}）: ").strip()
     if not target_folder:
         target_folder = default_target
