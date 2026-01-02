@@ -360,8 +360,8 @@ if __name__ == "__main__":
         exit(1)
     
     # 设置默认路径 - 已修改为新的默认路径
-    default_input = r"d:\Works\B"
-    default_output = r"e:\Documents\Literatures\Webpages"
+    default_input = r"d:\Works\Finisheds"
+    default_output = r"d:\Works\Finishedx"
     
     # 获取用户输入
     print(f"\n源文件夹位置 (默认: {default_input})")
