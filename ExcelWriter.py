@@ -9,11 +9,6 @@
 # 完成后，反复循环我要做什么。
 
 # 导入模块
-# -*- coding: utf-8 -*-
-"""
-文件管理脚本 - 支持单文件/多文件写入Excel，包含ED2K链接生成和文件移动操作
-"""
-
 import os
 import re
 import shutil
@@ -33,7 +28,7 @@ DEFAULT_UPLOAD_DIR = r"d:\Works\Uploads"
 DEFAULT_TEMP_DIR = r"d:\Works\0"
 DEFAULT_RHASH_PATH = r"d:\ProApps\RHash\rhash.exe"
 DEFAULT_XYZ_DIR = r"d:\Xyz"
-Z_DRIVE_PATH = r"z:\\"
+Z_DRIVE_PATH = r"z:"
 
 # 隐藏文件模式
 HIDDEN_FILE_PATTERNS = [
@@ -844,8 +839,8 @@ def main():
         print("[主菜单]")
         print("1. 单文件写入")
         print("2. 多文件写入")
-        print("3. 复杂单文件写入 (包含Z盘和加密处理)")
-        print("4. 复杂多文件写入 (包含Z盘和加密处理)")
+        print("3. 复杂单文件写入")
+        print("4. 复杂多文件写入")
         print("0. 退出程序")
         
         choice = input("\n请选择操作 (0-4): ").strip()
