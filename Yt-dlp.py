@@ -1,5 +1,5 @@
 ﻿# 请帮我写个中文的 Python 脚本，批注也是中文，但是变量参数不要是中文：
-# 用 yt-dlp（"d:\ProApps\Youtube-dl\yt-dlp.exe"）下载视频。
+# 用 yt-dlp（"d:\ProApps\Youtube-dl\yt-dlp.exe"）下载媒体。
 # 首先询问下载的链接？（如果输入的是网络链接，则下载该链接（可以是多行。不是多次输入而是输入一次，往往是从剪贴板粘贴，可以包含多行）。按回车则为默认地址“e:\Documents\Creations\Scripts\Attachment\Yt-dlpLists.txt”；如果输入的是本地链接，则下载该地址列表文件中的链接。）
 # 引入本地 cookies：“e:\Documents\Creations\Scripts\Attachment\Yt-dlpCookies.txt”
 # 每一个链接都尝试 2 次。第一次尝试不使用代理，如果未成功下载，则再次使用代理下载。。代理地址：“http://127.0.0.1:10808”
@@ -7,11 +7,11 @@
 # 询问我 excel 文件位置（默认为：“e:\Documents\Creations\Scripts\Attachment\视频.xlsx”）。
 # 进行下载，类似命令：
 # 
-# 读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。每下载一个视频，每一条记录新开一行。
+# 读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。每下载一个媒体，每一条记录新开一行。
 # "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。
 # 将下载的文件名写入"名字"与"原文件名"字段值。
 # 下载的链接写入"引用页"。
-# 计算并生成下载的视频文件（仅仅是视频文件）的 Ed2K 链接。安装了 RHash，位置“d:\ProApps\RHash\rhash.exe”。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "文件地址"。生成的 ed2k 链接，写入"主链接"字段值。
+# 计算并生成下载的媒体文件（仅仅是媒体文件）的 Ed2K 链接。安装了 RHash，位置“d:\ProApps\RHash\rhash.exe”。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "文件地址"。生成的 ed2k 链接，写入"主链接"字段值。
 # 通过"主链接"字段值。分别生成"大小"、"散列"字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
 # 所有结束后，再从最开始询问我下载的链接，循环进行。
 # 输入“q”退出。
@@ -40,7 +40,7 @@ DEFAULT_EXCEL_PATH = r"e:\Documents\Creations\Scripts\Attachment\视频.xlsx"
 
 RHASH_PATH = r"d:\ProApps\RHash\rhash.exe"
 
-VIDEO_EXTENSIONS = {".mp4", ".mkv", ".webm", ".flv", ".avi", ".mov"}
+VIDEO_EXTENSIONS = {"mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg", ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4"}
 
 # =========================
 # 代理白名单（命中则直接用代理）
@@ -115,7 +115,7 @@ def run_ytdlp(url, output_dir, use_proxy):
     return result.returncode == 0
 
 def find_latest_video(output_dir):
-    """查找最新下载的视频文件"""
+    """查找最新下载的媒体文件"""
     videos = []
     for name in os.listdir(output_dir):
         path = os.path.join(output_dir, name)
@@ -200,7 +200,7 @@ def main():
 
             video_path = find_latest_video(output_dir)
             if not video_path:
-                print("未找到视频文件。")
+                print("未找到媒体文件。")
                 continue
 
             ed2k = generate_ed2k(video_path)
