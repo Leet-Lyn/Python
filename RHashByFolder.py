@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认地址：d:\\Works\\Downloads\\）与目标文件位置（默认地址：d:\Works\0\Ed2kList.txt）。
+# 在脚本开始前询问我源文件夹位置（默认地址：d:\\Works\\Downloads\\）与目标文件位置（默认地址：e:\Documents\Creations\Scripts\Attachment\Ed2kList.txt）。
 # 遍历源文件夹内所有子文件夹中的文件。计算并生成改文件的Ed2K链接。
 # 我安装了 RHash，位置“d:\\ProApps\\RHash\\rhash.exe”。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "\\TS-464C\Temps\rustdesk-1.4.3-x86_64.exe"。生成如“ed2k://|file|rustdesk-1.4.3-x86_64.exe|23369352|DF952EEB0438E288409858E6C960E261|h=T7BJKLDRQ7VDCDKOO525FO7YHJCZVKDK|/”的ed2k链接。
 # 先清空目标文件位置，然后将生成的 ed2k链接，依次写入目标文件位置，一行一个 ed2k 链接。
@@ -123,7 +123,7 @@ def main():
             return
         
         # 询问目标文件位置
-        default_target = r"d:\Works\0\Ed2kList.txt"
+        default_target = r"e:\Documents\Creations\Scripts\Attachment\Ed2kList.txt"
         target_file = input(f"请输入目标文件位置 [默认: {default_target}]: ").strip()
         if not target_file:
             target_file = default_target

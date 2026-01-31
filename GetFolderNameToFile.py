@@ -1,9 +1,8 @@
-# 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我文件夹位置，默认为“d:\Works\X\”；目标文件位置，默认为“e:\Documents\Creations\Scripts\Attachment\Lists.txt”。
-# 将源文件夹及其子文件夹内所有文件，按照绝对路径排序。依次将绝对路径（包括文件名、扩展名），写入目标列表文件中，如无这列表文件就生成一个。同时写入剪贴板。
+﻿# 请帮我写个中文的 Python 脚本，批注也是中文：
+# 在脚本开始前询问我文件夹位置，默认为“d:\\Works\\X\\”；目标文件位置，默认为“e:\Documents\Creations\Scripts\Attachment\Lists.txt”。
+# 将源文件夹及其子文件夹内所有文件夹，按照相对路径排序。依次将绝对路径（仅仅针对文件夹），写入目标列表文件中，如无这列表文件就生成一个。同时写入剪贴板。
 
 # 导入模块
-# 导入必要的模块
 import os
 import sys
 
@@ -66,73 +65,93 @@ def copy_to_clipboard(text):
         print(f"复制到剪贴板时发生错误：{e}")
         return False
 
-def write_absolute_filepaths_to_file(source_folder, target_file):
+def get_all_subfolders(source_folder):
     """
-    递归遍历源文件夹及其子文件夹，按绝对路径排序将文件绝对路径（包括文件名、扩展名）写入目标文件中。
+    获取指定文件夹下所有子文件夹的绝对路径，并按相对路径排序
     
     :param source_folder: 源文件夹路径
-    :param target_file: 目标文件完整路径
-    :return: 包含所有文件路径的列表，以及是否成功写入文件
+    :return: 排序后的文件夹路径列表
+    """
+    # 收集所有文件夹的绝对路径和相对路径
+    folder_paths = []
+    
+    # 遍历所有子文件夹
+    for root, dirs, files in os.walk(source_folder):
+        # 添加当前目录（如果它不是源文件夹本身）
+        if root != source_folder:
+            folder_paths.append(root)
+        
+        # 添加当前目录下的所有子文件夹
+        for dir_name in dirs:
+            folder_path = os.path.join(root, dir_name)
+            folder_paths.append(folder_path)
+    
+    # 去除重复项（因为某些文件夹可能会被多次添加）
+    folder_paths = list(set(folder_paths))
+    
+    # 按相对路径排序（相对于源文件夹）
+    folder_paths.sort(key=lambda x: os.path.relpath(x, source_folder).lower())
+    
+    return folder_paths
+
+def save_folder_paths(source_folder, output_file):
+    """
+    获取指定文件夹下所有子文件夹的绝对路径，并按相对路径排序后写入文件。
+    
+    :param source_folder: 源文件夹路径
+    :param output_file: 输出文件路径
+    :return: 包含所有文件夹路径的列表，以及是否成功写入文件，以及剪贴板文本
     """
     try:
-        # 确保目标文件的目录存在
-        target_dir = os.path.dirname(target_file)
-        if target_dir:  # 如果目标文件路径包含目录
-            os.makedirs(target_dir, exist_ok=True)
+        # 确保输出文件的目录存在
+        output_dir = os.path.dirname(output_file)
+        if output_dir:  # 如果输出文件路径包含目录
+            os.makedirs(output_dir, exist_ok=True)
         
-        # 收集所有文件的绝对路径
-        absolute_paths = []
+        print("正在扫描文件夹，请稍候...")
         
-        print("正在扫描文件，请稍候...")
+        # 获取所有文件夹路径
+        folder_paths = get_all_subfolders(source_folder)
         
-        # 递归遍历源文件夹及其所有子文件夹
-        for root, dirs, files in os.walk(source_folder):
-            for file in files:
-                # 获取文件的绝对路径
-                absolute_path = os.path.abspath(os.path.join(root, file))
-                absolute_paths.append(absolute_path)
-        
-        # 按绝对路径排序
-        absolute_paths.sort()
-        
-        # 写入文件绝对路径到目标文件
-        with open(target_file, 'w', encoding='utf-8') as f:
-            for absolute_path in absolute_paths:
-                f.write(absolute_path + '\n')
+        # 写入文件夹绝对路径到输出文件
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for folder_path in folder_paths:
+                f.write(folder_path + '\n')
         
         # 构建要复制到剪贴板的文本（所有路径用换行符连接）
-        clipboard_text = '\n'.join(absolute_paths)
+        clipboard_text = '\n'.join(folder_paths)
         
-        return absolute_paths, True, clipboard_text
+        return folder_paths, True, clipboard_text
         
     except Exception as e:
-        print(f"处理过程中发生错误：{e}")
+        print(f"错误：无法保存文件夹路径，错误信息: {e}")
         return [], False, ""
 
 def main():
     """
-    主函数：获取用户输入并执行文件绝对路径导出操作。
+    主函数：获取用户输入并调用保存文件夹路径的函数。
     """
+    print("=" * 60)
+    print("文件夹路径提取工具")
+    print("=" * 60)
+
     # 设置默认路径
     default_source_folder = "d:\\Works\\X\\"
-    default_target_file = "e:\\Documents\\Creations\\Scripts\\Attachment\\Lists.txt"
+    default_output_file = "e:\\Documents\\Creations\\Scripts\\Attachment\\Lists.txt"
     
-    print("=" * 60)
-    print("文件路径列表生成工具")
-    print("=" * 60)
-    
-    # 获取用户输入
+    # 获取源文件夹路径
     source_folder = input(f"请输入源文件夹位置（按回车使用默认值：{default_source_folder}）：").strip()
     if not source_folder:
         source_folder = default_source_folder
-    
-    target_file = input(f"请输入目标文件位置（按回车使用默认值：{default_target_file}）：").strip()
-    if not target_file:
-        target_file = default_target_file
 
-    # 验证源文件夹是否存在
+    # 获取输出文件路径
+    output_file = input(f"请输入目标文件位置（按回车使用默认值：{default_output_file}）：").strip()
+    if not output_file:
+        output_file = default_output_file
+
+    # 验证源文件夹路径
     if not os.path.isdir(source_folder):
-        print(f"错误：源文件夹不存在：{source_folder}")
+        print(f"错误：源文件夹 '{source_folder}' 不存在或不是有效的文件夹。")
         # 询问是否创建源文件夹
         create_folder = input("是否要创建此文件夹？(y/n): ").strip().lower()
         if create_folder == 'y':
@@ -147,31 +166,33 @@ def main():
     
     print(f"正在处理...")
     print(f"源文件夹：{source_folder}")
-    print(f"目标文件：{target_file}")
+    print(f"目标文件：{output_file}")
     
-    # 调用函数写入文件绝对路径
-    file_paths, success, clipboard_text = write_absolute_filepaths_to_file(source_folder, target_file)
+    # 调用保存文件夹路径的函数
+    folder_paths, success, clipboard_text = save_folder_paths(source_folder, output_file)
     
     if success:
-        print(f"✓ 文件绝对路径已成功写入到目标文件：{target_file}")
-        print(f"✓ 共找到 {len(file_paths)} 个文件")
+        print(f"✓ 文件夹绝对路径已成功保存到：{output_file}")
+        print(f"✓ 共找到 {len(folder_paths)} 个文件夹")
         
         # 尝试复制到剪贴板
-        if file_paths:
+        if folder_paths:
             print("\n正在尝试复制到剪贴板...")
             if copy_to_clipboard(clipboard_text):
-                print("✓ 文件路径列表已成功复制到剪贴板")
+                print("✓ 文件夹路径列表已成功复制到剪贴板")
                 print("  您现在可以在任何文本编辑器中粘贴(Ctrl+V)使用")
             else:
-                print("⚠ 文件路径列表已保存到文件，但未复制到剪贴板")
+                print("⚠ 文件夹路径列表已保存到文件，但未复制到剪贴板")
         
-        # 显示前5个文件路径作为示例
-        if file_paths:
-            print(f"\n前5个文件路径示例：")
-            for i, path in enumerate(file_paths[:5], 1):
-                print(f"  {i}. {os.path.basename(path)}")
-            if len(file_paths) > 5:
-                print(f"  ... 以及另外 {len(file_paths) - 5} 个文件")
+        # 显示前5个文件夹路径作为示例
+        if folder_paths:
+            print(f"\n前5个文件夹路径示例：")
+            for i, path in enumerate(folder_paths[:5], 1):
+                # 显示相对路径作为示例，更简洁
+                rel_path = os.path.relpath(path, source_folder)
+                print(f"  {i}. {rel_path}")
+            if len(folder_paths) > 5:
+                print(f"  ... 以及另外 {len(folder_paths) - 5} 个文件夹")
     
     else:
         print("✗ 处理失败，请检查错误信息")

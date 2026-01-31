@@ -4,7 +4,7 @@
 # 引入本地 cookies：“e:\Documents\Creations\Scripts\Attachment\Yt-dlpCookies.txt”
 # 每一个链接都尝试 2 次。第一次尝试不使用代理，如果未成功下载，则再次使用代理下载。。代理地址：“http://127.0.0.1:10808”
 # 再询问我下载后文件存放的位置？（按回车则为默认地址“d:\Works\Downloads\Yt-dlp”；如果输入的是本地链接，则将该地址作为下载后文件存放的位置。）
-# 询问我 excel 文件位置（默认为：“e:\Documents\Creations\Scripts\Attachment\视频.xlsx”）。
+# 询问我 excel 文件位置（默认为：“d:\Works\Attachment\视频.xlsx”）。
 # 进行下载，类似命令：
 # 
 # 读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。每下载一个媒体，每一条记录新开一行。
@@ -36,7 +36,7 @@ PROXY_URL = "http://127.0.0.1:10808"
 
 DEFAULT_URL_LIST = r"e:\Documents\Creations\Scripts\Attachment\Yt-dlpLists.txt"
 DEFAULT_OUTPUT_DIR = r"d:\Works\Downloads\Yt-dlp"
-DEFAULT_EXCEL_PATH = r"e:\Documents\Creations\Scripts\Attachment\视频.xlsx"
+DEFAULT_EXCEL_PATH = r"d:\Works\Attachment\视频.xlsx"
 
 RHASH_PATH = r"d:\ProApps\RHash\rhash.exe"
 

@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件位置（默认“d:\Works\0\files.txt”）。
+# 在脚本开始前询问我源文件位置（默认“e:\Documents\Creations\Scripts\Attachment\Files.txt”）。
 # 将文件按行读取，按字母顺序排序重新排序，再次写入文件。
 
 # 导入模块
@@ -11,7 +11,7 @@ def sort_file_lines():
     功能：读取用户指定的文件，按字母顺序排序行内容后覆盖原文件
     """
     # 步骤1：获取用户输入的文件路径，设置默认值
-    default_path = "d:\\Works\\0\\files.txt"
+    default_path = "e:\\Documents\\Creations\\Scripts\\Attachment\\Files.txt"
     user_input = input(f"请输入要处理的文件路径（默认为'{default_path}'）：").strip('"').strip()
     
     # 如果用户直接按回车，则使用默认路径

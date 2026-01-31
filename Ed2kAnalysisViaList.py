@@ -1,7 +1,7 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件位置，默认为“d:\\Works\\0\\Ed2kList.txt”（按回车表示默认，按“c”读取剪贴板，并写入“d:\\Works\\0\\Ed2kList.txt”）。
+# 在脚本开始前询问我源文件位置，默认为“e:\\Documents\\Creations\\Scripts\\Attachment\\Ed2kList.txt”（按回车表示默认，按“c”读取剪贴板，并写入“e:\\Documents\\Creations\\Scripts\\Attachment\\Ed2kList.txt”）。
 # 该文件（或剪贴板）内包含许多 ed2k 链接，每行一个，顺序读取每个 ed2k 链接。
-# 每个链接都是百分号编码(Percent-encoding)，请将其转回原来链接。在源文件位置下生成新的文件（读取剪贴板则在 “d:\\Works\\0\\”下），文件名为“Ed2kList.new.txt”。
+# 每个链接都是百分号编码(Percent-encoding)，请将其转回原来链接。在源文件位置下生成新的文件（读取剪贴板则在 “e:\\Documents\\Creations\\Scripts\\Attachment\\”下），文件名为“Ed2kList.new.txt”。
 # 根据“Ed2kList.new.txt”文件，在源文件位置下生成新的文件，文件名分别为“Ed2kList.name.txt”、“Ed2kList.suffix.txt”、“Ed2kList.size.txt”、“Ed2kList.hash.txt”。分别存放链接的文件名、后缀名、大小、hash。“Ed2kList.size.txt”文件中存放的文件大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
 # 将大小、hash 写入剪贴板，之间用回车间隔。
 
@@ -25,13 +25,13 @@ def format_size(size_str):
     return f"{size:.4f} TB"
 
 def main():
-    # 询问源文件位置，默认值为"d:\\Works\\0\\Ed2kList.txt"
-    user_input = input("请输入源文件位置（默认为'd:\\Works\\0\\Ed2kList.txt'，按回车使用默认，按'C'或'c'读取剪贴板）：").strip()
+    # 询问源文件位置，默认值为"e:\\Documents\\Creations\\Scripts\\Attachment\\Ed2kList.txt"
+    user_input = input("请输入源文件位置（默认为'e:\\Documents\\Creations\\Scripts\\Attachment\\Ed2kList.txt'，按回车使用默认，按'C'或'c'读取剪贴板）：").strip()
     
     if user_input.lower() == 'c':
         # 用户选择从剪贴板读取
-        source_file_path = "d:\\Works\\0\\Ed2kList.txt"
-        source_folder = "d:\\Works\\0\\"
+        source_file_path = "e:\\Documents\\Creations\\Scripts\\Attachment\\Ed2kList.txt"
+        source_folder = "e:\\Documents\\Creations\\Scripts\\Attachment\\"
         
         # 确保目录存在
         os.makedirs(source_folder, exist_ok=True)
@@ -52,8 +52,8 @@ def main():
             return
     elif not user_input:
         # 用户直接按回车，使用默认路径
-        source_file_path = "d:\\Works\\0\\Ed2kList.txt"
-        source_folder = "d:\\Works\\0\\"
+        source_file_path = "e:\\Documents\\Creations\\Scripts\\Attachment\\Ed2kList.txt"
+        source_folder = "e:\\Documents\\Creations\\Scripts\\Attachment\\"
     else:
         # 用户输入了自定义路径
         source_file_path = user_input
