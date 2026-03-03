@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文，但是变量参数不要是中文：
-# 在脚本开始前询问我 excel 文件位置（默认为：e:\Documents\Creations\Scripts\Attachment\标准.xlsx）、写入文件夹位置（默认为：d:\Works\In\）。
+# 在脚本开始前询问我 excel 文件位置（默认为：e:\Documents\Creations\Scripts\Attachment\标准.xlsx）、写入文件夹位置（默认为：d:\Works\In）。
 # 重命名即生成 nfo 文件：读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。"原文件名"字段值对应着写入文件夹中到每一个文件名字。依次根据每一行到"原文件名"找到写入文件夹中到每一个文件，将其改名为同一行中的“现文件名”。根据“现文件名”生成同名“*.nfo”文件。nfo 文件内写入的内容：UTF-8编码，<?xml version="1.0" encoding="UTF-8" standalone="yes"?><movie>  <title> </title></movie>，将该行中的“名字”字段填入“<title> </title>”内的“ ”。
 # 完成后，反复循环。
 
@@ -207,48 +207,35 @@ def rename_and_generate_nfo(excel_path, write_dir):
 # ==================== 主程序 ====================
 
 def main():
-    """主程序"""
+    """主程序（单次执行，结束后按回车退出）"""
     print("=" * 60)
     print("重命名并生成NFO文件脚本")
     print("功能: 根据Excel文件重命名文件并生成对应的NFO文件")
     print("=" * 60)
     
-    while True:
-        print("\n" + "=" * 60)
-        print("[配置参数]")
-        
-        # 获取用户输入
-        excel_path = get_input_with_default("请输入Excel文件位置", DEFAULT_EXCEL_PATH)
-        write_dir = get_input_with_default("请输入写入文件夹位置", DEFAULT_WRITE_DIR)
-        
-        # 执行主要功能
-        success = rename_and_generate_nfo(excel_path, write_dir)
-        
-        if success:
-            print("操作成功完成!")
-        else:
-            print("操作失败或未处理任何文件!")
-        
-        # 询问是否继续
-        print("\n" + "=" * 60)
-        print("[操作选项]")
-        print("1. 重新配置并执行")
-        print("0. 退出程序")
-        
-        choice = input("\n请选择操作 (1/0): ").strip()
-        
-        if choice == '0':
-            print("\n程序已退出")
-            break
-        elif choice != '1':
-            print("无效选择，将重新配置并执行")
+    print("\n" + "=" * 60)
+    print("[配置参数]")
+    
+    # 获取用户输入
+    excel_path = get_input_with_default("请输入Excel文件位置", DEFAULT_EXCEL_PATH)
+    write_dir = get_input_with_default("请输入写入文件夹位置", DEFAULT_WRITE_DIR)
+    
+    # 执行主要功能
+    success = rename_and_generate_nfo(excel_path, write_dir)
+    
+    if success:
+        print("操作成功完成!")
+    else:
+        print("操作失败或未处理任何文件!")
+    
+    input("\n按回车键退出程序...")
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
         print("\n\n程序被用户中断")
+        input("\n按回车键退出程序...")
     except Exception as e:
         print(f"\n程序运行出错: {e}")
-    finally:
         input("\n按回车键退出程序...")
