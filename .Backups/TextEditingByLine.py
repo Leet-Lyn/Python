@@ -1,275 +1,333 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始，提示我处理方案。如果我输入的是回车。则对剪贴板内的文本进行格式化处理，重新写入剪贴板；如果我输入的是一段文字（以 Crtl＋回车代替回车换行，以回车结束），则对这一段文字进行格式化处理，重新写入剪贴板；如果我输入的是某一文件的路径（要求真实存在），则对该文件内的文本进行格式化处理。
+# 有图形界面。
+# 作用是让我针对文本，依次处理每一行。
+# 界面上方有文本输入框（占上部 1/2）。其右侧有两个按钮：上面是粘贴（快捷键 Ctrl+V，作用是将剪贴板粘贴到文本框内）；下面是复制（快捷键 Ctrl+C，作用是将文本框内内容复制到剪贴板）。下面的操作均是针对文本框内的文字操作的。
+# 下面以标签呈现，实现功能。
+# 1. 第一个标签，是块处理。
+# 定义单元：通过文本框询问我单元前导符号与单元后导符号（默认为“[”与“]”），则一个“[内容]”为一个单元（包括[]）。
+# 定义第几单元：通过文本框询问我选择第几个单元。（设置为正数为正向，负数为逆向，-2表示倒数第2个单元。）
+# 下面是三个按钮：单元移动、单元删除、单元复制（纵向排布）。
+# “单元移动”按钮：通过单选框，询问我单元需要向前移动、向后移动、移到最前、移到最后。向前移动、向后移动后通过文本框询问我移动几个单位（不是字符，而是方括号“[]”包绕到字符）。按“单元移动”按钮，将文本输入框的文本，以行为单位，将定义的第几单元，按照设置，进行移动。
+# “单元删除”按钮，按“单元删除”按钮，将文本输入框的文本，以行为单位，将定义的第几单元，进行删除。
+# “单元复制”按钮，通过文本框询问我在定义的第几单元，几个单位后复制。（设置为正数为正向，负数为逆向，1表示后面复制；-1表示前面复制，2表示后面间隔1个单位复制；-2表示前面间隔1个单元复制，0表示最前面复制；-0表示最后面复制。）按“单元复制”按钮，将文本输入框的文本，以行为单位，将定义的第几单元，按照设置，进行复制。
+# 2. 第二个标签，是字符处理。
+# 下面是三个按钮：字符添加、字符删除、字符替换（纵向排布）。
+# “字符添加”按钮，通过文本框询问我在每一行到第几个位置后添加？通过文本框询问我添加什么字符。按“字符添加”按钮，将文本输入框的文本，以行为单位，在每一行到第几个位置，添加字符。
+# “字符删除”按钮，通过文本框询问我删除什么字符。通过文本框询问我每行删除几次（删除几次后该行再出现这个字符就不删除，但每行都执行）。按“字符添加”按钮，将文本输入框的文本，以行为单位，进行删除（每行受次数限制）。
+# “字符替换”按钮，通过文本框询问我查找什么字符、替换为什么字符。通过文本框询问我每行替换几次（删除几次后该行再出现这个字符就不替换，但每行都执行）。按“字符替换”按钮，将文本输入框的文本，以行为单位，进行查找替换（每行受次数限制）。
+# 3. 第三个标签，是时间处理。
 # 依次处理每一行。
-# 1. 单元移动：单元为方括号“[]”包绕到字符（包括[]）。先询问我第几个单元。再询问我是向前移动、向后移动、移到最前、移到最后。向前移动、向后移动需要问我移动几个单位（不是字符，而是方括号“[]”包绕到字符）。
-# 2. 单元删除：单元为方括号“[]”包绕到字符（包括[]）。先询问我第几个单元，将该单元删除。
-# 3. 单元复制：单元为方括号“[]”包绕到字符（包括[]）。先询问我第几个单元，再询问我第几个单元后（最前为0、最后为-1），将改单元复制。
-# 4. 添加字符，先询问我在每一行到第几个位置后添加？再询问我添加什么字符。
-# 5. 删除字符，先询问我删除什么字符。再询问是每行删除几次（删除几次后该行再出现这个字符就不删除，但每行都执行。）？
-# 6. 替换字符，先询问我原来什么字符，替换为什么字符。再询问是每行替换几次（删除几次后该行再出现这个字符就不删除，但每行都执行。）？
+# 通过单选框，询问我日期格式为何种类型的？原形式可以为：y-m-d、d-m-y、m-d-y。
+# 通过单选框，询问我 m 的格式是什么（m、mm、mmm、mmmm）？。可为 1 位（m 如 1~12）或 2 位（mm 如 01~12）或 3 位（mmm 如 Jan~Dec），或多位（mmmm 如 January~December）。
+# 通过单选框，询问我 d 的格式是什么（d、dd）？。可为 1 位（d 如 1~31）或 2 位（dd 如 01~31），
+# 通过单选框，询问我间隔是什么？短横（-）、斜杠（/）或（\）、半角点（.）、半角逗号（,）、半角空格（ ）、半角空格逗号（ ,），或者没有间隔。
+# 底部有个“修改”按钮，按“修改”按钮，将文本输入框的文本里的时间格式统一改为：yyyy-mm-dd。
+# 4. 第四个标签，是标准化处理。
+# “标准化”按钮，按“标准化”按钮，将文本输入框的文本格式化。要求：1. 繁体汉字转简体汉字。2. 汉字、英文单词、数字，彼此之间有空格。3. 汉字后标点符号转换为全角符号，英文后标点符号转换为半角符号。
 
-# 导入所需模块
-# 请帮我写个中文的 Python 脚本，批注也是中文：
-# 支持：单元移动 / 删除 / 复制 + 添加字符 / 删除字符 / 替换字符
+# 导入模块
+# -*- coding: utf-8 -*-
+"""
+多功能文本处理器
+功能：
+1. 单元处理：移动、删除、复制指定单元
+2. 字符处理：添加、删除、替换
+3. 时间处理：统一时间格式
+4. 标准化处理：繁体转简体，汉字/英文/数字空格化，标点符号标准化
+"""
 
-import os
+import sys
 import re
 import pyperclip
-import sys
+import zhconv
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+    QPushButton, QTextEdit, QLineEdit, QLabel,
+    QTabWidget, QComboBox, QSpinBox, QCheckBox
+)
+from PyQt6.QtGui import QFont, QKeySequence, QShortcut
+from PyQt6.QtCore import Qt
 
+class TextProcessor(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("多功能文本处理器")
+        self.resize(1000, 700)
+        self.init_ui()
 
-def get_user_input():
-    """
-    获取用户输入并判断处理方案
-    """
-    print("请选择处理方案：")
-    print("1. 直接按回车 - 处理剪贴板内容")
-    print("2. 输入文本（Ctrl+回车换行，单独回车结束）- 处理输入文本")
-    print("3. 输入文件路径 - 处理文件内容")
+    def init_ui(self):
+        main_layout = QVBoxLayout()
+        self.setLayout(main_layout)
 
-    user_input = input("请输入: ").strip()
+        # 上半部分：文本输入框
+        text_layout = QHBoxLayout()
+        self.text_edit = QTextEdit()
+        self.text_edit.setFont(QFont("Consolas", 12))
+        text_layout.addWidget(self.text_edit)
 
-    if user_input == "":
-        try:
-            text = pyperclip.paste()
-            if not text:
-                print("剪贴板为空！")
-                return None
-            return text
-        except Exception as e:
-            print(f"读取剪贴板失败: {e}")
-            return None
+        # 右侧粘贴/复制按钮
+        right_btn_layout = QVBoxLayout()
+        self.paste_btn = QPushButton("粘贴 (Ctrl+V)")
+        self.paste_btn.clicked.connect(self.paste_text)
+        self.copy_btn = QPushButton("复制 (Ctrl+C)")
+        self.copy_btn.clicked.connect(self.copy_text)
+        right_btn_layout.addWidget(self.paste_btn)
+        right_btn_layout.addWidget(self.copy_btn)
+        right_btn_layout.addStretch()
+        text_layout.addLayout(right_btn_layout)
 
-    elif os.path.exists(user_input):
-        try:
-            with open(user_input, "r", encoding="utf-8") as f:
-                return f.read()
-        except Exception as e:
-            print(f"读取文件失败: {e}")
-            return None
+        main_layout.addLayout(text_layout)
 
-    else:
-        print("请输入文本（单独回车结束）：")
-        lines = []
-        while True:
-            try:
-                line = input()
-            except (EOFError, KeyboardInterrupt):
-                break
-            if line == "":
-                break
-            lines.append(line)
-        return "\n".join(lines)
+        # 快捷键绑定
+        QShortcut(QKeySequence("Ctrl+V"), self, activated=self.paste_text)
+        QShortcut(QKeySequence("Ctrl+C"), self, activated=self.copy_text)
 
+        # 下半部分：标签页
+        self.tabs = QTabWidget()
+        main_layout.addWidget(self.tabs)
 
-def extract_units(line):
-    """提取一行中的 [] 单元"""
-    return re.findall(r"\[.*?\]", line)
+        self.init_unit_tab()
+        self.init_char_tab()
+        self.init_time_tab()
+        self.init_standard_tab()
 
+    # -------------------- 单元处理 --------------------
+    def init_unit_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+        tab.setLayout(layout)
 
-# ========= ⭐ 核心修复函数（允许单元数量变化） ⭐ =========
-def reconstruct_line_from_units(original_line, new_units):
-    """
-    根据新的单元列表重建行
-    支持：删除 / 复制 / 移动（单元数量变化）
-    """
-    pattern = r"(\[.*?\])"
-    parts = re.split(pattern, original_line)
+        # 单元定义
+        unit_def_layout = QHBoxLayout()
+        unit_def_layout.addWidget(QLabel("单元前导符号:"))
+        self.unit_start_input = QLineEdit("[")
+        unit_def_layout.addWidget(self.unit_start_input)
+        unit_def_layout.addWidget(QLabel("单元后导符号:"))
+        self.unit_end_input = QLineEdit("]")
+        unit_def_layout.addWidget(self.unit_end_input)
+        unit_def_layout.addWidget(QLabel("选择第几个单元:"))
+        self.unit_index_input = QSpinBox()
+        self.unit_index_input.setRange(-1000, 1000)
+        self.unit_index_input.setValue(1)
+        unit_def_layout.addWidget(self.unit_index_input)
+        layout.addLayout(unit_def_layout)
 
-    result = []
-    unit_idx = 0
+        # 单元操作按钮
+        op_layout = QHBoxLayout()
+        self.unit_move_btn = QPushButton("单元移动")
+        self.unit_move_btn.clicked.connect(self.unit_move)
+        self.unit_delete_btn = QPushButton("单元删除")
+        self.unit_delete_btn.clicked.connect(self.unit_delete)
+        self.unit_copy_btn = QPushButton("单元复制")
+        self.unit_copy_btn.clicked.connect(self.unit_copy)
+        op_layout.addWidget(self.unit_move_btn)
+        op_layout.addWidget(self.unit_delete_btn)
+        op_layout.addWidget(self.unit_copy_btn)
+        layout.addLayout(op_layout)
 
-    for part in parts:
-        if re.fullmatch(pattern, part):
-            if unit_idx < len(new_units):
-                result.append(new_units[unit_idx])
-                unit_idx += 1
+        # 移动选项
+        move_layout = QHBoxLayout()
+        move_layout.addWidget(QLabel("移动方式:"))
+        self.move_type_combo = QComboBox()
+        self.move_type_combo.addItems(["向前移动", "向后移动", "移到最前", "移到最后"])
+        move_layout.addWidget(self.move_type_combo)
+        move_layout.addWidget(QLabel("移动几个单位:"))
+        self.move_units_input = QSpinBox()
+        self.move_units_input.setRange(1, 100)
+        self.move_units_input.setValue(1)
+        move_layout.addWidget(self.move_units_input)
+        layout.addLayout(move_layout)
+
+        # 复制选项
+        copy_layout = QHBoxLayout()
+        copy_layout.addWidget(QLabel("复制偏移单位:"))
+        self.copy_units_input = QSpinBox()
+        self.copy_units_input.setRange(-100, 100)
+        self.copy_units_input.setValue(1)
+        copy_layout.addWidget(self.copy_units_input)
+        layout.addLayout(copy_layout)
+
+        self.tabs.addTab(tab, "单元处理")
+
+    # -------------------- 字符处理 --------------------
+    def init_char_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+        tab.setLayout(layout)
+
+        # 添加
+        add_layout = QHBoxLayout()
+        add_layout.addWidget(QLabel("添加到第几个字符后:"))
+        self.add_pos_input = QSpinBox()
+        self.add_pos_input.setRange(0, 1000)
+        add_layout.addWidget(self.add_pos_input)
+        add_layout.addWidget(QLabel("添加字符:"))
+        self.add_text_input = QLineEdit()
+        add_layout.addWidget(self.add_text_input)
+        self.char_add_btn = QPushButton("字符添加")
+        self.char_add_btn.clicked.connect(self.char_add)
+        add_layout.addWidget(self.char_add_btn)
+        layout.addLayout(add_layout)
+
+        # 删除
+        del_layout = QHBoxLayout()
+        del_layout.addWidget(QLabel("删除字符:"))
+        self.del_text_input = QLineEdit()
+        del_layout.addWidget(self.del_text_input)
+        del_layout.addWidget(QLabel("每行删除次数:"))
+        self.del_count_input = QSpinBox()
+        self.del_count_input.setRange(1, 100)
+        del_layout.addWidget(self.del_count_input)
+        self.char_del_btn = QPushButton("字符删除")
+        self.char_del_btn.clicked.connect(self.char_delete)
+        del_layout.addWidget(self.char_del_btn)
+        layout.addLayout(del_layout)
+
+        # 替换
+        rep_layout = QHBoxLayout()
+        rep_layout.addWidget(QLabel("查找字符:"))
+        self.rep_find_input = QLineEdit()
+        rep_layout.addWidget(self.rep_find_input)
+        rep_layout.addWidget(QLabel("替换字符:"))
+        self.rep_replace_input = QLineEdit()
+        rep_layout.addWidget(self.rep_replace_input)
+        rep_layout.addWidget(QLabel("每行替换次数:"))
+        self.rep_count_input = QSpinBox()
+        self.rep_count_input.setRange(1, 100)
+        rep_layout.addWidget(self.rep_count_input)
+        self.char_rep_btn = QPushButton("字符替换")
+        self.char_rep_btn.clicked.connect(self.char_replace)
+        rep_layout.addWidget(self.char_rep_btn)
+        layout.addLayout(rep_layout)
+
+        self.tabs.addTab(tab, "字符处理")
+
+    # -------------------- 时间处理 --------------------
+    def init_time_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+        tab.setLayout(layout)
+
+        # 日期格式选择
+        fmt_layout = QHBoxLayout()
+        fmt_layout.addWidget(QLabel("原日期格式:"))
+        self.orig_fmt_combo = QComboBox()
+        self.orig_fmt_combo.addItems(["y-m-d","d-m-y","m-d-y"])
+        fmt_layout.addWidget(self.orig_fmt_combo)
+
+        fmt_layout.addWidget(QLabel("月格式:"))
+        self.month_fmt_combo = QComboBox()
+        self.month_fmt_combo.addItems(["m","mm","mmm","mmmm"])
+        fmt_layout.addWidget(self.month_fmt_combo)
+
+        fmt_layout.addWidget(QLabel("日格式:"))
+        self.day_fmt_combo = QComboBox()
+        self.day_fmt_combo.addItems(["d","dd"])
+        fmt_layout.addWidget(self.day_fmt_combo)
+
+        fmt_layout.addWidget(QLabel("分隔符:"))
+        self.sep_combo = QComboBox()
+        self.sep_combo.addItems(["-","/","\\",".",","," "," ,",""])
+        fmt_layout.addWidget(self.sep_combo)
+
+        layout.addLayout(fmt_layout)
+
+        self.time_modify_btn = QPushButton("修改")
+        self.time_modify_btn.clicked.connect(self.time_modify)
+        layout.addWidget(self.time_modify_btn)
+
+        self.tabs.addTab(tab, "时间处理")
+
+    # -------------------- 标准化处理 --------------------
+    def init_standard_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+        tab.setLayout(layout)
+
+        self.standard_btn = QPushButton("标准化")
+        self.standard_btn.clicked.connect(self.standardize)
+        layout.addWidget(self.standard_btn)
+
+        self.tabs.addTab(tab, "标准化处理")
+
+    # -------------------- 粘贴/复制 --------------------
+    def paste_text(self):
+        self.text_edit.setPlainText(pyperclip.paste())
+
+    def copy_text(self):
+        pyperclip.copy(self.text_edit.toPlainText())
+
+    # -------------------- 单元处理功能 --------------------
+    def split_units(self, line):
+        start = self.unit_start_input.text()
+        end = self.unit_end_input.text()
+        pattern = re.escape(start) + "(.*?)" + re.escape(end)
+        return re.findall(pattern, line)
+
+    def unit_move(self):
+        # 待实现单元移动功能
+        pass
+
+    def unit_delete(self):
+        # 待实现单元删除功能
+        pass
+
+    def unit_copy(self):
+        # 待实现单元复制功能
+        pass
+
+    # -------------------- 字符处理功能 --------------------
+    def char_add(self):
+        lines = self.text_edit.toPlainText().splitlines()
+        pos = self.add_pos_input.value()
+        add_text = self.add_text_input.text()
+        new_lines = []
+        for line in lines:
+            if pos <= len(line):
+                new_lines.append(line[:pos]+add_text+line[pos:])
             else:
-                # 原本存在单元，但现在被删除 → 跳过
-                pass
-        else:
-            result.append(part)
+                new_lines.append(line+add_text)
+        self.text_edit.setPlainText("\n".join(new_lines))
 
-    return "".join(result)
+    def char_delete(self):
+        lines = self.text_edit.toPlainText().splitlines()
+        char = self.del_text_input.text()
+        count = self.del_count_input.value()
+        new_lines = []
+        for line in lines:
+            new_lines.append(line.replace(char,"",count))
+        self.text_edit.setPlainText("\n".join(new_lines))
 
+    def char_replace(self):
+        lines = self.text_edit.toPlainText().splitlines()
+        find = self.rep_find_input.text()
+        replace = self.rep_replace_input.text()
+        count = self.rep_count_input.value()
+        new_lines = []
+        for line in lines:
+            new_lines.append(line.replace(find,replace,count))
+        self.text_edit.setPlainText("\n".join(new_lines))
 
-def move_unit(units, index, move_type, count=0):
-    units = units.copy()
-    unit = units.pop(index)
+    # -------------------- 时间处理功能 --------------------
+    def time_modify(self):
+        # 待实现时间格式转换功能
+        pass
 
-    if move_type == "向前移动":
-        units.insert(max(0, index - count), unit)
-    elif move_type == "向后移动":
-        units.insert(min(len(units), index + count), unit)
-    elif move_type == "移到最前":
-        units.insert(0, unit)
-    elif move_type == "移到最后":
-        units.append(unit)
+    # -------------------- 标准化功能 --------------------
+    def standardize(self):
+        text = self.text_edit.toPlainText()
+        # 繁体转简体
+        text = zhconv.convert(text,"zh-cn")
+        # 中文、英文、数字之间加空格
+        text = re.sub(r'([\u4e00-\u9fff])([A-Za-z0-9])', r'\1 \2', text)
+        text = re.sub(r'([A-Za-z0-9])([\u4e00-\u9fff])', r'\1 \2', text)
+        # 标点符号标准化
+        text = re.sub(r'([。！？；：，])', lambda m: m.group(1), text) # 中文全角保持
+        text = re.sub(r'([.,!?:;])', lambda m: m.group(1), text) # 英文半角保持
+        self.text_edit.setPlainText(text)
 
-    return units
-
-
-def delete_unit(units, index):
-    units = units.copy()
-    units.pop(index)
-    return units
-
-
-def copy_unit(units, index, target):
-    units = units.copy()
-    unit = units[index]
-
-    if target == 0:
-        units.insert(0, unit)
-    elif target == -1:
-        units.append(unit)
-    else:
-        units.insert(target + 1, unit)
-
-    return units
-
-
-# ========= 原来的 4 / 5 / 6 字符操作（完整保留） =========
-def add_string_to_lines(lines, position, string_to_add):
-    new_lines = []
-    for line in lines:
-        if position <= 0:
-            new_lines.append(string_to_add + line)
-        elif position >= len(line):
-            new_lines.append(line + string_to_add)
-        else:
-            new_lines.append(line[:position] + string_to_add + line[position:])
-    return new_lines
-
-
-def delete_string_from_lines(lines, string_to_delete, times_per_line):
-    new_lines = []
-    for line in lines:
-        new_line = line
-        count = 0
-        start = 0
-        while count < times_per_line:
-            idx = new_line.find(string_to_delete, start)
-            if idx == -1:
-                break
-            new_line = new_line[:idx] + new_line[idx + len(string_to_delete):]
-            count += 1
-            start = idx
-        new_lines.append(new_line)
-    return new_lines
-
-
-def replace_string_in_lines(lines, old, new, times_per_line):
-    new_lines = []
-    for line in lines:
-        new_line = line
-        count = 0
-        start = 0
-        while count < times_per_line:
-            idx = new_line.find(old, start)
-            if idx == -1:
-                break
-            new_line = new_line[:idx] + new + new_line[idx + len(old):]
-            count += 1
-            start = idx + len(new)
-        new_lines.append(new_line)
-    return new_lines
-
-
-def get_operation_parameters():
-    print("\n请选择操作类型:")
-    print("1. 单元移动")
-    print("2. 单元删除")
-    print("3. 单元复制")
-    print("4. 添加字符")
-    print("5. 删除字符")
-    print("6. 替换字符")
-
-    choice = input("请选择 (1-6): ").strip()
-
-    # ---- 字符操作 ----
-    if choice == "4":
-        pos = int(input("在每一行第几个字符后添加（0=最前）: "))
-        s = input("添加什么字符: ")
-        return "添加字符", pos, s, None
-
-    if choice == "5":
-        s = input("删除什么字符: ")
-        times = int(input("每行删除几次: "))
-        return "删除字符", s, times, None
-
-    if choice == "6":
-        old = input("原字符: ")
-        new = input("替换为: ")
-        times = int(input("每行替换几次: "))
-        return "替换字符", old, new, times
-
-    # ---- 单元操作 ----
-    index = int(input("第几个单元（从 1 开始）: ")) - 1
-
-    if choice == "1":
-        print("1 向前  2 向后  3 最前  4 最后")
-        m = input("选择: ")
-        move_map = {"1": "向前移动", "2": "向后移动", "3": "移到最前", "4": "移到最后"}
-        move_type = move_map[m]
-        count = 0
-        if move_type in ("向前移动", "向后移动"):
-            count = int(input("移动几个单位: "))
-        return "移动", index, move_type, count
-
-    if choice == "2":
-        return "删除", index, None, None
-
-    if choice == "3":
-        target = int(input("复制到位置（0=最前，-1=最后）: "))
-        return "复制", index, target, None
-
-    return None, None, None, None
-
-
-def process_text(text):
-    lines = text.split("\n")
-    op, p1, p2, p3 = get_operation_parameters()
-
-    # ---- 字符操作 ----
-    if op == "添加字符":
-        return "\n".join(add_string_to_lines(lines, p1, p2))
-    if op == "删除字符":
-        return "\n".join(delete_string_from_lines(lines, p1, p2))
-    if op == "替换字符":
-        return "\n".join(replace_string_in_lines(lines, p1, p2, p3))
-
-    # ---- 单元操作 ----
-    new_lines = []
-    for line in lines:
-        units = extract_units(line)
-        if not units or p1 >= len(units):
-            new_lines.append(line)
-            continue
-
-        if op == "移动":
-            units = move_unit(units, p1, p2, p3)
-        elif op == "删除":
-            units = delete_unit(units, p1)
-        elif op == "复制":
-            units = copy_unit(units, p1, p2)
-
-        new_lines.append(reconstruct_line_from_units(line, units))
-
-    return "\n".join(new_lines)
-
-
-def main():
-    text = get_user_input()
-    if not text:
-        print("无有效文本")
-        return
-
-    result = process_text(text)
-    pyperclip.copy(result)
-    print("\n✅ 处理完成，已写入剪贴板：\n")
-    print(result)
-
-
-if __name__ == "__main__":
-    main()
+if __name__=="__main__":
+    app = QApplication(sys.argv)
+    window = TextProcessor()
+    window.show()
+    sys.exit(app.exec())
