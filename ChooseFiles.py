@@ -1,10 +1,10 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
 # 有图形界面。
 # 作用是让我选择某一文件（图片或视频，或其他格式），选择到底是保留还是删除。
-# 界面最上方有一个路径选择器，可以输入或可以选择某一路径（源文件夹）。
+# 界面最上方有一个路径选择器，可以输入或可以选择某一路径（源文件夹，默认：d:\Works\Downloads\）。
 # 下面，界面左侧会列出该路径下所有文件（上下移动或鼠标可以选择某一文件），在它的下面是筛选器（可以筛选出想要的文件）。
 # 右侧是针对选择的文件的预览（占用最大）。预览下有三个按钮，左侧是“剔除”，按后将该文件移动到剔除文件夹，中间是“待定”，按后再左侧文件下移选择一个文件，右侧是“保留”，按后将该文件移动到保留文件夹。右侧是“撤销”，用于撤销刚才的行动。
-# 再之下是有两个路径选择器，可以输入或可以选择路径（分别是剔除文件夹与保留文件夹）。右侧是 个单选框，不移动到剔除文件夹，直接移动到回收站。
+# 再之下是有两个路径选择器，可以输入或可以选择路径（分别是剔除文件夹，默认：d:\Works\Deletes\。与保留文件夹，默认：d:\Works\Retains\）。右侧是 个单选框，不移动到剔除文件夹，直接移动到回收站。
 # 并设置快捷键：剔除（Ctrl+D）；保留（Ctrl+Q）；待定（Ctrl+Space）；撤销（Ctrl+Z）。
 
 # 导入模块
@@ -185,6 +185,19 @@ class FileSorterApp(QMainWindow):
         bottom_layout.addWidget(self.recycle_check)
 
         main_layout.addLayout(bottom_layout)
+
+        # ---------- 设置默认路径 ----------
+        default_src = r"d:\Works\Downloads"
+        default_discard = r"d:\Works\Deletes"
+        default_keep = r"d:\Works\Retains"
+
+        self.src_path_edit.setText(default_src)
+        self.discard_path_edit.setText(default_discard)
+        self.keep_path_edit.setText(default_keep)
+
+        # 可选：提示用户源文件夹是否存在（不自动创建，由用户决定）
+        if not os.path.exists(default_src):
+            QMessageBox.information(self, "提示", f"默认源文件夹不存在：{default_src}\n请选择有效的源文件夹。")
 
         # 数据
         self.src_folder = ""
