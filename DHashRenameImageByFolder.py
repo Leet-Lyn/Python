@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认为 d:\\Works\\Downloads\\）与目标文件夹位置（默认为 d:\\Works\\In\\）。
+# 在脚本开始前询问我源文件夹位置（默认为 d:\\Works\\Downloads\\）与目标文件夹位置（默认为 d:\\Works\\Ins\\）。
 # 1. 如果源文件格式为 bmp、jpg、jpeg、png 或静态 webp 格式、或静态 avif 格式、静态 heic 格式、静态 heif 格式，则计算“imagehash.dhash”，用这个哈希值重命名，前后用中括号包绕，扩展名不变，如[hash].jpg。
 # 2. 如果图片文件格式为 gif 或动态 webp 格式、或动态 avif 格式、动态 heic 格式、动态 heif 格式或 mp4 格式，则取第一帧与最后一帧，分别计算“imagehash.dhash”，用这两个哈希值重命名，前后用中括号包绕，中间是多少帧数，扩展名不变，如[hash1][24][hash1].gif。
 # 生成的文件放到目标文件夹中以“源文件夹的子文件夹”中，保持文件夹及子文件结构。如果生成新文件成功，则删除原始文件。
@@ -383,7 +383,7 @@ def main():
     
     # 设置默认路径
     default_src = "d:\\Works\\Downloads\\"
-    default_dst = "d:\\Works\\In\\"
+    default_dst = "d:\\Works\\Ins\\"
     
     # 获取用户输入
     src_input = input(f"请输入源文件夹路径（默认：{default_src}）：").strip()

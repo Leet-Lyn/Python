@@ -1,6 +1,6 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
 # 在脚本开始前询问我源文件位置。
-# 在脚本开始前询问我源 torrent 文件所在文件夹（默认：“d:\Works\Attachment\”）。
+# 在脚本开始前询问我源 torrent 文件所在文件夹（默认：“d:\Works\Attachments\”）。
 # 依次读取该文件夹下所有 torrent 文件，生成同名的两个 txt 文件（分别后缀名为“.txt”与“.percent-encoding.txt”）
 # 读取每个 torrent 文件，提取每一个 ed2k hash 生成 ed2k link。要求 Hash 大写，分别写入这两个 txt 文件。
 # 写入后缀名为“.txt”的 txt 文件，里的链接要求不转为 Percent-encoding。写入后缀名为“.percent-encoding.txt”的 txt 文件，里的链接要求转为 Percent-encoding。二者链接数量相同。
@@ -76,11 +76,11 @@ def extract_ed2k_from_torrent(torrent_path: str):
 def main():
     # 只询问一次路径
     base_path = input(
-        "请输入 torrent 文件所在文件夹，默认 d:\\Works\\Attachment\\）："
+        "请输入 torrent 文件所在文件夹，默认 d:\\Works\\Attachments\\）："
     ).strip()
 
     if not base_path:
-        base_path = r"d:\Works\Attachment"
+        base_path = r"d:\Works\Attachments"
 
     base_path = base_path.rstrip("\\/")
 

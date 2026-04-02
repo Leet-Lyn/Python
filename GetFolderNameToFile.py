@@ -1,5 +1,5 @@
 ﻿# 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我文件夹位置，默认为“d:\\Works\\X\\”；目标文件位置，默认为“e:\Documents\Creations\Scripts\Attachment\Lists.txt”。
+# 在脚本开始前询问我文件夹位置，默认为“d:\\Works\\Downloads\\”；目标文件位置，默认为“e:\Documents\Creations\Scripts\Attachments\Python\Lists.txt”。
 # 将源文件夹及其子文件夹内所有文件夹，按照相对路径排序。依次将绝对路径（仅仅针对文件夹），写入目标列表文件中，如无这列表文件就生成一个。同时写入剪贴板。
 
 # 导入模块
@@ -136,8 +136,8 @@ def main():
     print("=" * 60)
 
     # 设置默认路径
-    default_source_folder = "d:\\Works\\X\\"
-    default_output_file = "e:\\Documents\\Creations\\Scripts\\Attachment\\Lists.txt"
+    default_source_folder = "d:\\Works\\Downloads\\"
+    default_output_file = "e:\\Documents\\Creations\\Scripts\\Attachments\\Python\\Lists.txt"
     
     # 获取源文件夹路径
     source_folder = input(f"请输入源文件夹位置（按回车使用默认值：{default_source_folder}）：").strip()

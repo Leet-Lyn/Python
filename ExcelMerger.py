@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文，但是变量参数不要是中文：
-# 在脚本开始前询问我 excel 文件夹位置（默认为：d:\Works\Attachment\）。
+# 在脚本开始前询问我 excel 文件夹位置（默认为：d:\Works\Attachments\）。
 # 读取文件夹内所有 excel 文件，读取每一个 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。
 # 将所有 excel 文件，根据每一个 excel 文件的表头（字段名）进行合并（数据跟着表头（字段名）走），生成一个新的 excel 文件，文件名为父文件夹名。
 
@@ -10,7 +10,7 @@ import pandas as pd
 
 def get_folder_path():
 
-    default_path = r"d:\Works\Attachment"   # 原始字符串，防止 \W 被误解释
+    default_path = r"d:\Works\Attachments"   # 原始字符串，防止 \W 被误解释
     folder = input(f"请输入 Excel 文件夹路径（默认为 {default_path}）：").strip()
     if not folder:
         folder = default_path

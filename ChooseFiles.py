@@ -3,9 +3,9 @@
 # 作用是让我选择某一文件（图片或视频，或其他格式），选择到底是保留还是删除。
 # 界面最上方有一个路径选择器，可以输入或可以选择某一路径（源文件夹，默认：d:\Works\Downloads\）。
 # 下面，界面左侧会列出该路径下所有文件（上下移动或鼠标可以选择某一文件），在它的下面是筛选器（可以筛选出想要的文件）。
-# 右侧是针对选择的文件的预览（占用最大）。预览下有三个按钮，左侧是“剔除”，按后将该文件移动到剔除文件夹，中间是“待定”，按后再左侧文件下移选择一个文件，右侧是“保留”，按后将该文件移动到保留文件夹。右侧是“撤销”，用于撤销刚才的行动。
+# 右侧是针对选择的文件的预览（占用最大）。预览下有三个按钮，左侧是“剔除”，按后将该文件移动到剔除文件夹，中间是“待定”，按后再左侧文件下移选择一个文件，右侧是“保留”，按后将该文件移动到保留文件夹。右侧是“撤销”，用于撤销刚才的行动。在撤销按键的左侧添加按键“随机”，按下否在左侧列表中随机选择一个文件浏览。
 # 再之下是有两个路径选择器，可以输入或可以选择路径（分别是剔除文件夹，默认：d:\Works\Deletes\。与保留文件夹，默认：d:\Works\Retains\）。右侧是 个单选框，不移动到剔除文件夹，直接移动到回收站。
-# 并设置快捷键：剔除（Ctrl+D）；保留（Ctrl+Q）；待定（Ctrl+Space）；撤销（Ctrl+Z）。
+# 并设置快捷键：剔除（D）；保留（Q）；待定（H）；随机（Space）；撤销（U）。
 
 # 导入模块
 import os
@@ -13,6 +13,7 @@ import sys
 import gc
 import shutil
 import time
+import random
 from pathlib import Path
 
 from PySide6.QtWidgets import (
@@ -143,17 +144,19 @@ class FileSorterApp(QMainWindow):
         middle_splitter.setSizes([300, 600])
         main_layout.addWidget(middle_splitter)
 
-        # 操作按钮区域
+        # 操作按钮区域（剔除、待定、保留、随机、撤销）
         btn_layout = QHBoxLayout()
 
-        self.discard_btn = QPushButton("剔除 (Ctrl+D)")
-        self.hold_btn = QPushButton("待定 (Ctrl+Space)")
-        self.keep_btn = QPushButton("保留 (Ctrl+Q)")
-        self.undo_btn = QPushButton("撤销 (Ctrl+Z)")
+        self.discard_btn = QPushButton("剔除 (D)")
+        self.hold_btn = QPushButton("待定 (H)")
+        self.keep_btn = QPushButton("保留 (Q)")
+        self.random_btn = QPushButton("随机 (Space)")
+        self.undo_btn = QPushButton("撤销 (U)")
 
         btn_layout.addWidget(self.discard_btn)
         btn_layout.addWidget(self.hold_btn)
         btn_layout.addWidget(self.keep_btn)
+        btn_layout.addWidget(self.random_btn)
         btn_layout.addStretch()
         btn_layout.addWidget(self.undo_btn)
 
@@ -210,13 +213,16 @@ class FileSorterApp(QMainWindow):
         self.discard_btn.clicked.connect(self.discard_current)
         self.hold_btn.clicked.connect(self.hold_current)
         self.keep_btn.clicked.connect(self.keep_current)
+        self.random_btn.clicked.connect(self.random_select)
         self.undo_btn.clicked.connect(self.undo)
 
-        QShortcut(QKeySequence("Ctrl+D"), self, self.discard_current)
-        QShortcut(QKeySequence("Ctrl+Q"), self, self.keep_current)
-        QShortcut(QKeySequence("Ctrl+Space"), self, self.hold_current)
-        QShortcut(QKeySequence("Ctrl+Z"), self, self.undo)
-        # 新增：终止预览快捷键 Ctrl+S
+        # 快捷键：单键（无修饰符）
+        QShortcut(QKeySequence("D"), self, self.discard_current)
+        QShortcut(QKeySequence("Q"), self, self.keep_current)
+        QShortcut(QKeySequence("H"), self, self.hold_current)       # 待定改为 H
+        QShortcut(QKeySequence("Space"), self, self.random_select)  # 随机使用空格
+        QShortcut(QKeySequence("U"), self, self.undo)
+        # 终止预览快捷键 Ctrl+S 保留
         QShortcut(QKeySequence("Ctrl+S"), self, self.stop_preview)
 
         self.update_buttons_state()
@@ -399,6 +405,7 @@ class FileSorterApp(QMainWindow):
         self.discard_btn.setEnabled(has_file)
         self.keep_btn.setEnabled(has_file)
         self.hold_btn.setEnabled(has_file)
+        self.random_btn.setEnabled(len(self.filtered_files) > 0)
 
     # ---------- 移动操作 ----------
     def move_file_with_retry(self, src, dst, max_retries=2, delay=0.2):
@@ -502,9 +509,19 @@ class FileSorterApp(QMainWindow):
         self.remove_current_from_list()
 
     def hold_current(self):
+        """待定：不做移动，直接跳到下一个文件"""
         if not self.current_file:
             return
         self.select_next_file()
+
+    def random_select(self):
+        """随机选择一个文件进行预览"""
+        if not self.filtered_files:
+            QMessageBox.information(self, "提示", "没有可用的文件。")
+            return
+        # 随机选择索引
+        random_index = random.randint(0, len(self.filtered_files) - 1)
+        self.file_list.setCurrentRow(random_index)
 
     def undo(self):
         if not self.history:
@@ -547,16 +564,34 @@ class FileSorterApp(QMainWindow):
         self.file_list.setCurrentRow(new_index)
 
     def remove_current_from_list(self):
+        """从内部数据中移除当前文件，并选中下一个文件（而不是回到第一个）"""
         if not self.current_file:
             return
+
+        # 获取当前选中行索引
+        current_index = self.file_list.currentRow()
+
+        # 从数据中删除
         if self.current_file in self.all_files:
             self.all_files.remove(self.current_file)
         if self.current_file in self.filtered_files:
             self.filtered_files.remove(self.current_file)
 
+        # 重建列表
         self.refresh_file_list()
 
+        # 确定新的选中索引：如果删除的不是最后一项，则原下一个还在原位置；如果删除的是最后一项，则选上一个
+        if self.filtered_files:
+            if current_index < len(self.filtered_files):
+                # 原下一个还在当前位置
+                new_index = current_index
+            else:
+                # 原最后一项被删，新索引为前一个
+                new_index = len(self.filtered_files) - 1
+            self.file_list.setCurrentRow(new_index)
+
     def select_next_file(self):
+        """选中列表中的下一个文件"""
         current_row = self.file_list.currentRow()
         if current_row < self.file_list.count() - 1:
             self.file_list.setCurrentRow(current_row + 1)

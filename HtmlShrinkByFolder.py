@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认为“d:\Works\In\”）与目标文件夹位置（默认为“d:\Works\Out\”）。
+# 在脚本开始前询问我源文件夹位置（默认为“d:\Works\Ins\”）与目标文件夹位置（默认为“d:\Works\Outs\”）。
 # 依次读取源文件夹下的所有 htm、html、mhtml、mht 文件，进行下列操作，放在目标文件夹位置，保持文件夹及子文件结构。转换成功后删除源文件。
 # 1. 通过 mhtml-to-html，将 mhtml、mht 文件转成 单文件 html。mhtml-to-html.exe（d:\ProApps\MhtmlToHtml\mhtml-to-html.exe），命令：mhtml-to-html file.mht --output output_file.html。htm、html 则不处理。
 # 2. 通过 Leanify 进行压缩。Leanify.exe（d:\ProApps\Leanify\Leanify.exe）。命令：leanify [options] paths。
@@ -312,8 +312,8 @@ def main():
         return
     
     # 获取源和目标文件夹（默认值按题目要求）
-    default_src = r"d:\Works\In"
-    default_dst = r"d:\Works\Out"
+    default_src = r"d:\Works\Ins"
+    default_dst = r"d:\Works\Outs"
     src_folder = get_valid_directory(f"请输入源文件夹路径（默认为 {default_src}）: ", default_src)
     dst_folder = get_valid_directory(f"请输入目标文件夹路径（默认为 {default_dst}）: ", default_dst)
     

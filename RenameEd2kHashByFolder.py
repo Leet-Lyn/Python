@@ -1,5 +1,5 @@
 ﻿# 请帮我写个中文的 Python 脚本，批注也是中文：
-# 请输入源文件夹位置（默认“d:\\Works\\Targets\\”）
+# 请输入源文件夹位置（默认“d:\\Works\\Downloads\\”）
 # 我安装了 RHash，位置“d:\\ProApps\\RHash\\rhash.exe”。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "\\TS-464C\Temps\rustdesk-1.4.3-x86_64.exe"。生成如“ed2k://|file|rustdesk-1.4.3-x86_64.exe|23369352|DF952EEB0438E288409858E6C960E261|h=T7BJKLDRQ7VDCDKOO525FO7YHJCZVKDK|/”的ed2k链接。
 # 用文件名大小与 ed2k hash 对文件夹及其子文件夹下所有文件重命名。如 rustdesk-1.4.3-x86_64.exe 重命名为 [23369352][DF952EEB0438E288409858E6C960E261].exe（用方括号包绕，扩展名不变）。
 
@@ -97,7 +97,7 @@ def main():
     主程序入口，处理用户输入并执行文件重命名操作。
     """
     # 获取源文件夹路径
-    source_folder = input("请输入源文件夹位置（按回车键使用默认地址：d:\\Works\\Targets\\）：").strip() or "d:\\Works\\Targets\\"
+    source_folder = input("请输入源文件夹位置（按回车键使用默认地址：d:\\Works\\Downloads\\）：").strip() or "d:\\Works\\Downloads\\"
 
     # 调用重命名函数
     rename_files_in_folder_recursively(source_folder)

@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认“d:\\Works\\In\\”）与目标文件夹位置（默认“d:\\Works\\Out\\”）。
+# 在脚本开始前询问我源文件夹位置（默认“d:\\Works\\Ins\\”）与目标文件夹位置（默认“d:\\Works\\Outs\\”）。
 # 遍历源文件夹及其子文件夹位置中所有音频文件（mp3、m4a、wma、ogg、aac、ac3、rm、wav）。
 # 使用 ffmpeg 压缩。
 # 音频参数为：aac 格式，遍历每个音轨，质量模式。q=0.36。
@@ -24,8 +24,8 @@ def ask_folder_location(prompt, default_folder):
     return folder_path
 
 # 获取源文件夹和目标文件夹位置
-source_folder = ask_folder_location("请输入源文件夹位置", "d:\\Works\\In\\")
-target_folder = ask_folder_location("请输入目标文件夹位置", "d:\\Works\\Out\\")
+source_folder = ask_folder_location("请输入源文件夹位置", "d:\\Works\\Ins\\")
+target_folder = ask_folder_location("请输入目标文件夹位置", "d:\\Works\\Outs\\")
 
 # 支持的音频格式
 audio_formats = (".mp3", ".m4a", ".wma", ".ogg", ".aac", ".ac3", ".rm", ".wav")

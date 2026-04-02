@@ -1,6 +1,6 @@
 # 将脚本改写下：请帮我写个中文的 Python 脚本，批注也是中文：
 # 询问我 Sitemap 链接，分析内容，将网页的地址导出（<loc>网页地址</loc>）。
-# 写入剪贴板，每行一个链接。同时写入“e:\Documents\Creations\Scripts\Attachment\Sitemap.txt”。
+# 写入剪贴板，每行一个链接。同时写入“e:\Documents\Creations\Scripts\Attachments\Python\Sitemap.txt”。
 
 # 导入模块
 import os
@@ -18,7 +18,7 @@ except ImportError:
     sys.exit(1)
 
 # 目标文件路径（注意使用原始字符串避免转义问题）
-OUTPUT_FILE = r"e:\Documents\Creations\Scripts\Attachment\Sitemap.txt"
+OUTPUT_FILE = r"e:\Documents\Creations\Scripts\Attachments\Python\Sitemap.txt"
 
 # 代理设置（根据您的要求硬编码）
 PROXY = "http://127.0.0.1:10808"

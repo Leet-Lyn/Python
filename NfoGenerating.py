@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认为“D:\Works\Out”）。
+# 在脚本开始前询问我源文件夹位置（默认为“D:\Works\Outs”）。
 # 遍历源文件夹位置中所有的文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4、mp3、ogg、aac、ac3、wma、pdf、epub、zip、rar、7z）。在该文件夹下生成同名 nfo 文件。
 # 询问我 nfo 文件内写入的内容。UTF-8编码，默认为：<?xml version="1.0" encoding="UTF-8" standalone="yes"?><movie><title> </title></movie>
 # 再次枚举源文件夹位置中所有 nfo 文件，读取其文件名（不包括后缀名），将文件名中的”][“，替换为半角空格，再将”]“与”[“删除。，替换“<title> </title>”内的“ ”。
@@ -164,7 +164,7 @@ def 主程序():
     print("=" * 50)
     
     # 默认源文件夹路径
-    默认源文件夹路径 = r"D:\Works\Out"
+    默认源文件夹路径 = r"D:\Works\Outs"
     
     # 获取源文件夹路径
     提示信息 = f"请输入源文件夹路径（直接回车使用默认路径 '{默认源文件夹路径}'）: "

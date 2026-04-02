@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件位置（d:\\Works\\0\\files.txt）与目标文件夹位置（d:\\Works\\Targets\\）。
+# 在脚本开始前询问我源文件位置（e:\\Documents\\Creations\\Scripts\\Attachments\\Python\\Files.txt）与目标文件夹位置（d:\\Works\\Downloads\\）。
 # 读取源文件每行，在目标文件夹位置生成空文件，文件名与读取的一致。
 
 # 导入模块
@@ -91,8 +91,8 @@ def main():
     print("=== 批量创建空文件工具 ===")
     
     # 设置默认路径
-    default_source = "d:\\Works\\0\\files.txt"
-    default_target = "d:\\Works\\Targets\\"
+    default_source = "e:\\Documents\\Creations\\Scripts\\Attachments\\Python\\Files.txt"
+    default_target = "d:\\Works\\Downloads\\"
     
     # 询问源文件路径
     source_file_path = get_valid_file_path(

@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 询问为源文件夹路径（默认“d:\\Works\\Targets\\”）与列表路径（默认“d:\\Works\\0\\Lists.txt”）。
+# 询问为源文件夹路径（默认“d:\\Works\\Downloads\\”）与列表路径（默认“e:\\Documents\\Creations\\Scripts\\Attachments\\Python\\Lists.txt”）。
 # 根据 List 文件里的文件名（包含扩展名），重命名文件夹里的路径（按名称排序）。
 
 # 导入模块
@@ -81,8 +81,8 @@ def main():
     主函数：处理用户输入并执行文件重命名。
     """
     # 设置默认路径
-    default_source_folder = "d:\\Works\\Targets\\"
-    default_list_file = "d:\\Works\\0\\Lists.txt"
+    default_source_folder = "d:\\Works\\Downloads\\"
+    default_list_file = "e:\\Documents\\Creations\\Scripts\\Attachments\\Python\\Lists.txt"
     
     # 获取用户输入，使用默认值如果用户直接按回车
     source_folder = input(f"请输入源文件夹的路径（按回车使用默认值：{default_source_folder}）: ").strip()

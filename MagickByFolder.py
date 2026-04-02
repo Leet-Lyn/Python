@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认为 d:\\Works\\In\\）与目标文件夹位置（默认为 d:\\Works\\Out\\）。
+# 在脚本开始前询问我源文件夹位置（默认为 d:\\Works\\Ins\\）与目标文件夹位置（默认为 d:\\Works\\Outs\\）。
 # 1. 如果源文件格式为 bmp、jpg、jpeg、png 或静态 webp 格式、或静态 avif 格式、静态 heic 格式、静态 heif 格式，则使用 magick 压缩成 avif 格式，使用类似命令：magick convert input.jpg -quality 50 output.avif。
 # 2. 如果图片文件格式为 gif 或动态 webp 格式、或动态 avif 格式、动态 heic 格式、动态 heif 格式或 mp4 格式，则使用似命令：ffmpeg -i input.gif -map 0:v -c:v libsvtav1 -crf 32 -preset 5 output.mp4，生成mp4，再生成 avif 动图（ffmpeg -i input-av1.mp4 -c:v copy animation.avif）。
 # 生成的文件放到目标文件夹中以“源文件夹的子文件夹”中，保持文件夹及子文件结构。如果生成新文件成功，则删除原始文件。
@@ -160,8 +160,8 @@ def handle_convert(src_path, dst_dir, format_type):
 
 def main():
     """改进输入处理"""
-    default_in = os.path.normpath(r'd:\Works\In')
-    default_out = os.path.normpath(r'd:\Works\Out')
+    default_in = os.path.normpath(r'd:\Works\Ins')
+    default_out = os.path.normpath(r'd:\Works\Outs')
     
     src_folder = input(f"请输入源文件夹路径（默认：{default_in}）: ") or default_in
     dst_folder = input(f"请输入目标文件夹路径（默认：{default_out}）: ") or default_out

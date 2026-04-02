@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认“d:\\Works\\In\\”）与目标文件夹位置（默认“d:\\Works\\Out\\”）。
+# 在脚本开始前询问我源文件夹位置（默认“d:\\Works\\Ins\\”）与目标文件夹位置（默认“d:\\Works\\Outs\\”）。
 # 遍历源文件夹及其子文件夹位置中所有视频文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4、ogv、ogm、ogg）。
 # 使用 ffmpeg 压缩，类似命令：ffmpeg -i input.mkv -c:v mpeg4 -vtag xvid -qscale:v 1  -c:a copy output_xvid.avi。
 # 视频参数为：xvid 格式，qscale:v 1。音频、字幕保持不变。
@@ -24,8 +24,8 @@ def ask_folder_location(prompt, default_folder):
     return folder_path
 
 # 获取源文件夹和目标文件夹位置
-source_folder = ask_folder_location("请输入源文件夹位置（默认“d:\\Works\\In\\”）", "d:\\Works\\In\\")
-target_folder = ask_folder_location("请输入目标文件夹位置（默认“d:\\Works\\Out\\”）", "d:\\Works\\Out\\")
+source_folder = ask_folder_location("请输入源文件夹位置（默认“d:\\Works\\Ins\\”）", "d:\\Works\\Ins\\")
+target_folder = ask_folder_location("请输入目标文件夹位置（默认“d:\\Works\\Outs\\”）", "d:\\Works\\Outs\\")
 
 # 支持的文件格式
 video_formats = (".mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg", ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4", ".ogv", ".ogm", ".ogg")

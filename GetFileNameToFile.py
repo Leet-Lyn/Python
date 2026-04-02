@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我文件夹位置，默认为“d:\Works\X\”；目标文件位置，默认为“e:\Documents\Creations\Scripts\Attachment\Lists.txt”。
+# 在脚本开始前询问我文件夹位置，默认为“d:\Works\Downloads\”；目标文件位置，默认为“e:\Documents\Creations\Scripts\Attachments\Python\Lists.txt”。
 # 将源文件夹及其子文件夹内所有文件，按照绝对路径排序。依次将绝对路径（包括文件名、扩展名），写入目标列表文件中，如无这列表文件就生成一个。同时写入剪贴板。
 
 # 导入模块
@@ -114,8 +114,8 @@ def main():
     主函数：获取用户输入并执行文件绝对路径导出操作。
     """
     # 设置默认路径
-    default_source_folder = "d:\\Works\\X\\"
-    default_target_file = "e:\\Documents\\Creations\\Scripts\\Attachment\\Lists.txt"
+    default_source_folder = "d:\\Works\\Downloads\\"
+    default_target_file = "e:\\Documents\\Creations\\Scripts\\Attachments\\Python\\Lists.txt"
     
     print("=" * 60)
     print("文件路径列表生成工具")

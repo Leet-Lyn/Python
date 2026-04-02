@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认“d:\\Works\\In\\”）。
+# 在脚本开始前询问我源文件夹位置（默认“d:\\Works\\Ins\\”）。
 # 遍历源文件夹及其子文件夹位置中所有音频文件（mp3、m4a、wma、ogg、aac、ac3、rm、wav）。
 # 读取每一个音频文件所有元数据写入以该文件夹名为文件名的 xls 文件中。
 # 标签有：标题（TITLE）、歌手（ARTIST）、作曲（COMPOSER）、作词（LYRICIST）、专辑（ALBUM）、专辑作者（ALBUMARTIST）、年份（YEAR）、流派（GENRE）、碟号（DISCNUMBER）、音轨（TRACK）。
@@ -29,7 +29,7 @@ import traceback
 
 def get_user_input():
     """获取用户输入的源文件夹路径"""
-    default_path = "d:\\Works\\In\\"
+    default_path = "d:\\Works\\Ins\\"
     user_input = input(f"请输入源文件夹位置（直接回车使用默认值 '{default_path}'）：").strip()
     
     if user_input == "":
