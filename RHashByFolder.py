@@ -5,9 +5,6 @@
 # 先清空目标文件位置，然后将生成的 ed2k链接，依次写入目标文件位置，一行一个 ed2k 链接。
 
 # 导入模块
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import subprocess
 import os
 import sys

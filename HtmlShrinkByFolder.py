@@ -6,20 +6,6 @@
 # 3. Html 文件内嵌的图片是（base64 格式）。我希望将它批量转成 html（zip）格式（要求生成的 html 还能被浏览器打开）。然后压缩图片。如果图片格式为 bmp、jpg、jpeg、png 或静态 webp 格式、或静态 avif 格式、静态 heic 格式、静态 heif 格式，则使用 magick 压缩成 avif 格式，使用类似命令：magick convert input.jpg -quality 50 output.avif。如果图片文件格式为 gif 或动态 webp 格式或 mp4 格式，则使用 magick 压缩成 gif 格式，类似命令：magick convert input.webp -fuzz 5% -quality 75 -layers Optimize output.gif。
 
 # 导入模块
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-HTML/MHTML 综合处理工具（用户指定顺序版）
-功能顺序：
-1. 将 .mhtml/.mht 转换为 .html（使用 mhtml-to-html）
-2. 对 HTML 文件执行 Leanify 压缩（整体优化）
-3. 将 HTML 内嵌的 Base64 图片转换为 AVIF/AVIFS 格式
-处理后保持文件夹结构，成功则删除源文件。
-
-注意：步骤 3 会修改 HTML 内容，因此步骤 2 的压缩效果可能被部分覆盖。
-"""
-
 import os
 import re
 import base64

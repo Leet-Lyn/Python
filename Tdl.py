@@ -1,6 +1,6 @@
 ﻿# 请帮我写个中文的 Python 脚本，批注也是中文：
 # 用 Tdl（"p:\\ProApps\\Tdl\\tdl.exe"）下载链接。
-# 首先询问我想链接是什么（如果输入的是网络链接，则下载该链接；按回车则为默认地址“e:\\Documents\\Creations\\Scripts\\Python\\TdlLists.txt”；如果输入的是本地链接，则下载该地址列表文件中的链接（每行一条）。）
+# 首先询问我想链接是什么（如果输入的是网络链接，则下载该链接；按回车则为默认地址“e:\\Documents\\Creations\\Scripts\\Attachments\\Python\\TdlLists.txt”；如果输入的是本地链接，则下载该地址列表文件中的链接（每行一条）。）
 # 再询问我是否需要代理？（按回车或输入“y”则为代理，默认地址“socks5://127.0.0.1:10808”。）
 # 再询问我下载后文件存放的位置？（按回车则为默认地址“q:\\Downloads\\Tdl\\”；如果输入的是本地链接，则将该地址作为下载后文件存放的位置。）
 
@@ -10,7 +10,7 @@ import os
 import sys
 
 TDL_EXE = r"p:\ProApps\Tdl\tdl.exe"
-DEFAULT_LIST_FILE = r"e:\Documents\Creations\Scripts\Python\TdlLists.txt"
+DEFAULT_LIST_FILE = r"e:\Documents\Creations\Scripts\Attachments\Python\TdlLists.txt"
 DEFAULT_PROXY = "socks5://127.0.0.1:10808"
 DEFAULT_SAVE_PATH = r"q:\Downloads\Tdl"
 
