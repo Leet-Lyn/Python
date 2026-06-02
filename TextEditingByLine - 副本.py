@@ -26,12 +26,6 @@
 # “标准化”按钮，按“标准化”按钮，将文本输入框的文本格式化。要求：1. 繁体汉字转简体汉字。2. 汉字、英文单词、数字，彼此之间有空格。3. 汉字后标点符号转换为全角符号，英文后标点符号转换为半角符号。
 
 # 导入模块
-# 请帮我写个中文的 Python 脚本，批注也是中文：
-# 有图形界面。
-# 作用是让我针对文本，依次处理每一行。
-# 界面上方有文本输入框（占上部 1/2）。其右侧有两个按钮：上面是粘贴（快捷键 Ctrl+V，作用是将剪贴板粘贴到文本框内）；下面是复制（快捷键 Ctrl+C，作用是将文本框内内容复制到剪贴板）。下面是撤销（快捷键 Ctrl+Z，作用是撤销上一次的操作）。下面的操作均是针对文本框内的文字操作的。
-# ...（原始注释已省略，功能完全实现）
-
 import sys
 import re
 from datetime import datetime
@@ -66,7 +60,6 @@ def format_text(text):
     text = re.sub(r'([a-zA-Z0-9])([，。！？])', lambda m: f"{m.group(1)}{to_halfwidth(m.group(2))}", text)
     return text
 
-# ----- 修复后的日期格式化函数 -----
 def format_date(text, date_format_type, month_format, day_format, separator):
     month_map = {
         'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
@@ -75,12 +68,6 @@ def format_date(text, date_format_type, month_format, day_format, separator):
         'may': 5, 'june': 6, 'july': 7, 'august': 8,
         'september': 9, 'october': 10, 'november': 11, 'december': 12
     }
-
-    # 没有间隔时禁止英文月份（无法分割）
-    if separator == '没有间隔' and month_format in ('mmm', 'mmmm'):
-        raise ValueError("“没有间隔”模式下不支持月份为英文缩写或全称，请选择数字月份格式。")
-
-    # 构建分隔符正则
     if separator == '没有间隔':
         sep_regex = ''
     elif separator == '半角空格':
@@ -89,47 +76,9 @@ def format_date(text, date_format_type, month_format, day_format, separator):
         sep_regex = r'\s*,\s*'
     else:
         sep_regex = re.escape(separator)
-
-    # 根据是否无间隔决定是否使用固定宽度
-    if separator == '没有间隔':
-        # 月份正则：根据格式生成精确位数
-        if month_format == 'm':
-            month_re = r'\d'          # 1位
-        elif month_format == 'mm':
-            month_re = r'\d{2}'       # 2位
-        else:  # mmm/mmmm 已经禁止，但保留可能
-            month_re = r'[a-zA-Z]+'
-        # 日期正则
-        if day_format == 'd':
-            day_re = r'\d'            # 1位
-        else:  # 'dd'
-            day_re = r'\d{2}'         # 2位
-        # 年份正则仍为任意长度数字
-        year_re = r'\d+'
-    else:
-        # 有间隔时，数字部分仍可使用 \d+（由分隔符帮助切分）
-        year_re = r'\d+'
-        day_re = r'\d+'
-        if month_format in ('m', 'mm'):
-            month_re = r'\d+'
-        else:
-            month_re = r'[a-zA-Z]+'
-
-    # 按照原日期格式的先后顺序拼接
-    if date_format_type == 'y-m-d':
-        part1, part2, part3 = year_re, month_re, day_re
-        # 对应 group1=年, group2=月, group3=日
-    elif date_format_type == 'd-m-y':
-        part1, part2, part3 = day_re, month_re, year_re
-        # group1=日, group2=月, group3=年
-    else:  # m-d-y
-        part1, part2, part3 = month_re, day_re, year_re
-        # group1=月, group2=日, group3=年
-
-    pattern = f'({part1}){sep_regex}({part2}){sep_regex}({part3})'
+    pattern = f'(\\d+){sep_regex}(\\d+|\\w+){sep_regex}(\\d+)'
 
     def replace_date(match):
-        # 根据格式类型从捕获组中取出年、月、日
         if date_format_type == 'y-m-d':
             year, month, day = match.group(1), match.group(2), match.group(3)
         elif date_format_type == 'd-m-y':
@@ -137,23 +86,18 @@ def format_date(text, date_format_type, month_format, day_format, separator):
         else:  # m-d-y
             month, day, year = match.group(1), match.group(2), match.group(3)
 
-        try:
-            # 处理月份
-            if month.isdigit():
-                month_num = int(month)
+        if month.isdigit():
+            month_num = int(month)
+        else:
+            month_num = month_map.get(month.lower(), 1)
+
+        if len(year) == 2:
+            if int(year) >= 50:
+                year = '19' + year
             else:
-                month_num = month_map.get(month.lower(), 1)
+                year = '20' + year
 
-            day_num = int(day)
-            year_num = int(year)
-            # 两位年份扩展为四位
-            if year_num < 100:
-                year_num += 1900 if year_num >= 50 else 2000
-
-            return f'{year_num}-{month_num:02d}-{day_num:02d}'
-        except (ValueError, KeyError):
-            # 转换失败保留原文
-            return match.group(0)
+        return f'{year}-{str(month_num).zfill(2)}-{str(int(day)).zfill(2)}'
 
     return re.sub(pattern, replace_date, text, flags=re.IGNORECASE)
 
@@ -309,7 +253,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
         main_layout = QVBoxLayout(central)
 
-        # ---------- 顶部：文本框 + 右侧按钮 ----------
+        # ---------- 顶部：文本框（占1/3） + 右侧按钮（粘贴、复制、撤销）----------
         top_layout = QHBoxLayout()
         self.text_edit = QTextEdit()
         self.text_edit.setPlaceholderText("在此输入或粘贴文本...")
@@ -327,10 +271,11 @@ class MainWindow(QMainWindow):
         btn_layout.addWidget(self.paste_btn)
         btn_layout.addWidget(self.copy_btn)
         btn_layout.addWidget(self.undo_btn)
-        btn_layout.addStretch()
+        btn_layout.addStretch()  # 使按钮靠上，不留空白
 
         top_layout.addLayout(btn_layout)
-        main_layout.addLayout(top_layout, stretch=1)
+
+        main_layout.addLayout(top_layout, stretch=1)  # 顶部占1份
 
         # 快捷键
         self.paste_shortcut = QShortcut(QKeySequence.StandardKey.Paste, self.text_edit, self.paste_text)
@@ -339,8 +284,9 @@ class MainWindow(QMainWindow):
 
         # ---------- 选项卡 ----------
         self.tab_widget = QTabWidget()
-        main_layout.addWidget(self.tab_widget, stretch=2)
+        main_layout.addWidget(self.tab_widget, stretch=2)  # 选项卡占2份
 
+        # 创建四个标签页
         self.block_tab = BlockTab(self)
         self.char_tab = CharTab(self)
         self.date_tab = DateTab(self)
@@ -383,6 +329,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "错误", f"无法复制：{e}")
 
+    # ---------- 辅助函数 ----------
     def get_lines(self):
         content = self.text_edit.toPlainText()
         return content.split('\n'), content
@@ -394,11 +341,13 @@ class MainWindow(QMainWindow):
 # ================== 各标签页 ==================
 
 class BlockTab(QWidget):
+    """块处理标签页"""
     def __init__(self, main_window):
         super().__init__()
         self.main = main_window
         layout = QVBoxLayout(self)
 
+        # 定界符
         delim_group = QGroupBox("单元定界符")
         delim_layout = QHBoxLayout(delim_group)
         delim_layout.addWidget(QLabel("前导符号："))
@@ -412,6 +361,7 @@ class BlockTab(QWidget):
         delim_layout.addStretch()
         layout.addWidget(delim_group)
 
+        # 单元索引
         idx_group = QGroupBox("选择单元")
         idx_layout = QHBoxLayout(idx_group)
         idx_layout.addWidget(QLabel("第几个单元（正数正向，负数逆向，如-2倒数第2个）："))
@@ -421,6 +371,7 @@ class BlockTab(QWidget):
         idx_layout.addStretch()
         layout.addWidget(idx_group)
 
+        # 三个主操作按钮
         btn_layout = QHBoxLayout()
         self.move_btn = QPushButton("单元移动")
         self.delete_btn = QPushButton("单元删除")
@@ -430,8 +381,10 @@ class BlockTab(QWidget):
         btn_layout.addWidget(self.copy_btn)
         layout.addLayout(btn_layout)
 
+        # 移动选项
         move_group = QGroupBox("移动选项")
         move_grid = QGridLayout(move_group)
+
         self.move_type = QButtonGroup(self)
         rb_forward = QRadioButton("向前移动")
         rb_backward = QRadioButton("向后移动")
@@ -442,16 +395,20 @@ class BlockTab(QWidget):
         self.move_type.addButton(rb_first, 3)
         self.move_type.addButton(rb_last, 4)
         rb_forward.setChecked(True)
+
         move_grid.addWidget(rb_forward, 0, 0)
         move_grid.addWidget(rb_backward, 0, 1)
         move_grid.addWidget(rb_first, 0, 2)
         move_grid.addWidget(rb_last, 0, 3)
+
         move_grid.addWidget(QLabel("移动几个单位（仅向前/向后有效）："), 1, 0)
         self.move_count = QLineEdit("1")
         self.move_count.setMaximumWidth(80)
         move_grid.addWidget(self.move_count, 1, 1)
+
         layout.addWidget(move_group)
 
+        # 复制选项
         copy_group = QGroupBox("复制选项")
         copy_layout = QHBoxLayout(copy_group)
         copy_layout.addWidget(QLabel("复制偏移（正数后移，负数前移，0最前，-0最后）："))
@@ -463,10 +420,12 @@ class BlockTab(QWidget):
 
         layout.addStretch()
 
+        # 连接信号
         self.move_btn.clicked.connect(self.block_move)
         self.delete_btn.clicked.connect(self.block_delete)
         self.copy_btn.clicked.connect(self.block_copy)
 
+    # 操作执行（略，与之前相同，但需调用 self.main.push_history()）
     def block_move(self):
         self.main.push_history()
         lines, _ = self.main.get_lines()
@@ -477,6 +436,7 @@ class BlockTab(QWidget):
         except ValueError:
             QMessageBox.critical(self, "错误", "单元索引必须是整数")
             return
+
         move_type_map = {1: '向前移动', 2: '向后移动', 3: '移到最前', 4: '移到最后'}
         move_type = move_type_map.get(self.move_type.checkedId())
         count = 0
@@ -486,6 +446,7 @@ class BlockTab(QWidget):
             except ValueError:
                 QMessageBox.critical(self, "错误", "移动次数必须是整数")
                 return
+
         new_lines = []
         for line in lines:
             units = extract_units(line, left, right)
@@ -517,6 +478,7 @@ class BlockTab(QWidget):
         except ValueError:
             QMessageBox.critical(self, "错误", "单元索引必须是整数")
             return
+
         new_lines = []
         for line in lines:
             units = extract_units(line, left, right)
@@ -557,6 +519,7 @@ class BlockTab(QWidget):
             except ValueError:
                 QMessageBox.critical(self, "错误", "复制偏移必须是整数或-0")
                 return
+
         new_lines = []
         for line in lines:
             units = extract_units(line, left, right)
@@ -580,11 +543,13 @@ class BlockTab(QWidget):
 
 
 class CharTab(QWidget):
+    """字符处理标签页"""
     def __init__(self, main_window):
         super().__init__()
         self.main = main_window
         layout = QVBoxLayout(self)
 
+        # 添加
         add_group = QGroupBox("字符添加")
         add_layout = QGridLayout(add_group)
         add_layout.addWidget(QLabel("位置（0最前，正数后，负数倒数前）："), 0, 0)
@@ -597,6 +562,7 @@ class CharTab(QWidget):
         add_layout.addWidget(self.add_btn, 2, 0, 1, 2)
         layout.addWidget(add_group)
 
+        # 删除
         del_group = QGroupBox("字符删除")
         del_layout = QGridLayout(del_group)
         del_layout.addWidget(QLabel("删除字符："), 0, 0)
@@ -609,6 +575,7 @@ class CharTab(QWidget):
         del_layout.addWidget(self.del_btn, 2, 0, 1, 2)
         layout.addWidget(del_group)
 
+        # 替换
         rep_group = QGroupBox("字符替换")
         rep_layout = QGridLayout(rep_group)
         rep_layout.addWidget(QLabel("查找字符："), 0, 0)
@@ -678,6 +645,7 @@ class CharTab(QWidget):
 
 
 class DateTab(QWidget):
+    """时间处理标签页"""
     def __init__(self, main_window):
         super().__init__()
         self.main = main_window
@@ -775,6 +743,7 @@ class DateTab(QWidget):
 
 
 class StdTab(QWidget):
+    """标准化标签页"""
     def __init__(self, main_window):
         super().__init__()
         self.main = main_window
