@@ -4,7 +4,7 @@
 # 询问我 excel 文件位置（默认为：d:\Works\Attachments\标准.xlsx）、源文件夹位置（默认为：d:\Works\Downloads\），写入文件夹位置（默认为：d:\Works\Ins\），上传文件夹位置（默认为：d:\Works\Uploads\）, 删除文件夹位置（默认为：d:\Works\Deletes\）。SizeMD4 数据库文件位置（默认为：e:\Documents\Creations\Scripts\Attachments\Databases\SizeMD4.txt）。
 # 读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。
 # 遍历源文件夹内所有文件及子文件夹中的文件，顺序完成。
-# 首先计算并生成该文件的 ed2k 链接。我安装了 RHash，位置"d:\\ProApps\\RHash\\rhash.exe"。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "\\TS-464C\Temps\rustdesk-1.4.3-x86_64.exe"。生成如"ed2k://|file|rustdesk-1.4.3-x86_64.exe|23369352|DF952EEB0438E288409858E6C960E261|h=T7BJKLDRQ7VDCDKOO525FO7YHJCZVKDK|/"的ed2k链接。生成的 ed2k 链接转换成 SizeMD4 值（格式：文件大小|MD4哈希，不需要文件名及其他）。比对 SizeMD4 数据库文件（SizeMD4 数据库文件，每一行为一个文件的 SizeMD4 值（文件大小|MD4哈希））。
+# 首先计算并生成该文件的 ed2k 链接。我安装了 RHash，位置“d:\\ProApps\\RHash\\rhash.exe”。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "\\TS-464C\Temps\rustdesk-1.4.3-x86_64.exe"。生成如“ed2k://|file|rustdesk-1.4.3-x86_64.exe|23369352|DF952EEB0438E288409858E6C960E261|h=T7BJKLDRQ7VDCDKOO525FO7YHJCZVKDK|/”的ed2k链接。生成的 ed2k 链接转换成 SizeMD4 值（格式：文件大小|MD4哈希，不需要文件名及其他）。比对 SizeMD4 数据库文件（SizeMD4 数据库文件，每一行为一个文件的 SizeMD4 值（文件大小|MD4哈希））。
 # 如果当前文件的 SizeMD4 值在原来 SizeMD4 数据库文件里存在，则将该文件移动到删除文件夹，选择下一个文件。
 # 如果当前文件的 SizeMD4 值不在原来 SizeMD4 数据库文件里存在，则添加该文件的 SizeMD4 值到 SizeMD4 数据库文件末尾（另起一行），保存SizeMD4 数据库文件。进行后续操作：
 # 将该文件（SizeMD4 值不在原来 SizeMD4 数据库文件里存在的）的信息写入 excel 文件, 每一条记录新开一行。1. "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。2. 将源文件夹内文件名写入"名字"与"原文件名"字段值。3. 将该文件移动到写入文件夹下的子文件夹（子文件夹名字为源文件夹名，保持原来文件夹结构），并移动到"z:\"中，如果无法完成写入"z:\"中，则重命名原文件（从后删除1个字符（不包括扩展名）），再次尝试将原文件向目标文件夹移动。反复循环，直至能将原文件向目标文件夹移动。如果有重命名过文件，将修改过的文件名写入"矫正文件名"字段值中。写入"z:\"后，系统会自动生成一个对应文件（自动加密的）。读取"d:\Xyz\"新生成的文件名，将其文件名（无扩展名）写入"加密文件名"字段值。将"d:\Xyz\"新生成的文件移动到上传文件夹下的子文件夹（子文件夹名字为源文件夹名，保持原来文件夹结构，在"d:\Xyz\"中不保留）。5. 将原来询问我的"引用页"、"属于"、"主链接"的值写入"引用页"、"属于"、"主链接"字段值。6. 将该文件的 ed2k 链接，写入"标准链接"字段值。7. 通过"标准链接"字段值，分别生成"大小"、"散列"字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。选择下一个文件。
@@ -42,6 +42,8 @@ import time
 import urllib.parse
 import subprocess
 import pandas as pd
+import sys
+import io
 from datetime import datetime
 
 # -------------------- 剪贴板支持 --------------------
@@ -85,7 +87,7 @@ DEFAULT_SIZE_MD4_DB = r"e:\Documents\Creations\Scripts\Attachments\Databases\Siz
 DEFAULT_TEMP_DIR = r"e:\Documents\Creations\Scripts\Attachments\Python"
 DEFAULT_RHASH_PATH = r"d:\ProApps\RHash\rhash.exe"
 DEFAULT_XYZ_DIR = r"d:\Xyz"
-Z_DRIVE_PATH = "z:\\"
+Z_DRIVE_PATH = r"z:"
 
 # 隐藏文件过滤规则
 HIDDEN_FILE_PATTERNS = [
@@ -123,49 +125,14 @@ def format_file_size(size_bytes):
         return f"{size:.4f} {units[unit_index]}"
 
 def is_hidden_file(file_name):
-    """检查是否为隐藏文件，支持 * 通配符前缀匹配"""
+    """检查是否为隐藏文件"""
     file_name_lower = file_name.lower()
     for pattern in HIDDEN_FILE_PATTERNS:
-        if pattern.endswith('*'):
-            # 通配符模式：匹配以该前缀开头的文件（如 "._*" 匹配所有 "._" 开头文件）
-            prefix = pattern[:-1].lower()
-            if file_name_lower.startswith(prefix):
-                return True
-        elif file_name_lower == pattern.lower():
+        if pattern.startswith('.') and file_name.startswith('.'):
+            return True
+        if file_name_lower == pattern.lower():
             return True
     return False
-
-def validate_directory_independence(source_dir, write_dir, upload_dir, delete_dir):
-    """
-    校验源文件夹与写入/上传/删除文件夹相互独立，防止数据丢失。
-    返回 (is_valid, error_message)
-    """
-    # 规范化路径，消除大小写和尾部斜杠差异
-    src = os.path.normpath(os.path.realpath(source_dir)).rstrip(os.sep).lower()
-    dst_entries = [
-        ("写入文件夹", write_dir, os.path.normpath(os.path.realpath(write_dir)).rstrip(os.sep).lower()),
-        ("上传文件夹", upload_dir, os.path.normpath(os.path.realpath(upload_dir)).rstrip(os.sep).lower()),
-        ("删除文件夹", delete_dir, os.path.normpath(os.path.realpath(delete_dir)).rstrip(os.sep).lower()),
-    ]
-
-    for label, original_dst, dst_normalized in dst_entries:
-        # 完全相同
-        if src == dst_normalized:
-            return False, f"源文件夹与{label}路径相同（均为 {original_dst}），会导致文件丢失，请重新指定。"
-        # 源是目标的父目录 → os.walk 会扫描到已移动的文件
-        try:
-            if os.path.commonpath([src, dst_normalized]) == src:
-                return False, f"源文件夹（{source_dir}）包含{label}（{original_dst}），会导致文件被重复处理或丢失，请重新指定。"
-        except ValueError:
-            pass  # 不同盘符，commonpath 可能抛异常，视为安全
-        # 目标是源的父目录 → 移动文件会改变源目录内容
-        try:
-            if os.path.commonpath([src, dst_normalized]) == dst_normalized:
-                return False, f"{label}（{original_dst}）包含源文件夹（{source_dir}），会导致文件丢失，请重新指定。"
-        except ValueError:
-            pass
-
-    return True, ""
 
 def get_all_files(source_dir):
     """获取源目录下所有非隐藏文件"""
@@ -256,31 +223,25 @@ def add_to_size_md4_database(db_path, size_md4):
 
 def safe_move_file(src_path, dst_path, max_retries=10, retry_delay=1.0):
     """
-    安全移动文件（带重试机制），解决文件被占用问题。
-    目标文件已存在时自动添加 _N 后缀避免覆盖。
+    安全移动文件（带重试机制），解决文件被占用问题
     """
-    # 目标文件已存在时生成唯一名称，避免覆盖
-    if os.path.exists(dst_path):
-        original_dst = dst_path
-        stem, ext = os.path.splitext(original_dst)
-        counter = 1
-        while os.path.exists(dst_path):
-            dst_path = f"{stem}_{counter}{ext}"
-            counter += 1
-        print(f"目标已存在，重命名为: {os.path.basename(dst_path)}")
-
     for attempt in range(max_retries):
         try:
             dst_dir = os.path.dirname(dst_path)
             ensure_directory_exists(dst_dir)
+            if os.path.exists(dst_path):
+                try:
+                    os.remove(dst_path)
+                except:
+                    pass
             shutil.move(src_path, dst_path)
             print(f"移动成功: {os.path.basename(src_path)} -> {dst_path}")
             return True
-        except (PermissionError, OSError) as e:
+        except PermissionError as e:
             print(f"文件被占用，重试 {attempt+1}/{max_retries}: {e}")
             time.sleep(retry_delay)
         except Exception as e:
-            print(f"移动文件失败（不可恢复）: {e}")
+            print(f"移动文件失败（非权限）: {e}")
             return False
     print(f"移动失败，已达最大重试次数: {src_path}")
     return False
@@ -303,14 +264,9 @@ def wait_for_file_ready(file_path, timeout_seconds=30, check_interval=0.5):
 
 def copy_to_z_drive_with_retry(source_file, z_drive_path=Z_DRIVE_PATH):
     """
-    复制文件到Z盘，如果失败则重试（缩短文件名）。
-    仅对路径/文件名相关错误缩短重试，磁盘满或权限错误直接放弃。
+    复制文件到Z盘，如果失败则重试（缩短文件名）
     返回：(成功复制到的路径, 修改后的文件名或None)
     """
-    # 文件名问题相关的 Windows 错误码
-    FILENAME_ERROR_CODES = {3, 123, 161, 206}  # PATH_NOT_FOUND, INVALID_NAME, BAD_PATHNAME, FILENAME_EXCED_RANGE
-    FATAL_ERROR_CODES = {5, 112}  # ACCESS_DENIED, DISK_FULL
-
     original_file_name = os.path.basename(source_file)
     file_stem, file_extension = os.path.splitext(original_file_name)
     current_stem = file_stem
@@ -325,23 +281,13 @@ def copy_to_z_drive_with_retry(source_file, z_drive_path=Z_DRIVE_PATH):
                 return target_path, target_file_name
             else:
                 return target_path, None
-        except OSError as e:
-            winerr = getattr(e, 'winerror', None)
-            if winerr in FATAL_ERROR_CODES:
-                print(f"复制到Z盘失败 ({e})，无法通过缩短文件名解决，跳过。")
-                return None, None
-            # 文件名/路径相关或其他未知 OSError，尝试缩短文件名
+        except Exception as e:
             attempt_count += 1
-            if winerr is not None and winerr not in FILENAME_ERROR_CODES:
-                print(f"复制到Z盘出错 (winerror={winerr})，尝试缩短文件名: {e}")
             if len(current_stem) > 1:
                 current_stem = current_stem[:-1]
             else:
-                print(f"无法继续缩短文件名: {original_file_name}，错误: {e}")
+                print(f"无法继续缩短文件名: {original_file_name}")
                 return None, None
-        except Exception as e:
-            print(f"复制到Z盘失败: {e}")
-            return None, None
     print(f"达到最大尝试次数 {max_attempts}: {original_file_name}")
     return None, None
 
@@ -349,21 +295,16 @@ def wait_for_encrypted_file(xyz_dir=DEFAULT_XYZ_DIR, timeout_seconds=60):
     """等待加密文件生成并返回其完整路径"""
     start_time = time.time()
     check_interval = 1.0
-    warned_missing_dir = False
     while time.time() - start_time < timeout_seconds:
         if os.path.exists(xyz_dir):
-            files = [f for f in os.listdir(xyz_dir)
-                     if os.path.isfile(os.path.join(xyz_dir, f))
+            files = [f for f in os.listdir(xyz_dir) 
+                     if os.path.isfile(os.path.join(xyz_dir, f)) 
                      and not is_hidden_file(f)]
             if files:
                 full_paths = [os.path.join(xyz_dir, f) for f in files]
                 newest_file = max(full_paths, key=os.path.getmtime)
                 if wait_for_file_ready(newest_file, timeout_seconds=5):
                     return newest_file
-        else:
-            if not warned_missing_dir:
-                print(f"警告: XYZ目录不存在 ({xyz_dir})，等待中...")
-                warned_missing_dir = True
         time.sleep(check_interval)
     print(f"等待加密文件超时 ({timeout_seconds}秒)")
     return None
@@ -430,7 +371,6 @@ def process_folder_to_excel_and_db(excel_path, source_dir, write_dir, upload_dir
     source_folder_name = os.path.basename(source_dir.rstrip('\\/'))
     new_records = []
     duplicated_files = []  # 记录被移动的重复文件路径
-    pending_size_md4_list = []  # 本次新增的 SizeMD4，Excel 保存成功后再写入 DB
 
     for file_path in all_files:
         try:
@@ -447,19 +387,19 @@ def process_folder_to_excel_and_db(excel_path, source_dir, write_dir, upload_dir
             # 检查是否已存在于数据库
             if size_md4 in size_md4_set:
                 print(f"SizeMD4 已存在，将文件移动到删除文件夹: {os.path.basename(file_path)}")
-                moved_to_delete = move_file_with_structure(file_path, delete_dir, source_dir)
-                if moved_to_delete:
-                    duplicated_files.append(moved_to_delete)
-                    print(f"已移动到: {moved_to_delete}")
+                target_delete_path = os.path.join(delete_dir, os.path.basename(file_path))
+                if safe_move_file(file_path, target_delete_path):
+                    duplicated_files.append(target_delete_path)
+                    print(f"已移动到: {target_delete_path}")
                 else:
                     print(f"移动失败，保留在源位置: {file_path}")
                     duplicated_files.append(file_path)  # 移动失败也记录原路径
                 continue  # 跳过后续处理
 
-            # SizeMD4 不存在，先记入内存集合（Excel 保存成功后再写入 DB）
-            pending_size_md4_list.append(size_md4)
+            # SizeMD4 不存在，先加入数据库
+            add_to_size_md4_database(size_md4_db_path, size_md4)
             size_md4_set.add(size_md4)
-            print(f"SizeMD4 已记入待写入列表: {size_md4}")
+            print(f"SizeMD4 已加入数据库: {size_md4}")
 
             # 开始处理新记录
             new_record = {}
@@ -530,22 +470,15 @@ def process_folder_to_excel_and_db(excel_path, source_dir, write_dir, upload_dir
             print(f"处理文件失败 {file_path}: {e}")
             continue
 
-    # 保存 Excel，成功后再将 SizeMD4 写入数据库，保证数据一致
+    # 保存 Excel
     if new_records:
         try:
             new_df = pd.DataFrame(new_records)
             df = pd.concat([df, new_df], ignore_index=True)
             df.to_excel(excel_path, index=False, engine='openpyxl')
             print(f"\n成功添加 {len(new_records)} 条记录到Excel")
-
-            # Excel 保存成功后，批量写入 SizeMD4 数据库
-            if pending_size_md4_list:
-                for smd4 in pending_size_md4_list:
-                    add_to_size_md4_database(size_md4_db_path, smd4)
-                print(f"已将 {len(pending_size_md4_list)} 条 SizeMD4 写入数据库")
         except Exception as e:
             print(f"保存Excel文件失败: {e}")
-            print(f"注意: {len(pending_size_md4_list)} 条 SizeMD4 未写入数据库（需重新处理）")
             return False, duplicated_files
     else:
         print("没有新记录需要写入Excel")
@@ -702,7 +635,7 @@ def main():
         if choice == '1':
             # 获取各项路径
             excel_path = get_input_with_default("Excel文件位置", DEFAULT_EXCEL_PATH)
-            source_dir = get_input_with_default("源文件夹位置", DEFAULT_SOURCE_DIR)
+            source_dir = get_input_with_default("源文件夹位置（不建议“d:\\Works\\Ins\\”、“d:\\Works\\Uploads\\”。）", DEFAULT_SOURCE_DIR)
             write_dir = get_input_with_default("写入文件夹位置", DEFAULT_WRITE_DIR)
             upload_dir = get_input_with_default("上传文件夹位置", DEFAULT_UPLOAD_DIR)
             delete_dir = get_input_with_default("删除文件夹位置", DEFAULT_DELETE_DIR)
@@ -720,13 +653,6 @@ def main():
                 continue
             if not os.path.exists(source_dir):
                 print(f"错误: 源文件夹不存在 - {source_dir}，返回主菜单。")
-                continue
-
-            # 校验源文件夹与写入/上传/删除目录相互独立，防止数据丢失
-            is_valid, err_msg = validate_directory_independence(source_dir, write_dir, upload_dir, delete_dir)
-            if not is_valid:
-                print(f"目录冲突错误: {err_msg}")
-                print("已返回主菜单，请重新选择目录。")
                 continue
 
             # 询问固定字段
