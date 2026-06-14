@@ -1,98 +1,160 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置与目标文件夹位置（默认均为“d:\\Works\\Out\\”）。
+# 在脚本开始前询问我源文件夹位置与目标文件夹位置（默认均为"d:\Studios\Folders\Outs\"）。
 # 遍历源文件夹位置中所有视频文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4）。
 # 使用 ffmpeg 压缩，类似命令：ffmpeg -i input.mp4 -ss 00:00:01 -vframes 1 output.jpg。
 # 分别截取第 1 秒、第 10 秒以及一半时间的视频的图片，后缀名为-s01.jpg、-s10.jpg、-ss.jpg。
 
-# 导入模块
-import os
+import shutil
 import subprocess
+import sys
+from pathlib import Path
 
-def get_input(prompt, default_value):
-    """
-    获取用户输入，提供默认值。
-    """
-    value = input(f"{prompt} (默认: {default_value}): ").strip()
-    return value if value else default_value
+# ==================== 全局配置 ====================
 
-def is_video_file(file_name):
-    """
-    检查文件是否为支持的视频格式。
-    """
-    video_extensions = [".mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg", ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4"]
-    return any(file_name.lower().endswith(ext) for ext in video_extensions)
+DEFAULT_SOURCE_DIR = Path(r"d:\Works\Out")
+DEFAULT_TARGET_DIR = Path(r"d:\Works\Out")
 
-def create_output_folder(folder_path):
-    """
-    如果目标文件夹不存在，则创建。
-    """
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
+VIDEO_EXTENSIONS = {".mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg",
+                    ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4"}
 
-def extract_thumbnails(video_path, output_folder):
+# ==================== 辅助函数 ====================
+
+
+def get_input_with_default(prompt_text: str, default_value: str) -> str:
+    """获取带默认值的用户输入。"""
+    user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
+    return user_input if user_input else str(default_value)
+
+
+def is_video_file(file_path: Path) -> bool:
+    """检查文件是否为支持的视频格式（大小写不敏感）。"""
+    return file_path.suffix.lower() in VIDEO_EXTENSIONS
+
+
+def get_video_duration(video_path: Path) -> float | None:
+    """
+    使用 ffprobe 获取视频时长（秒），失败返回 None。
+    ffprobe -show_entries format=duration 输出为单行浮点数（如 "123.456"）。
+    """
+    cmd = [
+        "ffprobe", "-v", "error",
+        "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1",
+        str(video_path),
+    ]
+    try:
+        output = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL).strip()
+        return float(output)
+    except Exception as e:
+        print(f"    获取视频时长失败：{video_path.name}，{e}")
+        return None
+
+
+def extract_thumbnails(video_path: Path, output_dir: Path) -> int:
     """
     使用 ffmpeg 从视频中截取第 1 秒、第 10 秒及视频中间位置的图片。
+    返回成功截取的图片数量。
+
+    -ss 放在 -i 前面使用 keyframe seeking，速度远优于放在 -i 之后。
+    -y 自动覆盖已存在的输出文件，避免交互式卡死。
+    自动跳过超出视频时长的截图时间点（如短视频 < 10s 则跳过 10s 截图）。
     """
-    video_name, _ = os.path.splitext(os.path.basename(video_path))
+    video_name = video_path.stem
 
-    # 获取视频时长
-    cmd_get_duration = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", video_path]
-    try:
-        duration_output = subprocess.check_output(cmd_get_duration, stderr=subprocess.STDOUT).strip()
-        duration_lines = duration_output.decode("utf-8").splitlines()
-        duration_str = next((line for line in duration_lines if line.replace('.', '', 1).isdigit()), None)
-        if duration_str is None:
-            raise ValueError("未找到有效的时长信息")
-        duration = float(duration_str)  # 转换为浮点数
-    except Exception as e:
-        print(f"获取视频时长失败: {video_path}, 错误: {e}")
-        return
+    duration = get_video_duration(video_path)
+    if duration is None or duration <= 0:
+        return 0
 
-    # 确定截图时间点
-    timestamps = [(1, "-s01"), (10, "-s10"), (duration / 2, "-ss")]
+    # 截图时间点：(秒数, 后缀标签)
+    timestamps: list[tuple[float, str]] = [
+        (1.0, "-s01"),
+        (10.0, "-s10"),
+        (duration / 2, "-ss"),
+    ]
 
+    success_count = 0
     for timestamp, suffix in timestamps:
-        output_file = os.path.join(output_folder, f"{video_name}{suffix}.jpg")
-        cmd_extract = [
-            "ffmpeg", "-i", video_path, "-ss", f"{timestamp:.2f}", "-vframes", "1", output_file
+        # 跳过超出视频时长的时间点
+        if timestamp >= duration:
+            print(f"    跳过 {video_name}{suffix}.jpg（{timestamp:.1f}s >= 时长 {duration:.1f}s）")
+            continue
+
+        output_file = output_dir / f"{video_name}{suffix}.jpg"
+        cmd = [
+            "ffmpeg",
+            "-ss", f"{timestamp:.2f}",   # 放在 -i 前面：快速 keyframe seeking
+            "-i", str(video_path),
+            "-vframes", "1",
+            "-y",                         # 自动覆盖已存在文件
+            str(output_file),
         ]
         try:
-            subprocess.run(cmd_extract, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print(f"截图成功: {output_file}")
+            subprocess.run(cmd, check=True,
+                           stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL)
+            print(f"    截图成功：{output_file.name}")
+            success_count += 1
         except subprocess.CalledProcessError as e:
-            print(f"截图失败: {output_file}, 错误: {e}")
+            print(f"    截图失败：{output_file.name}，{e}")
 
-def main():
-    """
-    主程序入口：获取用户输入的文件夹，遍历文件并处理。
-    """
-    # 默认源文件夹和目标文件夹路径
-    default_source_folder = "d:\\Works\\Out\\"
-    default_target_folder = "d:\\Works\\Out\\"
+    return success_count
+
+
+# ==================== 主程序 ====================
+
+
+def main() -> None:
+    """主程序入口：获取用户输入的文件夹，遍历文件并处理。"""
+
+    # 检查 ffmpeg 是否可用
+    if shutil.which("ffmpeg") is None:
+        print("错误：找不到 ffmpeg，请安装后重试。")
+        return
 
     # 获取源文件夹和目标文件夹路径
-    source_folder = get_input("请输入源文件夹路径：", default_source_folder)
-    target_folder = get_input("请输入目标文件夹路径：", default_target_folder)
+    source_str = get_input_with_default("请输入源文件夹路径：", str(DEFAULT_SOURCE_DIR))
+    target_str = get_input_with_default("请输入目标文件夹路径：", str(DEFAULT_TARGET_DIR))
 
-    # 创建目标文件夹
-    create_output_folder(target_folder)
+    source_root = Path(source_str)
+    target_root = Path(target_str)
 
-    # 遍历源文件夹中的视频文件
-    for root, _, files in os.walk(source_folder):
-        for file in files:
-            if is_video_file(file):
-                video_path = os.path.join(root, file)
-                relative_path = os.path.relpath(root, source_folder)
-                output_folder = os.path.join(target_folder, relative_path)
+    if not source_root.is_dir():
+        print(f"错误：源文件夹不存在 —— {source_root}")
+        return
 
-                # 创建子文件夹以保持目录结构
-                create_output_folder(output_folder)
+    # 确保目标文件夹存在
+    target_root.mkdir(parents=True, exist_ok=True)
 
-                # 截图
-                extract_thumbnails(video_path, output_folder)
+    # 收集所有视频文件
+    video_files = [p for p in source_root.rglob("*") if p.is_file() and is_video_file(p)]
+
+    if not video_files:
+        print("未找到任何视频文件。")
+        return
+
+    print(f"\n找到 {len(video_files)} 个视频文件，开始处理…\n")
+
+    total_screenshots = 0
+    for idx, video_path in enumerate(video_files, 1):
+        # 保持源文件夹的相对目录结构
+        relative_dir = video_path.parent.relative_to(source_root)
+        output_dir = target_root / relative_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        print(f"[{idx}/{len(video_files)}] {video_path.relative_to(source_root)}")
+        count = extract_thumbnails(video_path, output_dir)
+        total_screenshots += count
+
+    print(f"\n所有视频处理完成！共处理 {len(video_files)} 个视频，成功截图 {total_screenshots} 张。")
+
 
 if __name__ == "__main__":
-    main()
-
-print("所有视频处理完成！")
-input("按回车键退出...")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n用户中断程序，已退出。")
+    except Exception as e:
+        print(f"\n程序运行出错: {e}")
+    finally:
+        input("\n按回车键退出...")

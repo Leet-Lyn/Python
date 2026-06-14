@@ -1,244 +1,292 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认地址“d:\\Works\\Ins\\”）与目标文件夹位置（默认地址“d:\\Works\\Outs\\”）。
-# 遍历源文件夹内所有子文件夹中的视频文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4、ogv、ogm、ogg）。
-# 使用 mkvmerge.exe 转换成 mkv 格式。类似“for %%i in (*.*) do "d:\Program Files\MKVToolNix\mkvmerge.exe" -o "%%~ni.mkv" "%%~nxi"”。
-# 生成的文件放到到目标文件夹中以“源文件夹的子文件夹”中，保持文件夹及子文件结构。
+# 在脚本开始前询问我源文件夹位置（默认 d:\Studios\Folders\Ins\）与目标文件夹位置（默认 d:\Studios\Folders\Outs\）。
+# 遍历源文件夹内所有子文件夹中的视频文件，使用 mkvmerge.exe 转换成 mkv 格式。
+# 生成的文件放到目标文件夹中保持子目录结构。
 
-# 导入模块
-import os
+import shutil
+import signal
 import subprocess
 import sys
+import time
+from datetime import datetime
+from pathlib import Path
 
-def get_user_input():
-    """
-    获取用户输入的源文件夹和目标文件夹路径
-    """
-    # 获取源文件夹路径
-    default_source = "d:\\Works\\Ins\\"
-    source_folder = input(f"请输入源文件夹位置（默认：{default_source}）: ").strip()
-    if not source_folder:
-        source_folder = default_source
-    source_folder = source_folder.rstrip('\\/')
-    
-    # 获取目标文件夹路径
-    default_target = "d:\\Works\\Outs\\"
-    target_folder = input(f"请输入目标文件夹位置（默认：{default_target}）: ").strip()
-    if not target_folder:
-        target_folder = default_target
-    target_folder = target_folder.rstrip('\\/')
-    
-    return source_folder, target_folder
+# ============================================================
+# 全局配置
+# ============================================================
 
-def find_video_files(source_folder):
-    """
-    查找源文件夹中所有视频文件
-    """
-    # 支持的视频文件扩展名
-    video_extensions = {
-        '.mkv', '.avi', '.f4v', '.flv', '.ts', '.mpeg', '.mpg',
-        '.rm', '.rmvb', '.asf', '.wmv', '.mov', '.webm', '.mp4',
-        '.ogv', '.ogm', '.ogg'
-    }
-    
-    video_files = []
-    
-    print(f"\n正在扫描源文件夹: {source_folder}")
-    
-    # 遍历所有子文件夹
-    for root, dirs, files in os.walk(source_folder):
-        for file in files:
-            # 获取文件扩展名并转换为小写
-            ext = os.path.splitext(file)[1].lower()
-            if ext in video_extensions:
-                full_path = os.path.join(root, file)
-                video_files.append(full_path)
-    
-    print(f"找到 {len(video_files)} 个视频文件")
-    return video_files
+DEFAULT_SOURCE_DIR = Path(r"d:\Studios\Folders\Ins")
+DEFAULT_TARGET_DIR = Path(r"d:\Studios\Folders\Outs")
 
-def get_relative_path(full_path, source_folder):
-    """
-    获取文件相对于源文件夹的相对路径
-    """
-    # 标准化路径
-    full_path = os.path.normpath(full_path)
-    source_folder = os.path.normpath(source_folder)
-    
-    # 获取相对路径
-    relative_path = os.path.relpath(full_path, source_folder)
-    
-    # 获取所在文件夹（相对路径的目录部分）
-    relative_dir = os.path.dirname(relative_path)
-    
-    return relative_dir
+VIDEO_EXTS = {
+    ".mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg",
+    ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4",
+    ".ogv", ".ogm", ".ogg",
+}
 
-def convert_video(source_file, target_file, mkvmerge_path):
-    """
-    使用 mkvmerge 转换单个视频文件
-    """
-    try:
-        # 构建命令
-        command = [
-            mkvmerge_path,
-            '-o', target_file,
-            source_file
-        ]
-        
-        print(f"正在转换: {os.path.basename(source_file)}")
-        
-        # 执行转换命令，解决编码问题
-        result = subprocess.run(
-            command, 
-            capture_output=True, 
-            text=True, 
-            check=True,
-            encoding='utf-8',  # 明确指定编码
-            errors='ignore'    # 忽略编码错误
-        )
-        
-        if result.returncode == 0:
-            print(f"✓ 转换成功: {os.path.basename(target_file)}")
-            
-            # 检查目标文件是否存在且大小合理
-            if os.path.exists(target_file) and os.path.getsize(target_file) > 0:
-                # 删除源文件
-                try:
-                    os.remove(source_file)
-                    print(f"✓ 已删除源文件: {os.path.basename(source_file)}")
-                except Exception as e:
-                    print(f"⚠ 无法删除源文件 {os.path.basename(source_file)}: {str(e)}")
-                    return True  # 转换成功但删除失败，仍然算转换成功
-            else:
-                print(f"⚠ 目标文件可能有问题，保留源文件: {os.path.basename(source_file)}")
-                return True  # 转换成功但目标文件可能有问题，保留源文件
-                
-            return True
-        else:
-            print(f"✗ 转换失败: {os.path.basename(source_file)}")
-            if result.stderr:
-                print(f"错误信息: {result.stderr}")
-            return False
-            
-    except subprocess.CalledProcessError as e:
-        print(f"✗ 转换出错: {os.path.basename(source_file)}")
-        if e.stderr:
-            # 尝试不同编码方式处理错误信息
-            try:
-                error_msg = e.stderr.decode('utf-8', errors='ignore')
-            except:
-                error_msg = str(e.stderr)
-            print(f"错误信息: {error_msg}")
-        return False
-    except Exception as e:
-        print(f"✗ 发生未知错误: {os.path.basename(source_file)}")
-        print(f"错误信息: {str(e)}")
-        return False
+MKVMERGE_CANDIDATES = [
+    Path(r"D:\ProApps\MKVToolNix\mkvmerge.exe"),
+    Path(r"C:\Program Files\MKVToolNix\mkvmerge.exe"),
+]
 
-def main():
-    """
-    主函数
-    """
-    # 获取用户输入
-    source_folder, target_folder = get_user_input()
-    
-    # 检查源文件夹是否存在
-    if not os.path.exists(source_folder):
-        print(f"错误: 源文件夹不存在 - {source_folder}")
-        return
-    
-    # 检查 mkvmerge.exe 是否可用
-    mkvmerge_paths = [
-        r"d:\ProApps\MKVToolNix\mkvmerge.exe",
-        r"C:\Program Files\MKVToolNix\mkvmerge.exe",
-        "mkvmerge.exe"  # 如果在系统PATH中
-    ]
-    
-    mkvmerge_path = None
-    for path in mkvmerge_paths:
-        if os.path.exists(path):
-            mkvmerge_path = path
-            break
-        # 检查是否在系统PATH中
+# 中断标志：Ctrl+Q（Windows msvcrt）或 Ctrl+\（Unix SIGQUIT）设置
+_quit_requested = False
+
+# ============================================================
+# 辅助函数
+# ============================================================
+
+
+def get_input_with_default(prompt_text: str, default_value: str) -> str:
+    """获取带默认值的用户输入。"""
+    user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
+    return user_input if user_input else str(default_value)
+
+
+def find_mkvmerge() -> Path | None:
+    """查找 mkvmerge.exe，按候选路径 → PATH 顺序查找。"""
+    for path in MKVMERGE_CANDIDATES:
+        if path.is_file():
+            return path
+    # 尝试 PATH 中的 mkvmerge
+    which = shutil.which("mkvmerge") or shutil.which("mkvmerge.exe")
+    if which:
+        return Path(which)
+    # 最后尝试候选路径（可能通过 PATH 补全）
+    for path in MKVMERGE_CANDIDATES:
         try:
-            # 使用更安全的方式检查版本
             result = subprocess.run(
-                [path, "--version"], 
-                capture_output=True, 
-                text=True,
-                encoding='utf-8',
-                errors='ignore'
+                [str(path), "--version"],
+                capture_output=True,
+                encoding="utf-8",
+                errors="ignore",
             )
             if result.returncode == 0:
-                mkvmerge_path = path
-                break
-        except:
+                return path
+        except Exception:
             continue
-    
-    if not mkvmerge_path:
-        print("错误: 未找到 mkvmerge.exe")
+    return None
+
+
+def format_progress_bar(pct: float, width: int = 36) -> str:
+    """生成文本进度条：[████░░░░] 百分比。"""
+    if pct < 0:
+        return " " * (width + 10)
+    pct = min(pct / 100.0, 1.0)
+    filled = int(width * pct)
+    bar = "█" * filled + "░" * (width - filled)
+    return f"[{bar}] {pct:5.1%}"
+
+
+def print_progress(msg: str) -> None:
+    """输出进度信息（\r 覆盖当前行），末尾不带换行。"""
+    print(f"\r{msg}", end="", flush=True)
+
+
+# ============================================================
+# Ctrl+Q / Ctrl+\ 中断支持
+# ============================================================
+
+
+def _on_quit_signal(signum, frame):
+    """Unix SIGQUIT 信号处理器（Ctrl+\）。"""
+    global _quit_requested
+    _quit_requested = True
+
+
+def init_quit_handler() -> None:
+    """注册中断处理：Windows 用 msvcrt，Unix 用 SIGQUIT（Ctrl+\）。"""
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+    if sys.platform == "win32":
+        print("提示：封装中可按 Ctrl+Q 中断。\n")
+
+
+def check_quit_key() -> bool:
+    """
+    非阻塞检测中断快捷键。
+    Windows：检测 Ctrl+Q（msvcrt kbhit）。
+    Unix：返回 _quit_requested 标志（由 SIGQUIT 设置）。
+    """
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                ch = msvcrt.getch()
+                if ch == b"\x11":   # Ctrl+Q = ASCII 17
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
+
+
+# ============================================================
+# 处理函数
+# ============================================================
+
+
+def convert_video(
+    source: Path,
+    target: Path,
+    mkvmerge: Path,
+    file_index: int,
+    total_files: int,
+) -> bool:
+    """
+    使用 mkvmerge 转换单个视频文件（带实时进度条）。
+    成功删除源文件返回 True，失败返回 False。
+    """
+    # 打印文件头部信息
+    now_str = datetime.now().strftime("%H:%M:%S")
+    print(f"\n[{file_index}/{total_files}] {now_str} | {source}")
+    print(f"  📦 封装中…")
+
+    cmd = [str(mkvmerge), "-o", str(target), str(source)]
+
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except FileNotFoundError:
+        print(f"  ❌ 未找到 mkvmerge：{mkvmerge}")
+        return False
+
+    # 逐行读取 mkvmerge 进度输出（stdout: "Progress: XX%"）
+    last_pct = -1.0
+    for line in proc.stdout:
+        if line.startswith("Progress:"):
+            try:
+                pct_str = line.split(":", 1)[1].strip().rstrip("%")
+                pct = float(pct_str)
+            except ValueError:
+                continue
+
+            # 限制刷新频率
+            if abs(pct - last_pct) >= 1.0:
+                bar = format_progress_bar(pct)
+                print_progress(f"  📦 封装 {bar}")
+                last_pct = pct
+
+            # 检测 Ctrl+Q 中断
+            if check_quit_key():
+                proc.terminate()
+                print(f"\n  ⚠ 用户中断（Ctrl+Q），保留源文件及不完整输出。")
+                return False
+
+    proc.wait()
+    # 进度条完成后换行
+    if last_pct >= 0:
+        print()
+
+    if proc.returncode != 0:
+        stderr_output = proc.stderr.read().strip()
+        print(f"  ❌ 封装失败：{source.name}")
+        if stderr_output:
+            print(f"      {stderr_output}")
+        return False
+
+    # 验证输出
+    if target.is_file() and target.stat().st_size > 0:
+        try:
+            source.unlink()
+            print(f"  ✅ 完成 → {target}")
+        except OSError as e:
+            print(f"  ⚠ 输出成功但无法删除源文件：{e}")
+        return True
+    else:
+        print(f"  ⚠ 输出文件异常（缺失或为空），保留源文件：{source}")
+        return False
+
+
+# ============================================================
+# 主流程
+# ============================================================
+
+
+def main() -> None:
+    """主流程：获取源/目标文件夹 → 遍历视频 → mkvmerge 转换 → 统计。"""
+
+    source_str = get_input_with_default(
+        "请输入源文件夹位置：", str(DEFAULT_SOURCE_DIR))
+    target_str = get_input_with_default(
+        "请输入目标文件夹位置：", str(DEFAULT_TARGET_DIR))
+
+    src_root = Path(source_str)
+    dst_root = Path(target_str)
+
+    if not src_root.is_dir():
+        print(f"错误：源文件夹不存在 —— {src_root}")
+        return
+
+    mkvmerge = find_mkvmerge()
+    if mkvmerge is None:
+        print("错误：未找到 mkvmerge.exe")
         print("请确保已安装 MKVToolNix 或提供正确的路径")
         return
-    
-    print(f"使用 mkvmerge: {mkvmerge_path}")
-    
-    # 查找所有视频文件
-    video_files = find_video_files(source_folder)
-    
-    if not video_files:
-        print("未找到任何视频文件，程序结束")
-        return
-    
-    # 显示找到的文件
-    print("\n找到的视频文件:")
-    for i, file in enumerate(video_files[:10], 1):  # 只显示前10个
-        print(f"  {i}. {file}")
-    if len(video_files) > 10:
-        print(f"  ... 还有 {len(video_files) - 10} 个文件")
-    
-    # 直接开始转换，不询问确认
-    print(f"\n开始转换 {len(video_files)} 个文件...")
-    print("注意: 转换成功后会自动删除源文件!")
-    
-    # 开始转换
-    successful = 0
-    failed = 0
-    deleted = 0
-    
-    for source_file in video_files:
-        # 获取相对路径
-        relative_dir = get_relative_path(source_file, source_folder)
-        
-        # 构建目标路径
-        source_filename = os.path.basename(source_file)
-        target_filename = os.path.splitext(source_filename)[0] + '.mkv'
-        target_dir = os.path.join(target_folder, relative_dir)
-        target_file = os.path.join(target_dir, target_filename)
-        
-        # 创建目标目录（如果不存在）
-        os.makedirs(target_dir, exist_ok=True)
-        
-        # 转换视频
-        if convert_video(source_file, target_file, mkvmerge_path):
-            successful += 1
-            # 检查源文件是否已被删除
-            if not os.path.exists(source_file):
-                deleted += 1
-        else:
-            failed += 1
-    
-    # 显示转换结果
-    print(f"\n转换完成。")
-    print(f"成功: {successful} 个文件")
-    print(f"失败: {failed} 个文件")
-    print(f"已删除源文件: {deleted} 个")
-    print(f"目标文件夹: {target_folder}")
+    print(f"使用 mkvmerge: {mkvmerge}")
 
+    # 收集所有视频文件
+    video_files = sorted(
+        p for p in src_root.rglob("*")
+        if p.is_file() and p.suffix.lower() in VIDEO_EXTS
+    )
+    total = len(video_files)
+
+    if not total:
+        print("未找到任何视频文件。")
+        return
+
+    print(f"\n找到 {total} 个视频文件。")
+    init_quit_handler()
+
+    ok = 0
+    fail = 0
+    deleted = 0
+
+    try:
+        for idx, src in enumerate(video_files, 1):
+            # 检查中断标志
+            if check_quit_key():
+                print("\n⚠ 用户中断（Ctrl+Q），已处理部分不会丢失。")
+                break
+
+            try:
+                rel = src.parent.relative_to(src_root)
+            except ValueError:
+                rel = Path()
+
+            target_dir = dst_root / rel
+            target_dir.mkdir(parents=True, exist_ok=True)
+            dst = target_dir / (src.stem + ".mkv")
+
+            if convert_video(src, dst, mkvmerge, idx, total):
+                ok += 1
+                if not src.is_file():
+                    deleted += 1
+            else:
+                fail += 1
+    except KeyboardInterrupt:
+        print("\n⚠ 用户中断，已处理部分不会丢失。")
+
+    print(f"\n处理完成：成功 {ok} 个，失败 {fail} 个，已删源 {deleted} 个，共 {total} 个。")
+
+
+# ============================================================
+# 入口
+# ============================================================
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序")
+        print("\n\n用户中断程序，已退出。")
     except Exception as e:
-        print(f"\n程序发生错误: {str(e)}")
-    
-    input("\n按回车键退出...")
+        print(f"\n程序运行出错: {e}")
+    finally:
+        input("\n按回车键退出...")

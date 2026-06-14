@@ -25,13 +25,6 @@
 # 4. 第四个标签，是标准化处理。
 # “标准化”按钮，按“标准化”按钮，将文本输入框的文本格式化。要求：1. 繁体汉字转简体汉字。2. 汉字、英文单词、数字，彼此之间有空格。3. 汉字后标点符号转换为全角符号，英文后标点符号转换为半角符号。
 
-# 导入模块
-# 请帮我写个中文的 Python 脚本，批注也是中文：
-# 有图形界面。
-# 作用是让我针对文本，依次处理每一行。
-# 界面上方有文本输入框（占上部 1/2）。其右侧有两个按钮：上面是粘贴（快捷键 Ctrl+V，作用是将剪贴板粘贴到文本框内）；下面是复制（快捷键 Ctrl+C，作用是将文本框内内容复制到剪贴板）。下面是撤销（快捷键 Ctrl+Z，作用是撤销上一次的操作）。下面的操作均是针对文本框内的文字操作的。
-# ...（原始注释已省略，功能完全实现）
-
 import sys
 import re
 from datetime import datetime
@@ -104,8 +97,8 @@ def format_date(text, date_format_type, month_format, day_format, separator):
             day_re = r'\d'            # 1位
         else:  # 'dd'
             day_re = r'\d{2}'         # 2位
-        # 年份正则仍为任意长度数字
-        year_re = r'\d+'
+        # 年份：2 或 4 位数字，避免贪婪匹配吞噬后续字段
+        year_re = r'\d{2}(?:\d{2})?'
     else:
         # 有间隔时，数字部分仍可使用 \d+（由分隔符帮助切分）
         year_re = r'\d+'
@@ -126,7 +119,10 @@ def format_date(text, date_format_type, month_format, day_format, separator):
         part1, part2, part3 = month_re, day_re, year_re
         # group1=月, group2=日, group3=年
 
-    pattern = f'({part1}){sep_regex}({part2}){sep_regex}({part3})'
+    # 无间隔时加负向前/后瞻，防止部分匹配在更长数字串内部
+    lookbehind = r'(?<!\d)' if separator == '没有间隔' else ''
+    lookahead = r'(?!\d)' if separator == '没有间隔' else ''
+    pattern = f'{lookbehind}({part1}){sep_regex}({part2}){sep_regex}({part3}){lookahead}'
 
     def replace_date(match):
         # 根据格式类型从捕获组中取出年、月、日
@@ -146,6 +142,11 @@ def format_date(text, date_format_type, month_format, day_format, separator):
 
             day_num = int(day)
             year_num = int(year)
+
+            # 校验范围
+            if not (1 <= month_num <= 12 and 1 <= day_num <= 31):
+                return match.group(0)
+
             # 两位年份扩展为四位
             if year_num < 100:
                 year_num += 1900 if year_num >= 50 else 2000
@@ -797,6 +798,7 @@ class StdTab(QWidget):
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()

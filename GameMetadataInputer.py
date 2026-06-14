@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文，但是变量参数不要是中文：
-# 在脚本开始前询问我 excel 文件位置（默认为：d:\Works\Attachments\标准.xlsx）。
+# 在脚本开始前询问我 excel 文件位置（默认为：d:\Studios\Attachments\标准.xlsx）。
 # 读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。
 # 依据 excel 文件中的“名字”、“平台”字段，查询该游戏在该平台下封面、类型、发行公司填入“封面”、“类型”及“发行公司”字段里。“名字内可能含有其版本”。“封面”为链接地址。
 # 反复循环。
@@ -7,7 +7,10 @@
 # 导入模块
 import os
 import re
+import sys
 import time
+from pathlib import Path
+
 import pandas as pd
 import requests
 
@@ -19,11 +22,12 @@ PROXY = {
 }
 
 # SteamGridDB API Key 文件路径
-SGDB_API_KEY_FILE = r"e:\Documents\Creations\Scripts\Attachments\Python\SteamGridDBAPIKey.txt"
+SGDB_API_KEY_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\SteamGridDBAPIKey.txt")
 
 # IGDB 凭证文件路径
-IGDB_CLIENT_ID_FILE = r"e:\Documents\Creations\Scripts\Attachments\Python\IGDBClientID.txt"
-IGDB_CLIENT_SECRET_FILE = r"e:\Documents\Creations\Scripts\Attachments\Python\IGDBClientSecret.txt"
+IGDB_CLIENT_ID_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\IGDBClientID.txt")
+IGDB_CLIENT_SECRET_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\IGDBClientSecret.txt")
+DEFAULT_EXCEL_PATH = Path(r"d:\Studios\Attachments\标准.xlsx")
 
 # 请求延迟（秒），避免触发 API 速率限制
 REQUEST_DELAY = 0.8
@@ -59,22 +63,20 @@ def clean_game_name(name):
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned if cleaned else name.strip()
 
-def read_file_content(file_path, prompt_name):
+def read_file_content(file_path: Path, prompt_name: str) -> str | None:
     """读取文本文件内容，若文件不存在则提示用户输入并可选择保存"""
-    if os.path.exists(file_path):
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read().strip()
-            if content:
-                return content
+    if file_path.is_file():
+        content = file_path.read_text(encoding="utf-8").strip()
+        if content:
+            return content
     print(f"未找到 {prompt_name} 文件：{file_path}")
     user_input = input(f"请输入 {prompt_name}（直接回车跳过）: ").strip()
     if not user_input:
         return None
     save_choice = input(f"是否保存 {prompt_name} 到文件？(y/n): ").strip().lower()
     if save_choice == 'y':
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(user_input)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(user_input, encoding="utf-8")
         print("已保存")
     return user_input
 
@@ -281,8 +283,7 @@ def safe_save_excel(df, path):
                 new_path = input("请输入新文件名（如：封面结果.xlsx）: ").strip()
                 if not new_path:
                     new_path = "封面结果.xlsx"
-                dir_name = os.path.dirname(path)
-                new_path = os.path.join(dir_name, new_path) if dir_name else new_path
+                new_path = str(Path(path).parent / new_path)
                 try:
                     df.to_excel(new_path, index=False)
                     print(f"✅ 已保存到 {new_path}")
@@ -297,11 +298,9 @@ def safe_save_excel(df, path):
 
 # ------------------- 单次批量处理 -------------------
 def run_once():
-    default_excel = r"d:\Works\Attachments\标准.xlsx"
-    excel_path = input(f"请输入 Excel 文件路径（直接回车使用默认：{default_excel}）: ").strip()
-    if not excel_path:
-        excel_path = default_excel
-    if not os.path.exists(excel_path):
+    raw = input(f"请输入 Excel 文件路径（直接回车使用默认：{DEFAULT_EXCEL_PATH}）: ").strip()
+    excel_path = Path(raw) if raw else DEFAULT_EXCEL_PATH
+    if not excel_path.is_file():
         print(f"错误：文件不存在 - {excel_path}")
         return
 
@@ -415,4 +414,12 @@ def main():
             break
 
 if __name__ == "__main__":
-    main()
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n用户中断程序，已退出。")
+    except Exception as e:
+        print(f"\n程序运行出错: {e}")
+    finally:
+        input("\n按回车键退出...")

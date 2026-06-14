@@ -1,109 +1,122 @@
-﻿# 请帮我写个中文的 Python 脚本，批注也是中文：
-# 请输入源文件夹位置（默认“d:\\Works\\Downloads\\”）
-# 我安装了 RHash，位置“d:\\ProApps\\RHash\\rhash.exe”。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "\\TS-464C\Temps\rustdesk-1.4.3-x86_64.exe"。生成如“ed2k://|file|rustdesk-1.4.3-x86_64.exe|23369352|DF952EEB0438E288409858E6C960E261|h=T7BJKLDRQ7VDCDKOO525FO7YHJCZVKDK|/”的ed2k链接。
+# 请帮我写个中文的 Python 脚本，批注也是中文：
+# 请输入源文件夹位置（默认"d:\Studios\Folders\Downloads\"）
+# 我安装了 RHash，位置"d:\ProApps\rhash\current\rhash.exe"。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "\\TS-464C\Temps\rustdesk-1.4.3-x86_64.exe"。生成如"ed2k://|file|rustdesk-1.4.3-x86_64.exe|23369352|DF952EEB0438E288409858E6C960E261|h=T7BJKLDRQ7VDCDKOO525FO7YHJCZVKDK|/"的ed2k链接。
 # 用文件名大小与 ed2k hash 对文件夹及其子文件夹下所有文件重命名。如 rustdesk-1.4.3-x86_64.exe 重命名为 [23369352][DF952EEB0438E288409858E6C960E261].exe（用方括号包绕，扩展名不变）。
 
-# 导入模块
-import os
 import subprocess
+import sys
+from pathlib import Path
 
-def ed2k_hash(file_path):
+# ==================== 全局配置 ====================
+
+DEFAULT_SOURCE_DIR = Path(r"d:\Studios\Folders\Downloads")
+DEFAULT_RHASH_PATH = Path(r"d:\ProApps\rhash\current\rhash.exe")
+
+# ==================== 辅助函数 ====================
+
+
+def get_input_with_default(prompt_text: str, default_value: str) -> str:
+    """获取带默认值的用户输入。"""
+    user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
+    return user_input if user_input else str(default_value)
+
+
+def ed2k_hash(file_path: Path) -> str:
     """
     使用 RHash 计算文件的 ED2K 哈希值。
-    :param file_path: 文件路径
-    :return: ED2K 哈希值字符串，失败时返回空字符串
+    返回哈希值字符串，失败时返回空字符串。
     """
-    rhash_path = "d:\\ProApps\\RHash\\rhash.exe"
-    
-    # 检查 RHash 是否存在
-    if not os.path.isfile(rhash_path):
-        print(f"错误：找不到 RHash 工具，请确保路径正确：{rhash_path}")
-        return ''
-    
+    if not DEFAULT_RHASH_PATH.is_file():
+        print(f"错误：找不到 RHash 工具 —— {DEFAULT_RHASH_PATH}")
+        return ""
+
     try:
-        # 构建 RHash 命令
-        cmd = [rhash_path, "--uppercase", "--ed2k-link", file_path]
-        
-        # 执行命令并捕获输出
+        cmd = [str(DEFAULT_RHASH_PATH), "--uppercase", "--ed2k-link", str(file_path)]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
-        # 从输出中提取 ED2K 哈希值
+
         # 输出格式：ed2k://|file|filename|filesize|HASH|...|/
-        output = result.stdout.strip()
-        
-        # 解析 ED2K 链接提取哈希值
-        parts = output.split('|')
+        parts = result.stdout.strip().split("|")
         if len(parts) >= 5:
-            ed2k_hash = parts[4]  # 哈希值在第五个位置
-            return ed2k_hash
+            return parts[4]  # 哈希值在第五个位置
         else:
-            print(f"无法解析 RHash 输出：{output}")
-            return ''
-            
+            print(f"无法解析 RHash 输出：{result.stdout.strip()}")
+            return ""
     except subprocess.CalledProcessError as e:
         print(f"RHash 执行错误：{e}")
-        return ''
-    except Exception as e:
-        print(f"计算文件 {file_path} 的 ED2K 哈希时出错：{e}")
-        return ''
+        return ""
+    except OSError as e:
+        print(f"计算文件 {file_path.name} 的 ED2K 哈希时出错：{e}")
+        return ""
 
-def rename_files_in_folder_recursively(source_folder):
+
+# ==================== 处理函数 ====================
+
+
+def rename_files_by_ed2k(source_dir: Path) -> int:
     """
-    遍历指定文件夹及其所有子文件夹中的文件，并将其重命名为 ED2K 哈希格式。
-    :param source_folder: 源文件夹路径
+    遍历文件夹及其子文件夹，将文件重命名为 [大小][ED2K哈希].扩展名 格式。
+    返回重命名的文件数量。
     """
-    if not os.path.isdir(source_folder):
+    if not source_dir.is_dir():
         print("指定的路径无效，请确保它是一个文件夹。")
-        return
+        return 0
 
-    for root, _, files in os.walk(source_folder):
-        for file in files:
-            file_path = os.path.join(root, file)
+    renamed_count = 0
 
-            # 检查是否为文件
-            if not os.path.isfile(file_path):
-                print(f"跳过非文件项：{file_path}")
-                continue
+    for file_path in source_dir.rglob("*"):
+        if not file_path.is_file():
+            continue
 
-            file_size = os.path.getsize(file_path)
-            if file_size == 0:
-                print(f"{file} 是空文件，已跳过。")
-                continue
+        file_size = file_path.stat().st_size
+        if file_size == 0:
+            print(f"{file_path.name} 是空文件，已跳过。")
+            continue
 
-            # 计算文件哈希
-            file_hash = ed2k_hash(file_path)
-            if not file_hash:
-                print(f"无法计算文件 {file} 的 ED2K 哈希，已跳过。")
-                continue
+        file_hash = ed2k_hash(file_path)
+        if not file_hash:
+            print(f"无法计算文件 {file_path.name} 的 ED2K 哈希，已跳过。")
+            continue
 
-            # 生成新的文件名
-            file_ext = os.path.splitext(file)[1].lower()
-            new_file_name = f"[{file_size}][{file_hash}]{file_ext}"
-            new_file_path = os.path.join(root, new_file_name)
+        new_name = f"[{file_size}][{file_hash}]{file_path.suffix.lower()}"
+        new_path = file_path.parent / new_name
 
-            # 检查新文件名是否已存在
-            if os.path.exists(new_file_path):
-                print(f"目标文件已存在，跳过重命名：{new_file_name}")
-                continue
+        if new_path.exists():
+            print(f"目标文件已存在，跳过重命名：{new_name}")
+            continue
 
-            try:
-                os.rename(file_path, new_file_path)
-                print(f"成功重命名：{file} -> {new_file_name}")
-            except Exception as e:
-                print(f"无法重命名文件 {file_path}：{e}")
+        try:
+            file_path.rename(new_path)
+            print(f"成功重命名：{file_path.name} -> {new_name}")
+            renamed_count += 1
+        except OSError as e:
+            print(f"无法重命名文件 {file_path}: {e}")
 
-def main():
-    """
-    主程序入口，处理用户输入并执行文件重命名操作。
-    """
-    # 获取源文件夹路径
-    source_folder = input("请输入源文件夹位置（按回车键使用默认地址：d:\\Works\\Downloads\\）：").strip() or "d:\\Works\\Downloads\\"
+    return renamed_count
 
-    # 调用重命名函数
-    rename_files_in_folder_recursively(source_folder)
 
-    # 退出提示
-    input("操作完成，按回车键退出...")
+# ==================== 主程序 ====================
+
+
+def main() -> None:
+    """主函数：获取用户输入并执行文件重命名操作。"""
+
+    source_str = get_input_with_default(
+        "请输入源文件夹位置：", str(DEFAULT_SOURCE_DIR))
+    source_dir = Path(source_str)
+
+    count = rename_files_by_ed2k(source_dir)
+    print(f"\n完成！共重命名了 {count} 个文件。")
+
+
+# ==================== 程序入口 ====================
 
 if __name__ == "__main__":
-    main()
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n用户中断程序，已退出。")
+    except Exception as e:
+        print(f"\n程序运行出错: {e}")
+    finally:
+        input("\n按回车键退出...")

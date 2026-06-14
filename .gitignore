@@ -1,0 +1,5 @@
+# Backup files
+*.bak
+
+# 数据文件
+*.txt

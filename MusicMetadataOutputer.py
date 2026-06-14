@@ -1,12 +1,15 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文，但是变量参数不要是中文：
-# 在脚本开始前询问我 excel 文件位置（默认为：d:\Works\Attachments\标准.xlsx），源文件夹位置（默认为：d:\Works\Downloads\）。
+# 在脚本开始前询问我 excel 文件位置（默认为：d:\Workstations\Attachments\标准.xlsx），源文件夹位置（默认为：d:\Workstations\Downloads\）。
 # 读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。
 # 依据 excel 文件中的“原文件名”字段，匹配源文件夹下的文件，将 excel ，“名字”、“专辑”、“盘号”、“音轨”、“年份”、“类型”、“封面”、“发行公司”、“演唱”、“作词”、“作曲”、“编曲”，作为元数据写入文件。
 # “封面”链接下载后转为640*640 大小 jpg 格式嵌入。
 
 # 导入模块
 import os
+import sys
 import base64
+from pathlib import Path
+
 import pandas as pd
 import requests
 from mutagen import File as MutagenFile
@@ -19,20 +22,23 @@ from PIL import Image
 from io import BytesIO
 
 # ------------------- 支持的文件扩展名 -------------------
-SUPPORTED_EXT = ('.mp3', '.m4a', '.flac', '.ogg', '.wav')  # 主要支持这些
+SUPPORTED_EXT = ('.mp3', '.m4a', '.flac', '.ogg', '.wav')
+DEFAULT_SOURCE_DIR = Path(r"d:\Workstations\Downloads")
+DEFAULT_EXCEL_PATH = Path(r"d:\Workstations\Attachments\标准.xlsx")
 
 def find_file_in_folder(folder_path, filename):
     """在文件夹（包括子文件夹）中查找文件"""
+    folder = Path(folder_path)
     if os.path.sep in filename or '/' in filename:
-        full_path = os.path.join(folder_path, filename)
-        if os.path.isfile(full_path):
-            return full_path
-        alt_path = full_path.replace('\\', '/').replace('/', os.path.sep)
-        if os.path.isfile(alt_path):
-            return alt_path
-    for root, _, files in os.walk(folder_path):
-        if filename in files:
-            return os.path.join(root, filename)
+        full = folder / filename
+        if full.is_file():
+            return str(full)
+        alt = folder / filename.replace('\\', '/').replace('/', os.path.sep)
+        if alt.is_file():
+            return str(alt)
+    for p in folder.rglob("*"):
+        if p.is_file() and p.name == filename:
+            return str(p)
     return None
 
 def download_and_resize_image(url, target_size=(640, 640)):
@@ -60,7 +66,7 @@ def download_and_resize_image(url, target_size=(640, 640)):
 def clear_old_cover(audio):
     """清除音频文件中已有的封面图片"""
     file_path = audio.filename if hasattr(audio, 'filename') else ''
-    ext = os.path.splitext(file_path)[1].lower()
+    ext = Path(file_path).suffix.lower()
     try:
         # MP3文件：使用ID3标签的delall方法删除所有APIC帧
         if ext == '.mp3':
@@ -295,7 +301,7 @@ def set_wav_tags(file_path, metadata, cover_data):
 def set_common_tags(audio, metadata, cover_data):
     """根据扩展名调用对应的写入函数"""
     file_path = audio.filename if hasattr(audio, 'filename') else ''
-    ext = os.path.splitext(file_path)[1].lower()
+    ext = Path(file_path).suffix.lower()
     if ext == '.mp3':
         return set_mp3_tags(file_path, metadata, cover_data)
     elif ext == '.m4a':
@@ -312,19 +318,15 @@ def set_common_tags(audio, metadata, cover_data):
 
 # ------------------- 单次运行 -------------------
 def run_once():
-    default_source = r"d:\Works\Downloads"
-    source_folder = input(f"请输入源文件夹路径（默认 {default_source}）: ").strip()
-    if not source_folder:
-        source_folder = default_source
-    if not os.path.isdir(source_folder):
+    raw = input(f"请输入源文件夹路径（默认 {DEFAULT_SOURCE_DIR}）: ").strip()
+    source_folder = Path(raw) if raw else DEFAULT_SOURCE_DIR
+    if not source_folder.is_dir():
         print(f"错误：文件夹不存在 - {source_folder}")
         return
 
-    default_excel = r"d:\Works\Attachments\标准.xlsx"
-    excel_path = input(f"请输入 Excel 文件路径（默认 {default_excel}）: ").strip()
-    if not excel_path:
-        excel_path = default_excel
-    if not os.path.exists(excel_path):
+    raw = input(f"请输入 Excel 文件路径（默认 {DEFAULT_EXCEL_PATH}）: ").strip()
+    excel_path = Path(raw) if raw else DEFAULT_EXCEL_PATH
+    if not excel_path.is_file():
         print(f"错误：文件不存在 - {excel_path}")
         return
 
@@ -403,4 +405,12 @@ def main():
     print("程序结束。")
 
 if __name__ == "__main__":
-    main()
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n用户中断程序，已退出。")
+    except Exception as e:
+        print(f"\n程序运行出错: {e}")
+    finally:
+        input("\n按回车键退出...")

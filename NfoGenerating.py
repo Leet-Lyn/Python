@@ -1,12 +1,11 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认为“D:\Works\Outs”）。
+# 在脚本开始前询问我源文件夹位置（默认为“d:\Studios\Folders\Outs”）。
 # 遍历源文件夹位置中所有的文件（mkv、avi、f4v、flv、ts、mpeg、mpg、rm、rmvb、asf、wmv、mov、webm、mp4、mp3、ogg、aac、ac3、wma、pdf、epub、zip、rar、7z）。在该文件夹下生成同名 nfo 文件。
 # 询问我 nfo 文件内写入的内容。UTF-8编码，默认为：<?xml version="1.0" encoding="UTF-8" standalone="yes"?><movie><title> </title></movie>
 # 再次枚举源文件夹位置中所有 nfo 文件，读取其文件名（不包括后缀名），将文件名中的”][“，替换为半角空格，再将”]“与”[“删除。，替换“<title> </title>”内的“ ”。
 
 # 导入模块
 import os
-import re
 
 def 获取有效文件夹路径(提示信息, 默认文件夹=None):
     """
@@ -42,13 +41,8 @@ def 处理文件名(原始文件名):
     返回:
         处理后的文件名
     """
-    # 先将"]["替换为空格
-    处理后文件名 = 原始文件名.replace('][', ' ')
-    
-    # 然后删除所有的"]"和"["
-    处理后文件名 = 处理后文件名.replace(']', '').replace('[', '')
-    
-    return 处理后文件名
+    # 先将"]["替换为空格，再删除所有的"]"和"["
+    return 原始文件名.replace('][', ' ').replace(']', '').replace('[', '')
 
 def 生成NFO文件(源文件夹路径, XML模板):
     """
@@ -164,7 +158,7 @@ def 主程序():
     print("=" * 50)
     
     # 默认源文件夹路径
-    默认源文件夹路径 = r"D:\Works\Outs"
+    默认源文件夹路径 = r"d:\Studios\Folders\Outs"
     
     # 获取源文件夹路径
     提示信息 = f"请输入源文件夹路径（直接回车使用默认路径 '{默认源文件夹路径}'）: "

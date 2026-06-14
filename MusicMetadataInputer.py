@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文，但是变量参数不要是中文：
-# 在脚本开始前询问我 excel 文件位置（默认为：d:\Works\Attachments\标准.xlsx），源文件夹位置（默认为：d:\Works\Downloads\）。
+# 在脚本开始前询问我 excel 文件位置（默认为：d:\Studios\Attachments\标准.xlsx），源文件夹位置（默认为：d:\Studios\Folders\Downloads\）。
 # 读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。
 # 依据 excel 文件中的“原文件名”字段，匹配源文件夹下文件，读取其标题、艺术家、专辑数据，写入excel“名字”、“演唱”、“专辑”字段。
 # 根据“名字”字段，查找该音乐的元数据。分别填入“专辑”、“盘号”、“音轨”、“年份”、“类型”、“封面”、“发行公司”、“演唱”、“作词”、“作曲”。“封面”为链接地址。
@@ -8,8 +8,11 @@
 # 导入模块
 import os
 import re
+import sys
 import time
 import subprocess
+from pathlib import Path
+
 import pandas as pd
 import musicbrainzngs as mb
 from musicbrainzngs import caa
@@ -32,7 +35,9 @@ print(f"✅ 已为 MusicBrainz 设置代理：{PROXY}")
 # ---------------- 初始化 ----------------
 mb.set_useragent("MusicMetadataFiller", "1.0", "your-email@example.com")
 
-LASTFM_KEY_FILE = r"e:\Documents\Creations\Scripts\Attachments\Python\LastfmAPIKey.txt"
+LASTFM_KEY_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\LastfmAPIKey.txt")
+DEFAULT_EXCEL_PATH = Path(r"d:\Studios\Attachments\标准.xlsx")
+DEFAULT_SOURCE_DIR = Path(r"d:\Studios\Folders\Downloads")
 NETEASE_API_BASE = "https://music.163.com/api"
 
 SPOTIFY_CREDENTIALS = {
@@ -103,14 +108,15 @@ def get_audio_metadata(file_path):
 def find_file_in_folder(folder, filename):
     if not filename:
         return None
+    folder_path = Path(folder)
     if os.path.sep in filename or '/' in filename:
-        full = os.path.join(folder, filename)
-        if os.path.isfile(full): return full
-        alt = full.replace('\\', '/').replace('/', os.path.sep)
-        if os.path.isfile(alt): return alt
-    for root, _, files in os.walk(folder):
-        if filename in files:
-            return os.path.join(root, filename)
+        full = folder_path / filename
+        if full.is_file(): return str(full)
+        alt = folder_path / filename.replace('\\', '/').replace('/', os.path.sep)
+        if alt.is_file(): return str(alt)
+    for p in folder_path.rglob("*"):
+        if p.is_file() and p.name == filename:
+            return str(p)
     return None
 
 # ---------------- MusicBrainz 相关 ----------------
@@ -380,10 +386,10 @@ def fetch_netease_credits(song_title, artist_name=""):
 
 # ---------------- Last.fm ----------------
 def read_lastfm_api_key():
-    if not os.path.exists(LASTFM_KEY_FILE): return None
-    with open(LASTFM_KEY_FILE, 'r', encoding='utf-8') as f:
-        key = f.read().strip()
-        return key if key else None
+    if not LASTFM_KEY_FILE.is_file():
+        return None
+    key = LASTFM_KEY_FILE.read_text(encoding="utf-8").strip()
+    return key if key else None
 
 def get_lastfm_tags(artist, title, api_key):
     if not api_key or not artist or not title: return ""
@@ -447,17 +453,15 @@ def fetch_all_metadata(song_title, artist_name, album_name, lastfm_key):
 
 # ---------------- 运行流程 ----------------
 def run_once():
-    default_excel = r"d:\Works\Attachments\标准.xlsx"
-    excel_path = input(f"请输入 Excel 文件路径（直接回车使用默认：{default_excel}）: ").strip()
-    if not excel_path: excel_path = default_excel
-    if not os.path.exists(excel_path):
+    raw = input(f"请输入 Excel 文件路径（直接回车使用默认：{DEFAULT_EXCEL_PATH}）: ").strip()
+    excel_path = Path(raw) if raw else DEFAULT_EXCEL_PATH
+    if not excel_path.is_file():
         print(f"错误：文件不存在 - {excel_path}")
         return
 
-    default_source = r"d:\Works\Downloads"
-    source_folder = input(f"请输入音频文件夹路径（默认：{default_source}）: ").strip()
-    if not source_folder: source_folder = default_source
-    if not os.path.isdir(source_folder):
+    raw = input(f"请输入音频文件夹路径（默认：{DEFAULT_SOURCE_DIR}）: ").strip()
+    source_folder = Path(raw) if raw else DEFAULT_SOURCE_DIR
+    if not source_folder.is_dir():
         print(f"错误：文件夹不存在 - {source_folder}")
         return
 
@@ -529,4 +533,12 @@ def main():
     print("程序结束。")
 
 if __name__ == "__main__":
-    main()
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n用户中断程序，已退出。")
+    except Exception as e:
+        print(f"\n程序运行出错: {e}")
+    finally:
+        input("\n按回车键退出...")

@@ -1,17 +1,15 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文，但是变量参数不要是中文：
-# 在脚本开始前询问我 excel 文件位置（默认为：d:\Works\Attachments\标准.xlsx）、写入文件夹位置（默认为：d:\Works\Ins）。
+# 在脚本开始前询问我 excel 文件位置（默认为：d:\Studios\Attachments\标准.xlsx）、写入文件夹位置（默认为：d:\Studios\Folders\Ins）。
 # 重命名即生成 nfo 文件：读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。"原文件名"字段值对应着写入文件夹中到每一个文件名字。依次根据每一行到"原文件名"找到写入文件夹中到每一个文件，将其改名为同一行中的“现文件名”。根据“现文件名”生成同名“*.nfo”文件。nfo 文件内写入的内容：UTF-8编码，<?xml version="1.0" encoding="UTF-8" standalone="yes"?><movie>  <title> </title></movie>，将该行中的“名字”字段填入“<title> </title>”内的“ ”。
 # 完成后，反复循环。
 
 # 导入模块
 import os
 import pandas as pd
-import xml.etree.ElementTree as ET
-from pathlib import Path
 
 # ==================== 全局配置 ====================
-DEFAULT_EXCEL_PATH = r"d:\Works\Attachments\标准.xlsx"
-DEFAULT_WRITE_DIR = r"d:\Works\Ins"
+DEFAULT_EXCEL_PATH = r"d:\Studios\Attachments\标准.xlsx"
+DEFAULT_WRITE_DIR = r"d:\Studios\Folders\Ins"
 
 # ==================== 辅助函数 ====================
 
@@ -19,13 +17,6 @@ def get_input_with_default(prompt_text, default_value):
     """获取带默认值的用户输入"""
     user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
     return user_input if user_input else default_value
-
-def ensure_directory_exists(directory_path):
-    """确保目录存在，如果不存在则创建"""
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path, exist_ok=True)
-        print(f"已创建目录: {directory_path}")
-    return directory_path
 
 def find_file_in_directory(directory_path, filename):
     """在目录中查找文件，支持子目录查找"""
@@ -41,13 +32,7 @@ def find_file_in_directory(directory_path, filename):
 def create_nfo_file(filepath, title):
     """创建NFO文件"""
     try:
-        # 创建XML结构
-        movie_elem = ET.Element("movie")
-        
-        title_elem = ET.SubElement(movie_elem, "title")
-        title_elem.text = title
-        
-        # 转换为XML字符串
+        # 构建XML字符串
         xml_str = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
         
         # 手动格式化，因为ElementTree的tostring没有格式化选项
@@ -127,8 +112,7 @@ def rename_and_generate_nfo(excel_path, write_dir):
             if original_filename == new_filename:
                 print(f"跳过第 {index+1} 行: 原文件名和现文件名相同")
                 # 仍然生成NFO文件
-                target_file = None
-                
+
                 # 查找文件
                 found_files = find_file_in_directory(write_dir, original_filename)
                 

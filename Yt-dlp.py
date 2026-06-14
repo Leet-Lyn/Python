@@ -1,102 +1,93 @@
-﻿# 请帮我写个中文的 Python 脚本，批注也是中文，但是变量参数不要是中文：
-# 用 yt-dlp（"d:\ProApps\Youtube-dl\yt-dlp.exe"）下载媒体。
-# 首先询问下载的链接？（如果输入的是网络链接，则下载该链接（可以是多行。不是多次输入而是输入一次，往往是从剪贴板粘贴，可以包含多行）。按回车则为默认地址“e:\Documents\Creations\Scripts\Attachments\Python\Yt-dlpLists.txt”；如果输入的是本地链接，则下载该地址列表文件中的链接。）
-# 引入本地 cookies：“e:\Documents\Creations\Scripts\Attachments\Python\Yt-dlpCookies.txt”
-# 每一个链接都尝试 2 次。第一次尝试不使用代理，如果未成功下载，则再次使用代理下载。。代理地址：“http://127.0.0.1:10808”
-# 再询问我下载后文件存放的位置？（按回车则为默认地址“d:\Works\Downloads\Yt-dlp”；如果输入的是本地链接，则将该地址作为下载后文件存放的位置。）
-# 询问我 excel 文件位置（默认为：“d:\Works\Attachments\Python\视频.xlsx”）。
-# 进行下载，类似命令：
-# 
-# 读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。每下载一个媒体，每一条记录新开一行。
-# "Index"字段值为上一行 "Index"字段值+1（如上一行为空或为表头，则"Index"字段值为 1）。
-# 将下载的文件名写入"名字"与"原文件名"字段值。
-# 下载的链接写入"引用页"。
-# 计算并生成下载的媒体文件（仅仅是媒体文件）的 Ed2K 链接。安装了 RHash，位置“d:\ProApps\RHash\rhash.exe”。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "文件地址"。生成的 ed2k 链接，写入"主链接"字段值。
-# 通过"主链接"字段值。分别生成"大小"、"散列"字段值。大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
-# 所有结束后，再从最开始询问我下载的链接，循环进行。
-# 输入“q”退出。
+# 请帮我写个中文的 Python 脚本，批注也是中文，但是变量参数不要是中文：
+# 用 yt-dlp 下载媒体。
+# 首先询问下载的链接（可粘贴多行，按回车则从默认列表文件读取“e:\Documents\Softwares\Codes\Python\Yt-dlpLists.txt”；输入本地文件路径则读取该文件）。
+# 引入本地 cookies（Firefox 配置）。每个链接尝试 2 次：先直连，失败则走代理。
+# 再询问下载后文件存放位置、Excel 记录文件位置。
+# 每下载一个媒体，生成 Ed2K 链接，解析大小/散列，追加写入 Excel 一行。
+# 反复循环，输入 Q 退出。
 
-# 导入模块
-# =========================
-# 导入模块
-# =========================
 import os
 import re
 import subprocess
+import sys
 import urllib.parse
+from pathlib import Path
+
 import pandas as pd
 
 # =========================
 # 配置路径
 # =========================
 
-YTDLP_PATH = r"d:\ProApps\Youtube-dl\yt-dlp.exe"
-COOKIES_PATH = r"e:\Documents\Creations\Scripts\Attachments\Python\Yt-dlpCookies.txt"
+YTDLP_PATH = Path(r"D:\ProApps\yt-dlp\current\yt-dlp.exe")
+FIREFOX_PROFILE = r"D:\ProApps\Firefox\current\profile"
+BROWSER_COOKIES = f"firefox:{FIREFOX_PROFILE}" if FIREFOX_PROFILE else "firefox"
 PROXY_URL = "http://127.0.0.1:10808"
 
-DEFAULT_URL_LIST = r"e:\Documents\Creations\Scripts\Attachments\Python\Yt-dlpLists.txt"
-DEFAULT_OUTPUT_DIR = r"d:\Works\Downloads\Yt-dlp"
-DEFAULT_EXCEL_PATH = r"d:\Works\Attachments\Python\视频.xlsx"
+DEFAULT_URL_LIST = Path(r"e:\Documents\Softwares\Codes\Python\Yt-dlpLists.txt")
+DEFAULT_OUTPUT_DIR = Path(r"d:\Studios\Folders\Downloads\Yt-dlp")
+DEFAULT_EXCEL_PATH = Path(r"d:\Studios\Folders\Downloads\Yt-dlp\Yt-dlp.xlsx")
 
-RHASH_PATH = r"d:\ProApps\RHash\rhash.exe"
+RHASH_PATH = Path(r"d:\ProApps\rhash\current\rhash.exe")
 
-VIDEO_EXTENSIONS = {"mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg", ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4"}
+VIDEO_EXTS = {
+    ".mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg",
+    ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4",
+}
 
 # =========================
 # 代理白名单（命中则直接用代理）
 # =========================
 
-PROXY_WHITELIST = [
-    "youtube.com",
-    "youtu.be"
-]
+PROXY_WHITELIST = ["youtube.com", "youtu.be"]
+
 
 # =========================
 # 工具函数
 # =========================
 
-def format_size(size_bytes):
-    """字节数 → B / KB / MB / GB（4 位小数）"""
+def format_size(size_bytes: int) -> str:
+    """字节数 → B / KB / MB / GB（4 位小数）。"""
     size = float(size_bytes)
-    for unit in ["B", "KB", "MB", "GB"]:
+    for unit in ("B", "KB", "MB", "GB"):
         if size < 1024:
             return f"{size:.4f} {unit}"
         size /= 1024
     return f"{size:.4f} TB"
 
-def extract_urls(text):
-    """从文本中提取所有 http/https 链接"""
+
+def extract_urls(text: str) -> list[str]:
+    """从文本中提取所有 http/https 链接。"""
     urls = re.findall(r"https?://[^\s]+", text)
     return [u.rstrip(";,") for u in urls]
 
-def read_url_input(user_input):
-    """读取用户输入的链接或链接列表文件"""
+
+def read_url_input(user_input: str) -> list[str]:
+    """读取用户输入的链接或链接列表文件。"""
     if not user_input:
-        if os.path.exists(DEFAULT_URL_LIST):
-            with open(DEFAULT_URL_LIST, "r", encoding="utf-8") as f:
-                return extract_urls(f.read())
+        if DEFAULT_URL_LIST.is_file():
+            return extract_urls(DEFAULT_URL_LIST.read_text(encoding="utf-8"))
         return []
 
-    if os.path.exists(user_input):
-        with open(user_input, "r", encoding="utf-8") as f:
-            return extract_urls(f.read())
+    path = Path(user_input.strip("\"'"))
+    if path.is_file():
+        return extract_urls(path.read_text(encoding="utf-8"))
 
     return extract_urls(user_input)
 
-def need_proxy_first(url):
-    """判断是否需要直接使用代理"""
-    url_lower = url.lower()
-    for domain in PROXY_WHITELIST:
-        if domain in url_lower:
-            return True
-    return False
 
-def run_ytdlp(url, output_dir, use_proxy):
-    """执行 yt-dlp 下载，并实时输出信息"""
+def need_proxy_first(url: str) -> bool:
+    """判断是否需要直接使用代理（命中白名单）。"""
+    url_lower = url.lower()
+    return any(domain in url_lower for domain in PROXY_WHITELIST)
+
+
+def run_ytdlp(url: str, output_dir: Path, use_proxy: bool) -> bool:
+    """执行 yt-dlp 下载，返回是否成功。"""
     cmd = [
-        YTDLP_PATH,
-        "--cookies", COOKIES_PATH,
-        "-P", output_dir,
+        str(YTDLP_PATH),
+        "--cookies-from-browser", BROWSER_COOKIES,
+        "-P", str(output_dir),
         "--write-thumbnail",
         "--convert-thumbnails", "jpg",
         "--write-subs",
@@ -104,67 +95,82 @@ def run_ytdlp(url, output_dir, use_proxy):
         "--sub-langs", "all",
         "--sub-format", "srt",
         "--write-info-json",
-        url
+        url,
     ]
 
     if use_proxy:
         cmd.extend(["--proxy", PROXY_URL])
 
-    print(f"{'='*10} 下载 {'代理' if use_proxy else '直连'}: {url} {'='*10}")
+    print(f"{'=' * 10} 下载 {'代理' if use_proxy else '直连'}: {url} {'=' * 10}")
     result = subprocess.run(cmd)
     return result.returncode == 0
 
-def find_latest_video(output_dir):
-    """查找最新下载的媒体文件"""
-    videos = []
-    for name in os.listdir(output_dir):
-        path = os.path.join(output_dir, name)
-        if os.path.isfile(path) and os.path.splitext(name)[1].lower() in VIDEO_EXTENSIONS:
-            videos.append(path)
-    return max(videos, key=os.path.getmtime) if videos else None
 
-def generate_ed2k(file_path):
-    """生成 ED2K 链接"""
-    cmd = [RHASH_PATH, "--uppercase", "--ed2k-link", file_path]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, text=True)
+def find_latest_video(output_dir: Path) -> Path | None:
+    """查找 output_dir 下最近修改的媒体文件。"""
+    videos = [
+        p for p in output_dir.iterdir()
+        if p.is_file() and p.suffix.lower() in VIDEO_EXTS
+    ]
+    return max(videos, key=lambda p: p.stat().st_mtime) if videos else None
+
+
+def generate_ed2k(file_path: Path) -> str:
+    """使用 RHash 生成 ED2K 链接。"""
+    cmd = [str(RHASH_PATH), "--uppercase", "--ed2k-link", str(file_path)]
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     return result.stdout.strip()
 
-def parse_ed2k(ed2k_link):
-    """解析 ED2K 链接"""
+
+def parse_ed2k(ed2k_link: str) -> tuple[str, str, str]:
+    """解析 ED2K 链接，返回 (文件名, 大小, 散列)。"""
     decoded = urllib.parse.unquote(ed2k_link)
     parts = decoded.split("|")
     return parts[2], parts[3], parts[4].upper()
+
 
 # =========================
 # Excel 处理
 # =========================
 
-def load_or_create_excel(path):
-    if os.path.exists(path):
+def load_or_create_excel(path: Path) -> pd.DataFrame:
+    """加载现有 Excel，不存在则创建含表头的新文件。"""
+    if path.is_file():
         return pd.read_excel(path, engine="openpyxl")
     df = pd.DataFrame(columns=[
         "Index", "名字", "原文件名", "引用页",
-        "大小", "散列", "主链接"
+        "大小", "散列", "主链接",
     ])
+    path.parent.mkdir(parents=True, exist_ok=True)
     df.to_excel(path, index=False, engine="openpyxl")
     return df
 
-def get_next_index(df):
+
+def get_next_index(df: pd.DataFrame) -> int:
+    """获取下一条记录的 Index 值。"""
     if "Index" in df.columns and not df.empty:
-        return int(df["Index"].dropna().iloc[-1]) + 1
+        last = df["Index"].dropna()
+        return int(last.iloc[-1]) + 1 if not last.empty else 1
     return 1
+
 
 # =========================
 # 主程序
 # =========================
 
-def main():
+def main() -> None:
+    """主循环：输入链接 → 下载 → Ed2K → 写入 Excel。"""
     df = load_or_create_excel(DEFAULT_EXCEL_PATH)
 
     while True:
-        print("\n==============================")
+        print("\n" + "=" * 30)
         user_input = input(
-            "请输入下载链接（可粘贴多行，回车用默认列表，q 退出）：\n"
+            "请输入下载链接（可粘贴多行，回车用默认列表，Q 退出）：\n"
         ).strip()
 
         if user_input.lower() == "q":
@@ -176,15 +182,16 @@ def main():
             print("未识别到有效链接。")
             continue
 
-        output_dir = input(
+        raw_dir = input(
             f"请输入下载目录（回车默认 {DEFAULT_OUTPUT_DIR}）："
-        ).strip() or DEFAULT_OUTPUT_DIR
-        os.makedirs(output_dir, exist_ok=True)
+        ).strip()
+        output_dir = Path(raw_dir) if raw_dir else DEFAULT_OUTPUT_DIR
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         for url in urls:
-            print(f"\n处理链接: {url}")
+            print(f"\n处理链接：{url}")
 
-            # 是否直接使用代理
+            # 下载（白名单直接代理，否则先直连再代理重试）
             if need_proxy_first(url):
                 print("命中代理白名单，直接使用代理下载。")
                 success = run_ytdlp(url, output_dir, True)
@@ -199,29 +206,30 @@ def main():
                 continue
 
             video_path = find_latest_video(output_dir)
-            if not video_path:
+            if video_path is None:
                 print("未找到媒体文件。")
                 continue
 
             ed2k = generate_ed2k(video_path)
-            name, size, hash_value = parse_ed2k(ed2k)
+            name, size_bytes, hash_value = parse_ed2k(ed2k)
 
             new_row = {
                 "Index": get_next_index(df),
                 "名字": name,
-                "原文件名": os.path.basename(video_path),
+                "原文件名": video_path.name,
                 "引用页": url,
-                "大小": format_size(size),
+                "大小": format_size(int(size_bytes)),
                 "散列": hash_value,
-                "主链接": ed2k
+                "主链接": ed2k,
             }
 
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
             df.to_excel(DEFAULT_EXCEL_PATH, index=False, engine="openpyxl")
-
             print("已写入 Excel。")
 
         print("本轮完成。")
 
+
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     main()

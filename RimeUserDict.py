@@ -1,95 +1,104 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 将当前剪贴板内的词组，存入变量 1 中。然后将其变量 1 中的汉语词组解析为汉语拼音，每个字用空格隔开；如词组间有英文字母，则该位置保留英文字母，英文字母和汉语拼音间用空格隔开。存入变量 2。
-# 将变量 1 与变量 2 用 utf-8 写入“d:\\ProApps\\Rime\\config\\dicts\\user.dict.yaml”，用 tab 隔开，再添加数字（默认为10），也用 tab 隔开。添加为末尾新的行。
+# 将当前剪贴板内的词组存入变量。将其中的汉语词组解析为汉语拼音，每个字用空格隔开；
+# 如词组间有英文字母，则该位置保留英文字母，英文字母和汉语拼音间用空格隔开。
+# 将原词组与拼音用 Tab 隔开，再加数字（默认 10），也用 Tab 隔开，
+# 以 UTF-8 追加写入 D:\ProApps\Rime\config\dicts\user.dict.yaml。
 
-# 需安装第三方库，运行前请执行以下命令：
-# pip install pyperclip pypinyin
+# 运行前请执行：pip install pypinyin
 
-# 导入模块
-"""
-功能：将剪贴板中的中文词组转换为带符号声调的拼音，并添加到Rime用户词典
-用法：运行脚本前请确保已安装所需库：pip install pyperclip pypinyin
-"""
-import pyperclip
+import subprocess
+import sys
+from pathlib import Path
+
 from pypinyin import lazy_pinyin, Style
 
-def is_chinese(char):
-    """判断字符是否为汉字"""
-    return '\u4e00' <= char <= '\u9fff'
+# --- 常量 ---
+DICT_PATH = Path(r"D:\ProApps\Rime\config\dicts\user.dict.yaml")
 
-def split_mixed_text(text):
-    """将中英文混合字符串分割为连续的中/英文字段"""
-    blocks = []
+
+def read_clipboard() -> str | None:
+    """从 Windows 剪贴板读取文本，失败返回 None。"""
+    try:
+        result = subprocess.run(
+            ["powershell", "-NonInteractive", "-Command", "Get-Clipboard -Raw"],
+            capture_output=True,
+            encoding="utf-8",
+            check=True,
+        )
+        return result.stdout
+    except Exception as e:
+        print(f"读取剪贴板失败：{e}")
+        return None
+
+
+def is_chinese(char: str) -> bool:
+    """判断字符是否为汉字。"""
+    return "一" <= char <= "鿿"
+
+
+def text_to_pinyin(text: str) -> str:
+    """
+    将中英混合文本转换为拼音。
+    汉字 → 带声调拼音（字间空格隔开）；英文 → 保持原样。
+    中英文交界处用空格隔开。
+    """
     if not text:
-        return blocks
-    
-    current_block = [text[0]]
+        return ""
+
+    # 第一步：将文本按中/英边界拆分为连续段
+    blocks: list[str] = []
+    current = [text[0]]
     current_type = is_chinese(text[0])
-    
+
     for char in text[1:]:
         char_type = is_chinese(char)
         if char_type == current_type:
-            current_block.append(char)
+            current.append(char)
         else:
-            blocks.append(''.join(current_block))
-            current_block = [char]
+            blocks.append("".join(current))
+            current = [char]
             current_type = char_type
-    blocks.append(''.join(current_block))
-    
-    return blocks
+    blocks.append("".join(current))
 
-def convert_to_tone_pinyin(text):
-    """将中文字符串转换为带符号声调的拼音"""
-    # 使用Style.TONE获取带符号声调的拼音
-    pinyin_list = lazy_pinyin(text, style=Style.TONE)
-    return pinyin_list
+    # 第二步：中文段转拼音，英文段保留
+    result: list[str] = []
+    for block in blocks:
+        if block and is_chinese(block[0]):
+            pinyin_list = lazy_pinyin(block, style=Style.TONE)
+            result.append(" ".join(pinyin_list))
+        else:
+            result.append(block)
 
-def main():
-    # 从剪贴板获取内容
-    clipboard_content = pyperclip.paste().strip()
+    return " ".join(result)
+
+
+def main() -> None:
+    """主流程：读取剪贴板 → 转拼音 → 追加写入词典。"""
+    clipboard_content = read_clipboard()
     if not clipboard_content:
         print("剪贴板内容为空！")
         return
 
-    # 处理拼音转换
-    text_blocks = split_mixed_text(clipboard_content)
-    pinyin_blocks = []
-    
-    for block in text_blocks:
-        if block and is_chinese(block[0]):
-            # 中文转带符号声调的拼音
-            pinyin_list = convert_to_tone_pinyin(block)
-            pinyin_blocks.append(' '.join(pinyin_list))
-        else:
-            # 英文保留原样
-            pinyin_blocks.append(block)
-    
-    # 拼接最终拼音结果
-    pinyin_result = ' '.join(pinyin_blocks)
+    clipboard_content = clipboard_content.strip()
+    pinyin_result = text_to_pinyin(clipboard_content)
 
-    # 构建写入内容
+    # 构建写入内容：词组 \t 拼音 \t 权重
     output_line = f"{clipboard_content}\t{pinyin_result}\t10\n"
-    
-    # 写入文件
-    file_path = r'd:\ProApps\Rime\config\dicts\user.dict.yaml'
+
     try:
-        with open(file_path, 'a', encoding='utf-8') as f:
+        DICT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with DICT_PATH.open("a", encoding="utf-8") as f:
             f.write(output_line)
-        print(f"成功添加到词典：")
+        print("成功添加到词典：")
         print(f"  词组：{clipboard_content}")
         print(f"  拼音：{pinyin_result}")
-        print(f"  已写入：{file_path}")
-    except FileNotFoundError:
-        print(f"错误：文件路径不存在，请检查路径：{file_path}")
-        print("请确保目录存在：d:\\ProApps\\Rime\\config\\dicts\\")
-    except Exception as e:
-        print(f"写入文件时出错：{str(e)}")
+        print(f"  已写入：{DICT_PATH}")
+    except OSError as e:
+        print(f"写入文件时出错：{e}")
 
-    print("\n处理完成！")
 
-# 示例测试函数
-def test_pinyin_conversion():
-    """测试拼音转换功能"""
+def test_pinyin_conversion() -> None:
+    """测试拼音转换功能。"""
     test_cases = [
         "你好世界",
         "hello世界",
@@ -99,36 +108,23 @@ def test_pinyin_conversion():
         "北京欢迎你",
         "a测试b",
     ]
-    
+
     print("拼音转换测试（带符号声调）：")
     print("-" * 50)
-    
+
     for test in test_cases:
-        text_blocks = split_mixed_text(test)
-        pinyin_blocks = []
-        
-        for block in text_blocks:
-            if block and is_chinese(block[0]):
-                pinyin_list = lazy_pinyin(block, style=Style.TONE)
-                pinyin_blocks.append(' '.join(pinyin_list))
-            else:
-                pinyin_blocks.append(block)
-        
-        result = ' '.join(pinyin_blocks)
+        result = text_to_pinyin(test)
         print(f"原文：{test}")
         print(f"拼音：{result}")
-        
-        # 显示每个字符的拼音详细信息
-        if any(is_chinese(char) for char in test):
+
+        if any(is_chinese(c) for c in test):
             print("详细转换：")
             for char in test:
                 if is_chinese(char):
                     pinyin = lazy_pinyin(char, style=Style.TONE)[0]
                     print(f"  '{char}' -> {pinyin}")
 
+
 if __name__ == "__main__":
-    # 运行测试函数查看拼音转换效果
-    # test_pinyin_conversion()
-    
-    # 如果需要实际运行主程序，取消下面一行的注释
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     main()

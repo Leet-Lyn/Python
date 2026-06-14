@@ -1,109 +1,98 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认地址“d:\Works\Ins\”）与目标文件夹位置（默认地址“d:\Works\Outs\”）。
+# 在脚本开始前询问我源文件夹位置（默认 d:\Studios\Folders\Ins\）与目标文件夹位置（默认 d:\Studios\Folders\Outs\）。
 # 遍历源文件夹内所有子文件夹中的文件（剔除隐藏文件）。
-# 用 Leanify 进行压缩，生成的文件放到到目标文件夹中以“源文件夹的子文件夹”中，保持文件夹及子文件结构。
+# 用 Leanify 进行压缩，生成的文件放到目标文件夹中保持子目录结构。
 
-# 导入模块
-import subprocess
-import os
 import shutil
+import subprocess
+import sys
+from pathlib import Path
 
-def is_hidden_file(file_path):
-    """
-    判断文件是否为隐藏文件
-    """
-    # 方法1：检查文件名是否以点开头（Unix/Linux系统）
-    if os.path.basename(file_path).startswith('.'):
+# --- 常量 ---
+LEANIFY_EXE = Path(r"D:\ProApps\Leanify\Leanify.exe")
+
+
+def is_hidden_file(file_path: Path) -> bool:
+    """判断文件是否为隐藏文件。"""
+    # 文件名以点开头（Unix/Linux / 部分 Windows 场景）
+    if file_path.name.startswith("."):
         return True
-    
-    # 方法2：检查文件属性（Windows系统）
+
+    # Windows 文件属性检查
     try:
-        import win32file
         import win32con
-        attributes = win32file.GetFileAttributes(file_path)
-        return attributes & (win32con.FILE_ATTRIBUTE_HIDDEN | win32con.FILE_ATTRIBUTE_SYSTEM)
-    except:
-        # 如果无法使用win32api，尝试使用其他方法
-        try:
-            return os.stat(file_path).st_file_attributes & 0x2  # 隐藏属性
-        except:
-            # 最后回退到检查文件名
-            return os.path.basename(file_path).startswith('.')
+        import win32file
+        attributes = win32file.GetFileAttributes(str(file_path))
+        return bool(attributes & (win32con.FILE_ATTRIBUTE_HIDDEN | win32con.FILE_ATTRIBUTE_SYSTEM))
+    except Exception:
+        pass
 
-def compress_files_with_leanify():
-    """
-    使用 Leanify 压缩源文件夹中的所有文件，并将结果保存到目标文件夹中，保留源文件夹的子文件夹结构。
-    """
-    # 提示用户输入源文件夹和目标文件夹位置
-    input_path = input("请输入源文件夹位置（按回车键使用默认地址：“d:\\Works\\Ins\\”）：").strip() or "d:\\Works\\Ins\\"
-    output_path = input("请输入目标文件夹位置（按回车键使用默认地址：“d:\\Works\\Outs\\”）：").strip() or "d:\\Works\\Outs\\"
+    try:
+        return bool(file_path.stat().st_file_attributes & 0x2)
+    except Exception:
+        return False
 
-    # 验证输入路径
-    if not os.path.isdir(input_path):
+
+def main() -> None:
+    """主流程：获取源/目标文件夹 → 遍历文件 → Leanify 压缩 → 统计。"""
+    raw = input(
+        r"请输入源文件夹位置（回车默认 d:\Studios\Folders\Ins\）："
+    ).strip()
+    input_path = Path(raw) if raw else Path(r"d:\Studios\Folders\Ins")
+    raw = input(
+        r"请输入目标文件夹位置（回车默认 d:\Studios\Folders\Outs\）："
+    ).strip()
+    output_path = Path(raw) if raw else Path(r"d:\Studios\Folders\Outs")
+
+    if not input_path.is_dir():
         print(f"源文件夹路径无效：{input_path}")
         return
-    
-    # 确保目标文件夹存在
-    os.makedirs(output_path, exist_ok=True)
-    
-    # 统计变量
-    total_files = 0
-    processed_files = 0
-    skipped_hidden_files = 0
-    failed_files = 0
 
-    # 遍历源文件夹内的所有子文件夹和文件
-    for root, dirs, files in os.walk(input_path):
-        # 剔除隐藏文件夹
-        dirs[:] = [d for d in dirs if not is_hidden_file(os.path.join(root, d))]
-        
-        for file in files:
-            file_path = os.path.join(root, file)
-            
-            # 跳过隐藏文件
-            if is_hidden_file(file_path):
-                skipped_hidden_files += 1
-                continue
-            
-            total_files += 1
-            
-            # 生成目标文件夹中的对应路径
-            relative_path = os.path.relpath(root, input_path)
-            target_dir = os.path.join(output_path, relative_path)
-            os.makedirs(target_dir, exist_ok=True)
+    output_path.mkdir(parents=True, exist_ok=True)
 
-            # 构造目标文件路径
-            target_file_path = os.path.join(target_dir, file)
+    total = 0
+    ok = 0
+    skipped = 0
+    fail = 0
 
-            try:
-                # 调用 Leanify 对文件进行压缩
-                result = subprocess.run(
-                    ["d:\\ProApps\\Leanify\\Leanify.exe", file_path],
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
-                )
+    for file_path in input_path.rglob("*"):
+        if not file_path.is_file():
+            continue
 
-                if result.returncode == 0:
-                    # 压缩成功，将文件移动到目标文件夹
-                    shutil.move(file_path, target_file_path)
-                    print(f"成功压缩并移动：{file_path} -> {target_file_path}")
-                    processed_files += 1
-                else:
-                    # 压缩失败，打印错误信息
-                    print(f"文件 {file_path} 压缩失败，错误代码：{result.returncode}")
-                    failed_files += 1
-            except Exception as e:
-                print(f"处理文件 {file_path} 时发生错误：{e}")
-                failed_files += 1
+        if is_hidden_file(file_path):
+            skipped += 1
+            continue
 
-    # 输出处理统计
-    print("\n文件处理完成！")
-    print(f"总文件数: {total_files}")
-    print(f"成功处理: {processed_files}")
-    print(f"跳过隐藏文件: {skipped_hidden_files}")
-    print(f"处理失败: {failed_files}")
+        total += 1
+        relative_dir = file_path.parent.relative_to(input_path)
+        target_dir = output_path / relative_dir
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_file = target_dir / file_path.name
+
+        try:
+            result = subprocess.run(
+                [str(LEANIFY_EXE), str(file_path)],
+                capture_output=True,
+            )
+
+            if result.returncode == 0:
+                shutil.move(str(file_path), str(target_file))
+                print(f"✅ {file_path} → {target_file}")
+                ok += 1
+            else:
+                print(f"❌ 压缩失败：{file_path}，错误码：{result.returncode}")
+                fail += 1
+        except FileNotFoundError:
+            print(f"❌ 未找到 Leanify：{LEANIFY_EXE}")
+            return
+        except Exception as e:
+            print(f"❌ 处理文件 {file_path} 时发生错误：{e}")
+            fail += 1
+
+    print(f"\n处理完成：成功 {ok}，失败 {fail}，跳过隐藏 {skipped}，共扫描 {total + skipped}。")
+
 
 if __name__ == "__main__":
-    compress_files_with_leanify()
-    input("操作完成，按回车键退出...")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    main()
+    input("按回车键退出...")

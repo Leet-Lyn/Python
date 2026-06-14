@@ -1,185 +1,201 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件夹位置（默认为 d:\\Works\\Ins\\）与目标文件夹位置（默认为 d:\\Works\\Outs\\）。
-# 1. 如果源文件格式为 bmp、jpg、jpeg、png 或静态 webp 格式、或静态 avif 格式、静态 heic 格式、静态 heif 格式，则使用 magick 压缩成 avif 格式，使用类似命令：magick convert input.jpg -quality 50 output.avif。
-# 2. 如果图片文件格式为 gif 或动态 webp 格式、或动态 avif 格式、动态 heic 格式、动态 heif 格式或 mp4 格式，则使用似命令：ffmpeg -i input.gif -map 0:v -c:v libsvtav1 -crf 32 -preset 5 output.mp4，生成mp4，再生成 avif 动图（ffmpeg -i input-av1.mp4 -c:v copy animation.avif）。
-# 生成的文件放到目标文件夹中以“源文件夹的子文件夹”中，保持文件夹及子文件结构。如果生成新文件成功，则删除原始文件。
+# 在脚本开始前询问我源文件夹位置（默认：d:\Studios\Folders\Ins\）与目标文件夹位置（默认：d:\Studios\Folders\Outs\）。
+# 1. 如果源文件格式为 bmp / jpg / jpeg / png / 静态 webp / 静态 avif / 静态 heic / 静态 heif，则使用 magick 压缩成 avif 格式，命令如：magick convert input.jpg -quality 50 output.avif。
+# 2. 如果图片文件格式为 gif / 动态 webp / 动态 avif / 动态 heic / 动态 heif / mp4，则使用：ffmpeg -i input -map 0:v -c:v libsvtav1 -crf 32 -preset 5 temp.mp4，再 ffmpeg -i temp.mp4 -c:v copy output.avif 生成 avif 动图。
+# 生成的文件放到目标文件夹中保持源文件夹的子目录结构。成功则删除源文件。
 
-# 导入模块
-import os
 import subprocess
+import sys
 import uuid
+from pathlib import Path
+
 from PIL import Image
 
-def is_animated_image(filepath):
-    """改进版动态图检测（解决NoneType错误）"""
-    ext = os.path.splitext(filepath)[1].lower()
-    
+# --- 常量 ---
+CREATION_FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+STATIC_EXTS = {".bmp", ".jpg", ".jpeg", ".png", ".webp", ".avif", ".heic", ".heif"}
+ANIMATED_EXTS = {".gif", ".mp4"}
+ALL_EXTS = STATIC_EXTS | ANIMATED_EXTS
+
+
+def is_animated(filepath: Path) -> bool:
+    """检测图像是否为动态图（多帧），Pillow 优先，Magick 兜底。"""
+    ext = filepath.suffix.lower()
     try:
-        # WebP格式检测
-        if ext == '.webp':
+        if ext in {".webp", ".gif", ".avif", ".heic", ".heif"}:
             with Image.open(filepath) as img:
-                return getattr(img, "is_animated", False)
-        
-        # 使用Pillow检测其他格式的动画属性
-        if ext in ('.gif', '.avif', '.heic', '.heif'):
-            with Image.open(filepath) as img:
-                return getattr(img, "is_animated", False)
-        
-        # 其他格式使用快速ImageMagick检测（禁用输出解码）
+                return bool(getattr(img, "is_animated", False))
+
         result = subprocess.run(
-            ['magick', 'identify', '-format', '%n\n', filepath],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,  # 禁用错误输出
-            check=True
+            ["magick", "identify", "-format", "%n\n", str(filepath)],
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            check=True,
         )
-        frame_count = int(result.stdout.split(b'\n')[0])
-        return frame_count > 1
-        
+        return int(result.stdout.split("\n")[0]) > 1
     except Exception as e:
-        print(f"动态检测异常：{filepath} | 错误：{str(e)}")
+        print(f"  动态检测异常：{filepath.name} | {e}")
         return False
 
-def process_files(src_root, dst_root):
-    """改进文件遍历处理"""
-    for root, dirs, files in os.walk(src_root):
-        for filename in files:
-            src_path = os.path.join(root, filename)
-            ext = os.path.splitext(filename)[1].lower()
-            
-            # 构建安全路径
-            relative_path = os.path.relpath(root, src_root)
-            dst_dir = os.path.normpath(os.path.join(dst_root, relative_path))
-            os.makedirs(dst_dir, exist_ok=True)
-            
-            try:
-                # 跳过非目标文件
-                if ext not in {'.bmp', '.jpg', '.jpeg', '.png', '.webp', 
-                              '.avif', '.heic', '.heif', '.gif', '.mp4'}:
-                    continue
-                
-                # 处理流程
-                success = False
-                if ext in ('.bmp', '.jpg', '.jpeg', '.png', '.webp', 
-                          '.avif', '.heic', '.heif'):
-                    animated = is_animated_image(src_path)
-                    success = handle_convert(src_path, dst_dir, 'av1' if animated else 'avif')
-                elif ext in ('.gif', '.mp4'):
-                    success = handle_convert(src_path, dst_dir, 'av1')
-                
-                # 成功后处理
-                if success:
-                    os.remove(src_path)
-                    print(f"成功处理：{os.path.basename(src_path)}")
-                    
-            except Exception as e:
-                print(f"处理失败：{filename} | 错误：{str(e)}")
 
-def handle_convert(src_path, dst_dir, format_type):
-    """改进转换函数（解决编码问题）"""
-    base_name = os.path.splitext(os.path.basename(src_path))[0]
-    dst_ext = '.avif'  # 最终输出都是avif格式
-    dst_path = os.path.join(dst_dir, f"{base_name}{dst_ext}")
-    temp_file = None
-    temp_mp4 = None
-    
+def convert_static(source: Path, dst_dir: Path) -> bool:
+    """静态图 → AVIF，输出到 dst_dir，成功返回 True。"""
+    output = dst_dir / f"{source.stem}.avif"
     try:
-        if format_type == 'avif':
-            # 静态图像转换（禁用控制台输出）
-            subprocess.run(
-                ['magick', src_path, '-quality', '50', dst_path],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=subprocess.CREATE_NO_WINDOW  # Windows专用参数
-            )
-            return True
-        else:
-            # 动态内容处理 - 两步转换
-            # 第一步：转换为MP4
-            temp_mp4 = os.path.join(dst_dir, f"{base_name}_temp_{uuid.uuid4().hex[:8]}.mp4")
-            
-            # 处理动态WebP：转换为临时GIF
-            if src_path.lower().endswith('.webp'):
-                temp_file = os.path.join(dst_dir, f"temp_{uuid.uuid4().hex[:8]}.gif")
-                subprocess.run(
-                    ['magick', src_path, temp_file],
-                    check=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    creationflags=subprocess.CREATE_NO_WINDOW
-                )
-                input_file = temp_file
-            else:
-                input_file = src_path
-
-            # FFmpeg转换为MP4
-            subprocess.run(
-                [
-                    'ffmpeg', '-hide_banner', '-loglevel', 'error',
-                    '-i', input_file, '-map', '0:v',
-                    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
-                    '-c:v', 'libsvtav1', '-crf', '32', '-preset', '5',
-                    '-movflags', '+faststart', '-an', '-sn', '-f', 'mp4', temp_mp4
-                ],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-            
-            # 第二步：将MP4转换为动态AVIF
-            subprocess.run(
-                [
-                    'ffmpeg', '-hide_banner', '-loglevel', 'error',
-                    '-i', temp_mp4, '-c:v', 'copy', dst_path
-                ],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-            return True
+        subprocess.run(
+            ["magick", str(source), "-quality", "50", str(output)],
+            check=True,
+            capture_output=True,
+            creationflags=CREATION_FLAGS,
+        )
+        return output.is_file() and output.stat().st_size > 0
     except subprocess.CalledProcessError as e:
-        print(f"转换失败：{os.path.basename(src_path)} | 错误码：{e.returncode}")
-        # 清理所有临时文件
-        for f in [dst_path, temp_file, temp_mp4]:
-            if f and os.path.exists(f):
-                try:
-                    os.remove(f)
-                except:
-                    pass
+        print(f"  ❌ magick 失败：{e}")
+        output.unlink(missing_ok=True)
         return False
-    finally:
-        # 确保清理所有临时文件
-        for f in [temp_file, temp_mp4]:
-            if f and os.path.exists(f):
-                try:
-                    os.remove(f)
-                except:
-                    pass
 
-def main():
-    """改进输入处理"""
-    default_in = os.path.normpath(r'd:\Works\Ins')
-    default_out = os.path.normpath(r'd:\Works\Outs')
-    
-    src_folder = input(f"请输入源文件夹路径（默认：{default_in}）: ") or default_in
-    dst_folder = input(f"请输入目标文件夹路径（默认：{default_out}）: ") or default_out
-    
-    # 路径规范化
-    src_folder = os.path.normpath(src_folder)
-    dst_folder = os.path.normpath(dst_folder)
-    
-    # 检查路径是否存在
-    if not os.path.exists(src_folder):
-        print(f"错误：源文件夹不存在 - {src_folder}")
+
+def convert_animated(source: Path, dst_dir: Path) -> bool:
+    """动态图 / 视频 → AV1 MP4 → AVIF 动图，输出到 dst_dir，成功返回 True。"""
+    temp_id = uuid.uuid4().hex[:8]
+    output = dst_dir / f"{source.stem}.avif"
+    temp_mp4 = dst_dir / f"{source.stem}_temp_{temp_id}.mp4"
+    temps: list[Path] = [temp_mp4]
+
+    # 动态 WebP → 临时 GIF
+    if source.suffix.lower() == ".webp" and is_animated(source):
+        temp_gif = dst_dir / f"{source.stem}_temp_{temp_id}.gif"
+        temps.append(temp_gif)
+        try:
+            subprocess.run(
+                ["magick", str(source), str(temp_gif)],
+                check=True,
+                capture_output=True,
+                creationflags=CREATION_FLAGS,
+            )
+        except subprocess.CalledProcessError as e:
+            print(f"  ❌ WebP→GIF 失败：{e}")
+            cleanup_temps(temps)
+            return False
+        work_source = temp_gif
+    else:
+        work_source = source
+
+    # 步骤 1：→ AV1 编码 MP4
+    try:
+        subprocess.run(
+            [
+                "ffmpeg", "-hide_banner", "-loglevel", "error",
+                "-i", str(work_source), "-map", "0:v",
+                "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+                "-c:v", "libsvtav1", "-crf", "32", "-preset", "5",
+                "-movflags", "+faststart", "-an", "-sn", "-f", "mp4",
+                str(temp_mp4),
+            ],
+            check=True,
+            capture_output=True,
+            creationflags=CREATION_FLAGS,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"  ❌ ffmpeg（MP4）失败：{e}")
+        cleanup_temps(temps)
+        return False
+
+    # 步骤 2：MP4 → 动态 AVIF
+    try:
+        subprocess.run(
+            [
+                "ffmpeg", "-hide_banner", "-loglevel", "error",
+                "-i", str(temp_mp4), "-map", "0:v", "-c:v", "copy", str(output),
+            ],
+            check=True,
+            capture_output=True,
+            creationflags=CREATION_FLAGS,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"  ❌ ffmpeg（AVIF）失败：{e}")
+        output.unlink(missing_ok=True)
+        cleanup_temps(temps)
+        return False
+
+    cleanup_temps(temps)
+    return output.is_file() and output.stat().st_size > 0
+
+
+def cleanup_temps(files: list[Path]) -> None:
+    """删除临时文件列表。"""
+    for f in files:
+        f.unlink(missing_ok=True)
+
+
+def main() -> None:
+    """主流程：获取源/目标文件夹 → 遍历转换 → 统计。"""
+    default_src = r"d:\Studios\Folders\Ins"
+    default_dst = r"d:\Studios\Folders\Outs"
+
+    raw = input(f"请输入源文件夹（回车使用默认 {default_src}）：").strip()
+    src_root = Path(raw.strip("\"'")) if raw else Path(default_src)
+    raw = input(f"请输入目标文件夹（回车使用默认 {default_dst}）：").strip()
+    dst_root = Path(raw.strip("\"'")) if raw else Path(default_dst)
+
+    if not src_root.is_dir():
+        print(f"错误：源文件夹不存在 —— {src_root}")
         return
-    
-    # 开始处理
-    print("\n开始处理文件...")
-    process_files(src_folder, dst_folder)
-    print("\n全部文件处理完成")
+
+    dst_root.mkdir(parents=True, exist_ok=True)
+
+    # 收集所有目标文件
+    all_files = sorted(
+        p for p in src_root.rglob("*")
+        if p.is_file() and p.suffix.lower() in ALL_EXTS
+    )
+    total = len(all_files)
+
+    if not total:
+        print("未找到可处理的文件。")
+        return
+
+    print(f"\n找到 {total} 个文件，开始处理...\n")
+    ok = 0
+    fail = 0
+
+    for idx, src in enumerate(all_files, 1):
+        try:
+            rel = src.parent.relative_to(src_root)
+        except ValueError:
+            rel = Path()
+        dst_dir = dst_root / rel
+        dst_dir.mkdir(parents=True, exist_ok=True)
+
+        ext = src.suffix.lower()
+        print(f"[{idx}/{total}] {src.relative_to(src_root)}")
+
+        success = False
+        if ext in STATIC_EXTS:
+            if is_animated(src):
+                success = convert_animated(src, dst_dir)
+            else:
+                success = convert_static(src, dst_dir)
+        elif ext in ANIMATED_EXTS:
+            success = convert_animated(src, dst_dir)
+
+        if success:
+            try:
+                src.unlink()
+            except OSError:
+                pass
+            ok += 1
+            print(f"  ✅ 完成")
+        else:
+            fail += 1
+            print(f"  ❌ 失败")
+
+    print(f"\n处理完成：成功 {ok} 个，失败 {fail} 个，共 {total} 个。")
+
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     main()
     input("按回车键退出...")
