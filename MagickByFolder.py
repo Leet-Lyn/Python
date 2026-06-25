@@ -4,6 +4,7 @@
 # 2. 如果图片文件格式为 gif / 动态 webp / 动态 avif / 动态 heic / 动态 heif / mp4，则使用：ffmpeg -i input -map 0:v -c:v libsvtav1 -crf 32 -preset 5 temp.mp4，再 ffmpeg -i temp.mp4 -c:v copy output.avif 生成 avif 动图。
 # 生成的文件放到目标文件夹中保持源文件夹的子目录结构。成功则删除源文件。
 
+import signal
 import subprocess
 import sys
 import uuid
@@ -17,6 +18,26 @@ CREATION_FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 STATIC_EXTS = {".bmp", ".jpg", ".jpeg", ".png", ".webp", ".avif", ".heic", ".heif"}
 ANIMATED_EXTS = {".gif", ".mp4"}
 ALL_EXTS = STATIC_EXTS | ANIMATED_EXTS
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+MSG_DETECT_ERROR = "  动态检测异常：{} | {}"
+MSG_MAGICK_FAIL = "  ❌ magick 失败：{}"
+MSG_WEBP_FAIL = "  ❌ WebP→GIF 失败：{}"
+MSG_FFMPEG_MP4_FAIL = "  ❌ ffmpeg（MP4）失败：{}"
+MSG_FFMPEG_AVIF_FAIL = "  ❌ ffmpeg（AVIF）失败：{}"
+MSG_PROMPT_SRC = "请输入源文件夹（默认 {}）："
+MSG_PROMPT_DST = "请输入目标文件夹（默认 {}）："
+MSG_SRC_NOT_FOUND = "错误：源文件夹不存在 —— {}"
+MSG_NO_FILES = "未找到可处理的文件。"
+MSG_FOUND_FILES = "\n找到 {} 个文件，开始处理...\n"
+MSG_SUCCESS = "  ✅ 完成"
+MSG_FAIL = "  ❌ 失败"
+MSG_DONE = "\n处理完成：成功 {} 个，失败 {} 个，共 {} 个。"
 
 
 def is_animated(filepath: Path) -> bool:
@@ -36,7 +57,7 @@ def is_animated(filepath: Path) -> bool:
         )
         return int(result.stdout.split("\n")[0]) > 1
     except Exception as e:
-        print(f"  动态检测异常：{filepath.name} | {e}")
+        print(MSG_DETECT_ERROR.format(filepath.name, e))
         return False
 
 
@@ -52,7 +73,7 @@ def convert_static(source: Path, dst_dir: Path) -> bool:
         )
         return output.is_file() and output.stat().st_size > 0
     except subprocess.CalledProcessError as e:
-        print(f"  ❌ magick 失败：{e}")
+        print(MSG_MAGICK_FAIL.format(e))
         output.unlink(missing_ok=True)
         return False
 
@@ -76,7 +97,7 @@ def convert_animated(source: Path, dst_dir: Path) -> bool:
                 creationflags=CREATION_FLAGS,
             )
         except subprocess.CalledProcessError as e:
-            print(f"  ❌ WebP→GIF 失败：{e}")
+            print(MSG_WEBP_FAIL.format(e))
             cleanup_temps(temps)
             return False
         work_source = temp_gif
@@ -99,7 +120,7 @@ def convert_animated(source: Path, dst_dir: Path) -> bool:
             creationflags=CREATION_FLAGS,
         )
     except subprocess.CalledProcessError as e:
-        print(f"  ❌ ffmpeg（MP4）失败：{e}")
+        print(MSG_FFMPEG_MP4_FAIL.format(e))
         cleanup_temps(temps)
         return False
 
@@ -115,7 +136,7 @@ def convert_animated(source: Path, dst_dir: Path) -> bool:
             creationflags=CREATION_FLAGS,
         )
     except subprocess.CalledProcessError as e:
-        print(f"  ❌ ffmpeg（AVIF）失败：{e}")
+        print(MSG_FFMPEG_AVIF_FAIL.format(e))
         output.unlink(missing_ok=True)
         cleanup_temps(temps)
         return False
@@ -125,23 +146,53 @@ def convert_animated(source: Path, dst_dir: Path) -> bool:
 
 
 def cleanup_temps(files: list[Path]) -> None:
-    """删除临时文件列表。"""
+    """删除临时文件列表。用户中断时保留临时残片。"""
+    if _quit_requested:
+        return
     for f in files:
         f.unlink(missing_ok=True)
 
 
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
+
+
 def main() -> None:
     """主流程：获取源/目标文件夹 → 遍历转换 → 统计。"""
+    _init_quit_handler()
     default_src = r"d:\Studios\Folders\Ins"
     default_dst = r"d:\Studios\Folders\Outs"
 
-    raw = input(f"请输入源文件夹（回车使用默认 {default_src}）：").strip()
+    raw = input(MSG_PROMPT_SRC.format(default_src)).strip()
     src_root = Path(raw.strip("\"'")) if raw else Path(default_src)
-    raw = input(f"请输入目标文件夹（回车使用默认 {default_dst}）：").strip()
+    raw = input(MSG_PROMPT_DST.format(default_dst)).strip()
     dst_root = Path(raw.strip("\"'")) if raw else Path(default_dst)
 
     if not src_root.is_dir():
-        print(f"错误：源文件夹不存在 —— {src_root}")
+        print(MSG_SRC_NOT_FOUND.format(src_root))
         return
 
     dst_root.mkdir(parents=True, exist_ok=True)
@@ -154,14 +205,17 @@ def main() -> None:
     total = len(all_files)
 
     if not total:
-        print("未找到可处理的文件。")
+        print(MSG_NO_FILES)
         return
 
-    print(f"\n找到 {total} 个文件，开始处理...\n")
+    print(MSG_FOUND_FILES.format(total))
     ok = 0
     fail = 0
 
     for idx, src in enumerate(all_files, 1):
+        if _check_quit():
+            print(MSG_INTERRUPTED)
+            break
         try:
             rel = src.parent.relative_to(src_root)
         except ValueError:
@@ -182,20 +236,30 @@ def main() -> None:
             success = convert_animated(src, dst_dir)
 
         if success:
-            try:
-                src.unlink()
-            except OSError:
-                pass
+            if not _quit_requested:
+                try:
+                    src.unlink()
+                except OSError:
+                    pass
             ok += 1
-            print(f"  ✅ 完成")
+            print(MSG_SUCCESS)
         else:
             fail += 1
-            print(f"  ❌ 失败")
+            print(MSG_FAIL)
 
-    print(f"\n处理完成：成功 {ok} 个，失败 {fail} 个，共 {total} 个。")
+    print(MSG_DONE.format(ok, fail, total))
 
+
+
+# ==================== 程序入口 ====================
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    main()
-    input("按回车键退出...")
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(MSG_INTERRUPTED)
+    except Exception as e:
+        print(MSG_ERROR.format(e))
+    finally:
+        input(MSG_EXIT)

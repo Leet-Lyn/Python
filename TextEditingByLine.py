@@ -40,6 +40,107 @@ from PySide6.QtGui import QShortcut, QKeySequence
 import pyperclip
 from opencc import OpenCC
 
+# ==================== 全局配置 ====================
+
+# --- 消息常量 ---
+
+# 程序退出相关
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+
+# 窗口
+MSG_WINDOW_TITLE = "文本行处理工具"
+MSG_PLACEHOLDER_TEXT = "在此输入或粘贴文本..."
+
+# 按钮
+MSG_BTN_PASTE = "粘贴 (Ctrl+V)"
+MSG_BTN_COPY = "复制 (Ctrl+C)"
+MSG_BTN_UNDO = "撤销 (Ctrl+Z)"
+MSG_BTN_UNIT_MOVE = "单元移动"
+MSG_BTN_UNIT_DELETE = "单元删除"
+MSG_BTN_UNIT_COPY = "单元复制"
+MSG_BTN_EXEC_ADD = "执行添加"
+MSG_BTN_EXEC_DELETE = "执行删除"
+MSG_BTN_EXEC_REPLACE = "执行替换"
+MSG_BTN_MODIFY_DATE = "修改日期格式"
+MSG_BTN_STANDARDIZE = "标准化"
+MSG_BTN_PLAY = "播放"
+MSG_BTN_PAUSE = "暂停"
+
+# 标签页
+MSG_TAB_BLOCK = "块处理"
+MSG_TAB_CHAR = "字符处理"
+MSG_TAB_DATE = "时间处理"
+MSG_TAB_STANDARD = "标准化"
+
+# 分组框标题
+MSG_GROUP_DELIM = "单元定界符"
+MSG_GROUP_SELECT_UNIT = "选择单元"
+MSG_GROUP_MOVE_OPT = "移动选项"
+MSG_GROUP_COPY_OPT = "复制选项"
+MSG_GROUP_CHAR_ADD = "字符添加"
+MSG_GROUP_CHAR_DEL = "字符删除"
+MSG_GROUP_CHAR_REP = "字符替换"
+MSG_GROUP_DATE_TYPE = "原日期格式"
+MSG_GROUP_MONTH_FMT = "月份格式"
+MSG_GROUP_DAY_FMT = "日期格式"
+MSG_GROUP_SEP = "间隔符"
+
+# 标签文本
+MSG_LABEL_LEFT_DELIM = "前导符号："
+MSG_LABEL_RIGHT_DELIM = "后导符号："
+MSG_LABEL_UNIT_INDEX = "第几个单元（正数正向，负数逆向，如-2倒数第2个）："
+MSG_LABEL_MOVE_COUNT = "移动几个单位（仅向前/向后有效）："
+MSG_LABEL_COPY_OFFSET = "复制偏移（正数后移，负数前移，0最前，-0最后）："
+MSG_LABEL_ADD_POS = "位置（0最前，正数后，负数倒数前）："
+MSG_LABEL_ADD_CHAR = "添加字符："
+MSG_LABEL_DEL_CHAR = "删除字符："
+MSG_LABEL_DEL_TIMES = "每行删除次数（正数正向，负数逆向）："
+MSG_LABEL_REP_FIND = "查找字符："
+MSG_LABEL_REP_REPLACE = "替换为："
+MSG_LABEL_REP_TIMES = "每行替换次数（正数正向，负数逆向）："
+MSG_LABEL_STD_HINT = "点击下方按钮对文本框内容进行标准化处理"
+
+# 单选按钮文本
+MSG_RB_FORWARD = "向前移动"
+MSG_RB_BACKWARD = "向后移动"
+MSG_RB_FIRST = "移到最前"
+MSG_RB_LAST = "移到最后"
+MSG_RB_YMD = "年-月-日 (y-m-d)"
+MSG_RB_DMY = "日-月-年 (d-m-y)"
+MSG_RB_MDY = "月-日-年 (m-d-y)"
+MSG_RB_M = "m (1-12)"
+MSG_RB_MM = "mm (01-12)"
+MSG_RB_MMM = "mmm (Jan-Dec)"
+MSG_RB_MMMM = "mmmm (January-December)"
+MSG_RB_D = "d (1-31)"
+MSG_RB_DD = "dd (01-31)"
+
+# QMessageBox 标题
+MSG_MBOX_UNDO_TITLE = "撤销"
+MSG_MBOX_ERROR_TITLE = "错误"
+MSG_MBOX_INFO_TITLE = "提示"
+
+# QMessageBox 消息
+MSG_MBOX_NO_UNDO = "没有可撤销的操作"
+MSG_MBOX_COPIED = "已复制到剪贴板"
+MSG_MBOX_PASTE_FAIL = "无法粘贴：{}"
+MSG_MBOX_COPY_FAIL = "无法复制：{}"
+MSG_MBOX_UNIT_INDEX_INT = "单元索引必须是整数"
+MSG_MBOX_UNIT_INDEX_ZERO = "单元索引不能为0"
+MSG_MBOX_INDEX_OUT_OF_RANGE = "索引 {} 超出范围（该行有{}个单元）"
+MSG_MBOX_MOVE_COUNT_INT = "移动次数必须是整数"
+MSG_MBOX_OFFSET_INT = "复制偏移必须是整数或-0"
+MSG_MBOX_POS_INT = "位置必须是整数"
+MSG_MBOX_ENTER_CHAR = "请输入要添加的字符"
+MSG_MBOX_ENTER_DEL_CHAR = "请输入要删除的字符"
+MSG_MBOX_TIMES_INT = "次数必须是整数"
+MSG_MBOX_ENTER_FIND_CHAR = "请输入查找字符"
+MSG_MBOX_DATE_FAIL = "日期转换失败：{}"
+MSG_MBOX_STD_FAIL = "标准化失败：{}"
+
+
 # ================== 核心功能函数 ==================
 cc = OpenCC('t2s')
 
@@ -298,7 +399,7 @@ def copy_unit(units, index, offset):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("文本行处理工具")
+        self.setWindowTitle(MSG_WINDOW_TITLE)
         self.resize(1000, 800)
 
         # 历史记录栈（最大20步）
@@ -313,13 +414,13 @@ class MainWindow(QMainWindow):
         # ---------- 顶部：文本框 + 右侧按钮 ----------
         top_layout = QHBoxLayout()
         self.text_edit = QTextEdit()
-        self.text_edit.setPlaceholderText("在此输入或粘贴文本...")
+        self.text_edit.setPlaceholderText(MSG_PLACEHOLDER_TEXT)
         top_layout.addWidget(self.text_edit, stretch=1)
 
         btn_layout = QVBoxLayout()
-        self.paste_btn = QPushButton("粘贴 (Ctrl+V)")
-        self.copy_btn = QPushButton("复制 (Ctrl+C)")
-        self.undo_btn = QPushButton("撤销 (Ctrl+Z)")
+        self.paste_btn = QPushButton(MSG_BTN_PASTE)
+        self.copy_btn = QPushButton(MSG_BTN_COPY)
+        self.undo_btn = QPushButton(MSG_BTN_UNDO)
 
         self.paste_btn.clicked.connect(self.paste_text)
         self.copy_btn.clicked.connect(self.copy_text)
@@ -347,10 +448,10 @@ class MainWindow(QMainWindow):
         self.date_tab = DateTab(self)
         self.std_tab = StdTab(self)
 
-        self.tab_widget.addTab(self.block_tab, "块处理")
-        self.tab_widget.addTab(self.char_tab, "字符处理")
-        self.tab_widget.addTab(self.date_tab, "时间处理")
-        self.tab_widget.addTab(self.std_tab, "标准化")
+        self.tab_widget.addTab(self.block_tab, MSG_TAB_BLOCK)
+        self.tab_widget.addTab(self.char_tab, MSG_TAB_CHAR)
+        self.tab_widget.addTab(self.date_tab, MSG_TAB_DATE)
+        self.tab_widget.addTab(self.std_tab, MSG_TAB_STANDARD)
 
     # ---------- 历史记录管理 ----------
     def push_history(self):
@@ -362,7 +463,7 @@ class MainWindow(QMainWindow):
 
     def undo(self):
         if not self.history:
-            QMessageBox.information(self, "撤销", "没有可撤销的操作")
+            QMessageBox.information(self, MSG_MBOX_UNDO_TITLE, MSG_MBOX_NO_UNDO)
             return
         last = self.history.pop()
         self.text_edit.setPlainText(last)
@@ -374,15 +475,15 @@ class MainWindow(QMainWindow):
             text = pyperclip.paste()
             self.text_edit.setPlainText(text)
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"无法粘贴：{e}")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_PASTE_FAIL.format(e))
 
     def copy_text(self):
         try:
             text = self.text_edit.toPlainText()
             pyperclip.copy(text)
-            QMessageBox.information(self, "提示", "已复制到剪贴板")
+            QMessageBox.information(self, MSG_MBOX_INFO_TITLE, MSG_MBOX_COPIED)
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"无法复制：{e}")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_COPY_FAIL.format(e))
 
     def get_lines(self):
         content = self.text_edit.toPlainText()
@@ -400,22 +501,22 @@ class BlockTab(QWidget):
         self.main = main_window
         layout = QVBoxLayout(self)
 
-        delim_group = QGroupBox("单元定界符")
+        delim_group = QGroupBox(MSG_GROUP_DELIM)
         delim_layout = QHBoxLayout(delim_group)
-        delim_layout.addWidget(QLabel("前导符号："))
+        delim_layout.addWidget(QLabel(MSG_LABEL_LEFT_DELIM))
         self.left_delim = QLineEdit("[")
         self.left_delim.setMaximumWidth(50)
         delim_layout.addWidget(self.left_delim)
-        delim_layout.addWidget(QLabel("后导符号："))
+        delim_layout.addWidget(QLabel(MSG_LABEL_RIGHT_DELIM))
         self.right_delim = QLineEdit("]")
         self.right_delim.setMaximumWidth(50)
         delim_layout.addWidget(self.right_delim)
         delim_layout.addStretch()
         layout.addWidget(delim_group)
 
-        idx_group = QGroupBox("选择单元")
+        idx_group = QGroupBox(MSG_GROUP_SELECT_UNIT)
         idx_layout = QHBoxLayout(idx_group)
-        idx_layout.addWidget(QLabel("第几个单元（正数正向，负数逆向，如-2倒数第2个）："))
+        idx_layout.addWidget(QLabel(MSG_LABEL_UNIT_INDEX))
         self.block_index = QLineEdit("1")
         self.block_index.setMaximumWidth(80)
         idx_layout.addWidget(self.block_index)
@@ -423,21 +524,21 @@ class BlockTab(QWidget):
         layout.addWidget(idx_group)
 
         btn_layout = QHBoxLayout()
-        self.move_btn = QPushButton("单元移动")
-        self.delete_btn = QPushButton("单元删除")
-        self.copy_btn = QPushButton("单元复制")
+        self.move_btn = QPushButton(MSG_BTN_UNIT_MOVE)
+        self.delete_btn = QPushButton(MSG_BTN_UNIT_DELETE)
+        self.copy_btn = QPushButton(MSG_BTN_UNIT_COPY)
         btn_layout.addWidget(self.move_btn)
         btn_layout.addWidget(self.delete_btn)
         btn_layout.addWidget(self.copy_btn)
         layout.addLayout(btn_layout)
 
-        move_group = QGroupBox("移动选项")
+        move_group = QGroupBox(MSG_GROUP_MOVE_OPT)
         move_grid = QGridLayout(move_group)
         self.move_type = QButtonGroup(self)
-        rb_forward = QRadioButton("向前移动")
-        rb_backward = QRadioButton("向后移动")
-        rb_first = QRadioButton("移到最前")
-        rb_last = QRadioButton("移到最后")
+        rb_forward = QRadioButton(MSG_RB_FORWARD)
+        rb_backward = QRadioButton(MSG_RB_BACKWARD)
+        rb_first = QRadioButton(MSG_RB_FIRST)
+        rb_last = QRadioButton(MSG_RB_LAST)
         self.move_type.addButton(rb_forward, 1)
         self.move_type.addButton(rb_backward, 2)
         self.move_type.addButton(rb_first, 3)
@@ -447,15 +548,15 @@ class BlockTab(QWidget):
         move_grid.addWidget(rb_backward, 0, 1)
         move_grid.addWidget(rb_first, 0, 2)
         move_grid.addWidget(rb_last, 0, 3)
-        move_grid.addWidget(QLabel("移动几个单位（仅向前/向后有效）："), 1, 0)
+        move_grid.addWidget(QLabel(MSG_LABEL_MOVE_COUNT), 1, 0)
         self.move_count = QLineEdit("1")
         self.move_count.setMaximumWidth(80)
         move_grid.addWidget(self.move_count, 1, 1)
         layout.addWidget(move_group)
 
-        copy_group = QGroupBox("复制选项")
+        copy_group = QGroupBox(MSG_GROUP_COPY_OPT)
         copy_layout = QHBoxLayout(copy_group)
-        copy_layout.addWidget(QLabel("复制偏移（正数后移，负数前移，0最前，-0最后）："))
+        copy_layout.addWidget(QLabel(MSG_LABEL_COPY_OFFSET))
         self.copy_offset = QLineEdit("1")
         self.copy_offset.setMaximumWidth(80)
         copy_layout.addWidget(self.copy_offset)
@@ -476,16 +577,16 @@ class BlockTab(QWidget):
         try:
             idx_raw = int(self.block_index.text())
         except ValueError:
-            QMessageBox.critical(self, "错误", "单元索引必须是整数")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_UNIT_INDEX_INT)
             return
-        move_type_map = {1: '向前移动', 2: '向后移动', 3: '移到最前', 4: '移到最后'}
+        move_type_map = {1: MSG_RB_FORWARD, 2: MSG_RB_BACKWARD, 3: MSG_RB_FIRST, 4: MSG_RB_LAST}
         move_type = move_type_map.get(self.move_type.checkedId())
         count = 0
-        if move_type in ('向前移动', '向后移动'):
+        if move_type in (MSG_RB_FORWARD, MSG_RB_BACKWARD):
             try:
                 count = int(self.move_count.text())
             except ValueError:
-                QMessageBox.critical(self, "错误", "移动次数必须是整数")
+                QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_MOVE_COUNT_INT)
                 return
         new_lines = []
         for line in lines:
@@ -499,10 +600,10 @@ class BlockTab(QWidget):
             elif idx_raw < 0:
                 actual = n + idx_raw
             else:
-                QMessageBox.critical(self, "错误", "单元索引不能为0")
+                QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_UNIT_INDEX_ZERO)
                 return
             if actual < 0 or actual >= n:
-                QMessageBox.critical(self, "错误", f"索引 {idx_raw} 超出范围（该行有{n}个单元）")
+                QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_INDEX_OUT_OF_RANGE.format(idx_raw, n))
                 return
             new_units = move_unit(units, actual, move_type, count)
             new_lines.append(reconstruct_line_from_units(line, new_units, left, right))
@@ -516,7 +617,7 @@ class BlockTab(QWidget):
         try:
             idx_raw = int(self.block_index.text())
         except ValueError:
-            QMessageBox.critical(self, "错误", "单元索引必须是整数")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_UNIT_INDEX_INT)
             return
         new_lines = []
         for line in lines:
@@ -530,10 +631,10 @@ class BlockTab(QWidget):
             elif idx_raw < 0:
                 actual = n + idx_raw
             else:
-                QMessageBox.critical(self, "错误", "单元索引不能为0")
+                QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_UNIT_INDEX_ZERO)
                 return
             if actual < 0 or actual >= n:
-                QMessageBox.critical(self, "错误", f"索引 {idx_raw} 超出范围（该行有{n}个单元）")
+                QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_INDEX_OUT_OF_RANGE.format(idx_raw, n))
                 return
             new_units = delete_unit(units, actual)
             new_lines.append(reconstruct_line_from_units(line, new_units, left, right))
@@ -547,7 +648,7 @@ class BlockTab(QWidget):
         try:
             idx_raw = int(self.block_index.text())
         except ValueError:
-            QMessageBox.critical(self, "错误", "单元索引必须是整数")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_UNIT_INDEX_INT)
             return
         offset_str = self.copy_offset.text().strip()
         if offset_str == '-0':
@@ -556,7 +657,7 @@ class BlockTab(QWidget):
             try:
                 offset = int(offset_str)
             except ValueError:
-                QMessageBox.critical(self, "错误", "复制偏移必须是整数或-0")
+                QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_OFFSET_INT)
                 return
         new_lines = []
         for line in lines:
@@ -570,10 +671,10 @@ class BlockTab(QWidget):
             elif idx_raw < 0:
                 actual = n + idx_raw
             else:
-                QMessageBox.critical(self, "错误", "单元索引不能为0")
+                QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_UNIT_INDEX_ZERO)
                 return
             if actual < 0 or actual >= n:
-                QMessageBox.critical(self, "错误", f"索引 {idx_raw} 超出范围（该行有{n}个单元）")
+                QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_INDEX_OUT_OF_RANGE.format(idx_raw, n))
                 return
             new_units = copy_unit(units, actual, offset)
             new_lines.append(reconstruct_line_from_units(line, new_units, left, right))
@@ -586,42 +687,42 @@ class CharTab(QWidget):
         self.main = main_window
         layout = QVBoxLayout(self)
 
-        add_group = QGroupBox("字符添加")
+        add_group = QGroupBox(MSG_GROUP_CHAR_ADD)
         add_layout = QGridLayout(add_group)
-        add_layout.addWidget(QLabel("位置（0最前，正数后，负数倒数前）："), 0, 0)
+        add_layout.addWidget(QLabel(MSG_LABEL_ADD_POS), 0, 0)
         self.add_pos = QLineEdit("0")
         add_layout.addWidget(self.add_pos, 0, 1)
-        add_layout.addWidget(QLabel("添加字符："), 1, 0)
+        add_layout.addWidget(QLabel(MSG_LABEL_ADD_CHAR), 1, 0)
         self.add_char = QLineEdit()
         add_layout.addWidget(self.add_char, 1, 1)
-        self.add_btn = QPushButton("执行添加")
+        self.add_btn = QPushButton(MSG_BTN_EXEC_ADD)
         add_layout.addWidget(self.add_btn, 2, 0, 1, 2)
         layout.addWidget(add_group)
 
-        del_group = QGroupBox("字符删除")
+        del_group = QGroupBox(MSG_GROUP_CHAR_DEL)
         del_layout = QGridLayout(del_group)
-        del_layout.addWidget(QLabel("删除字符："), 0, 0)
+        del_layout.addWidget(QLabel(MSG_LABEL_DEL_CHAR), 0, 0)
         self.del_char = QLineEdit()
         del_layout.addWidget(self.del_char, 0, 1)
-        del_layout.addWidget(QLabel("每行删除次数（正数正向，负数逆向）："), 1, 0)
+        del_layout.addWidget(QLabel(MSG_LABEL_DEL_TIMES), 1, 0)
         self.del_times = QLineEdit("1")
         del_layout.addWidget(self.del_times, 1, 1)
-        self.del_btn = QPushButton("执行删除")
+        self.del_btn = QPushButton(MSG_BTN_EXEC_DELETE)
         del_layout.addWidget(self.del_btn, 2, 0, 1, 2)
         layout.addWidget(del_group)
 
-        rep_group = QGroupBox("字符替换")
+        rep_group = QGroupBox(MSG_GROUP_CHAR_REP)
         rep_layout = QGridLayout(rep_group)
-        rep_layout.addWidget(QLabel("查找字符："), 0, 0)
+        rep_layout.addWidget(QLabel(MSG_LABEL_REP_FIND), 0, 0)
         self.rep_old = QLineEdit()
         rep_layout.addWidget(self.rep_old, 0, 1)
-        rep_layout.addWidget(QLabel("替换为："), 1, 0)
+        rep_layout.addWidget(QLabel(MSG_LABEL_REP_REPLACE), 1, 0)
         self.rep_new = QLineEdit()
         rep_layout.addWidget(self.rep_new, 1, 1)
-        rep_layout.addWidget(QLabel("每行替换次数（正数正向，负数逆向）："), 2, 0)
+        rep_layout.addWidget(QLabel(MSG_LABEL_REP_TIMES), 2, 0)
         self.rep_times = QLineEdit("1")
         rep_layout.addWidget(self.rep_times, 2, 1)
-        self.rep_btn = QPushButton("执行替换")
+        self.rep_btn = QPushButton(MSG_BTN_EXEC_REPLACE)
         rep_layout.addWidget(self.rep_btn, 3, 0, 1, 2)
         layout.addWidget(rep_group)
 
@@ -637,11 +738,11 @@ class CharTab(QWidget):
         try:
             pos = int(self.add_pos.text())
         except ValueError:
-            QMessageBox.critical(self, "错误", "位置必须是整数")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_POS_INT)
             return
         char = self.add_char.text()
         if not char:
-            QMessageBox.critical(self, "错误", "请输入要添加的字符")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_ENTER_CHAR)
             return
         new_lines = add_string_to_lines(lines, pos, char)
         self.main.update_text(new_lines)
@@ -651,12 +752,12 @@ class CharTab(QWidget):
         lines, _ = self.main.get_lines()
         char = self.del_char.text()
         if not char:
-            QMessageBox.critical(self, "错误", "请输入要删除的字符")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_ENTER_DEL_CHAR)
             return
         try:
             times = int(self.del_times.text())
         except ValueError:
-            QMessageBox.critical(self, "错误", "次数必须是整数")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_TIMES_INT)
             return
         new_lines = delete_string_from_lines(lines, char, times)
         self.main.update_text(new_lines)
@@ -667,12 +768,12 @@ class CharTab(QWidget):
         old = self.rep_old.text()
         new = self.rep_new.text()
         if not old:
-            QMessageBox.critical(self, "错误", "请输入查找字符")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_ENTER_FIND_CHAR)
             return
         try:
             times = int(self.rep_times.text())
         except ValueError:
-            QMessageBox.critical(self, "错误", "次数必须是整数")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_TIMES_INT)
             return
         new_lines = replace_string_in_lines(lines, old, new, times)
         self.main.update_text(new_lines)
@@ -684,12 +785,12 @@ class DateTab(QWidget):
         self.main = main_window
         layout = QVBoxLayout(self)
 
-        type_group = QGroupBox("原日期格式")
+        type_group = QGroupBox(MSG_GROUP_DATE_TYPE)
         type_layout = QHBoxLayout(type_group)
         self.date_type = QButtonGroup(self)
-        rb_ymd = QRadioButton("年-月-日 (y-m-d)")
-        rb_dmy = QRadioButton("日-月-年 (d-m-y)")
-        rb_mdy = QRadioButton("月-日-年 (m-d-y)")
+        rb_ymd = QRadioButton(MSG_RB_YMD)
+        rb_dmy = QRadioButton(MSG_RB_DMY)
+        rb_mdy = QRadioButton(MSG_RB_MDY)
         self.date_type.addButton(rb_ymd, 1)
         self.date_type.addButton(rb_dmy, 2)
         self.date_type.addButton(rb_mdy, 3)
@@ -699,13 +800,13 @@ class DateTab(QWidget):
         type_layout.addWidget(rb_mdy)
         layout.addWidget(type_group)
 
-        month_group = QGroupBox("月份格式")
+        month_group = QGroupBox(MSG_GROUP_MONTH_FMT)
         month_layout = QHBoxLayout(month_group)
         self.month_format = QButtonGroup(self)
-        rb_m = QRadioButton("m (1-12)")
-        rb_mm = QRadioButton("mm (01-12)")
-        rb_mmm = QRadioButton("mmm (Jan-Dec)")
-        rb_mmmm = QRadioButton("mmmm (January-December)")
+        rb_m = QRadioButton(MSG_RB_M)
+        rb_mm = QRadioButton(MSG_RB_MM)
+        rb_mmm = QRadioButton(MSG_RB_MMM)
+        rb_mmmm = QRadioButton(MSG_RB_MMMM)
         self.month_format.addButton(rb_m, 1)
         self.month_format.addButton(rb_mm, 2)
         self.month_format.addButton(rb_mmm, 3)
@@ -717,11 +818,11 @@ class DateTab(QWidget):
         month_layout.addWidget(rb_mmmm)
         layout.addWidget(month_group)
 
-        day_group = QGroupBox("日期格式")
+        day_group = QGroupBox(MSG_GROUP_DAY_FMT)
         day_layout = QHBoxLayout(day_group)
         self.day_format = QButtonGroup(self)
-        rb_d = QRadioButton("d (1-31)")
-        rb_dd = QRadioButton("dd (01-31)")
+        rb_d = QRadioButton(MSG_RB_D)
+        rb_dd = QRadioButton(MSG_RB_DD)
         self.day_format.addButton(rb_d, 1)
         self.day_format.addButton(rb_dd, 2)
         rb_d.setChecked(True)
@@ -729,7 +830,7 @@ class DateTab(QWidget):
         day_layout.addWidget(rb_dd)
         layout.addWidget(day_group)
 
-        sep_group = QGroupBox("间隔符")
+        sep_group = QGroupBox(MSG_GROUP_SEP)
         sep_grid = QGridLayout(sep_group)
         self.separator = QButtonGroup(self)
         self.sep_vals = [
@@ -749,7 +850,7 @@ class DateTab(QWidget):
         self.separator.buttons()[0].setChecked(True)
         layout.addWidget(sep_group)
 
-        self.convert_btn = QPushButton("修改日期格式")
+        self.convert_btn = QPushButton(MSG_BTN_MODIFY_DATE)
         layout.addWidget(self.convert_btn)
         layout.addStretch()
 
@@ -770,7 +871,7 @@ class DateTab(QWidget):
         try:
             new_text = format_date(text, date_type, month_fmt, day_fmt, sep)
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"日期转换失败：{e}")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_DATE_FAIL.format(e))
             return
         self.main.text_edit.setPlainText(new_text)
 
@@ -780,8 +881,8 @@ class StdTab(QWidget):
         super().__init__()
         self.main = main_window
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("点击下方按钮对文本框内容进行标准化处理"))
-        self.std_btn = QPushButton("标准化")
+        layout.addWidget(QLabel(MSG_LABEL_STD_HINT))
+        self.std_btn = QPushButton(MSG_BTN_STANDARDIZE)
         layout.addWidget(self.std_btn)
         layout.addStretch()
         self.std_btn.clicked.connect(self.standardize)
@@ -792,7 +893,7 @@ class StdTab(QWidget):
         try:
             new_text = format_text(text)
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"标准化失败：{e}")
+            QMessageBox.critical(self, MSG_MBOX_ERROR_TITLE, MSG_MBOX_STD_FAIL.format(e))
             return
         self.main.text_edit.setPlainText(new_text)
 
@@ -802,4 +903,11 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    sys.exit(app.exec())
+    try:
+        sys.exit(app.exec())
+    except KeyboardInterrupt:
+        print(MSG_INTERRUPTED)
+    except Exception as e:
+        print(MSG_ERROR.format(e))
+    finally:
+        input(MSG_EXIT)

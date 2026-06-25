@@ -4,6 +4,7 @@
 # 依次读取目标文件夹的所有文件的文件名，如果源文件夹内存在名字相同的文件（大小写敏感），则删除源文件的文件。
 # 要求如果文件夹内有子文件夹，递归实现。
 
+import signal
 import sys
 from pathlib import Path
 
@@ -11,13 +12,62 @@ from pathlib import Path
 
 DEFAULT_SOURCE_DIR = Path(r"d:\Studios\Folders\Ins")
 DEFAULT_TARGET_DIR = Path(r"d:\Studios\Folders\Outs")
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_PROMPT_SOURCE_DIR = "请输入源文件夹路径："
+MSG_PROMPT_TARGET_DIR = "请输入目标文件夹路径："
+MSG_ERR_SOURCE_NOT_FOUND = "错误: 源文件夹不存在 [{}]"
+MSG_ERR_TARGET_NOT_FOUND = "错误: 目标文件夹不存在 [{}]"
+MSG_ERR_SAME_DIR = "错误: 源文件夹与目标文件夹相同，操作将删除全部文件，已阻止。"
+MSG_EXCLUDE_EXT_PROMPT = "是否排除扩展名（仅匹配主文件名）？(y/n，默认 n): "
+MSG_START_CLEANUP = "\n开始清理: {}"
+MSG_REFERENCE_DIR = "参照目录: {}"
+MSG_MATCH_MODE = "\n匹配模式：{}（大小写敏感）"
+MSG_LABEL_STEM = "主文件名"
+MSG_LABEL_FULLNAME = "完整文件名"
+MSG_DELETED = "已删除: {}"
+MSG_DELETE_FAILED = "删除失败: {} - {}"
+MSG_DELETE_COMPLETE = "操作完成！共删除 {} 个文件，失败 {} 个。"
+MSG_TARGET_FILE_COUNT = "目标文件夹文件总数: {}"
+MSG_INPUT_DEFAULT_HINT = " (默认: {}): "
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
+
 
 # ==================== 辅助函数 ====================
 
 
 def get_input_with_default(prompt_text: str, default_value: str) -> str:
     """获取带默认值的用户输入。"""
-    user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
+    user_input = input(f"{prompt_text}{MSG_INPUT_DEFAULT_HINT.format(default_value)}").strip()
     return user_input if user_input else str(default_value)
 
 
@@ -39,13 +89,13 @@ def delete_duplicate_files(
     if exclude_extension:
         target_keys = {p.stem for p in target_dir.rglob("*") if p.is_file()}
         get_key = lambda p: p.stem
-        label = "主文件名"
+        label = MSG_LABEL_STEM
     else:
         target_keys = {p.name for p in target_dir.rglob("*") if p.is_file()}
         get_key = lambda p: p.name
-        label = "完整文件名"
+        label = MSG_LABEL_FULLNAME
 
-    print(f"\n匹配模式：{label}（大小写敏感）")
+    print(MSG_MATCH_MODE.format(label))
 
     # 第二步：遍历源文件夹并删除匹配文件
     deleted = 0
@@ -59,10 +109,10 @@ def delete_duplicate_files(
 
         try:
             src_file.unlink()
-            print(f"已删除: {src_file}")
+            print(MSG_DELETED.format(src_file))
             deleted += 1
         except OSError as e:
-            print(f"删除失败: {src_file} - {e}")
+            print(MSG_DELETE_FAILED.format(src_file, e))
             failed += 1
 
     return deleted, failed
@@ -73,35 +123,36 @@ def delete_duplicate_files(
 
 def main() -> None:
     """主函数：获取用户输入并执行重复文件删除。"""
+    _init_quit_handler()
 
-    source_str = get_input_with_default("请输入源文件夹路径：", str(DEFAULT_SOURCE_DIR))
-    target_str = get_input_with_default("请输入目标文件夹路径：", str(DEFAULT_TARGET_DIR))
+    source_str = get_input_with_default(MSG_PROMPT_SOURCE_DIR, str(DEFAULT_SOURCE_DIR))
+    target_str = get_input_with_default(MSG_PROMPT_TARGET_DIR, str(DEFAULT_TARGET_DIR))
 
     source_dir = Path(source_str)
     target_dir = Path(target_str)
 
     if not source_dir.is_dir():
-        print(f"错误: 源文件夹不存在 [{source_dir}]")
+        print(MSG_ERR_SOURCE_NOT_FOUND.format(source_dir))
         return
     if not target_dir.is_dir():
-        print(f"错误: 目标文件夹不存在 [{target_dir}]")
+        print(MSG_ERR_TARGET_NOT_FOUND.format(target_dir))
         return
     if source_dir.resolve() == target_dir.resolve():
-        print("错误: 源文件夹与目标文件夹相同，操作将删除全部文件，已阻止。")
+        print(MSG_ERR_SAME_DIR)
         return
 
     # 询问是否排除扩展名
-    ext_choice = input("是否排除扩展名（仅匹配主文件名）？(y/n，默认 n): ").strip().lower()
+    ext_choice = input(MSG_EXCLUDE_EXT_PROMPT).strip().lower()
     exclude_extension = ext_choice in ("y", "yes")
 
-    print(f"\n开始清理: {source_dir}")
-    print(f"参照目录: {target_dir}")
+    print(MSG_START_CLEANUP.format(source_dir))
+    print(MSG_REFERENCE_DIR.format(target_dir))
 
     deleted, failed = delete_duplicate_files(source_dir, target_dir, exclude_extension)
 
     print(f"\n{'=' * 50}")
-    print(f"操作完成！共删除 {deleted} 个文件，失败 {failed} 个。")
-    print(f"目标文件夹文件总数: {sum(1 for p in target_dir.rglob('*') if p.is_file())}")
+    print(MSG_DELETE_COMPLETE.format(deleted, failed))
+    print(MSG_TARGET_FILE_COUNT.format(sum(1 for p in target_dir.rglob('*') if p.is_file())))
     print(f"{'=' * 50}")
 
 
@@ -112,8 +163,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)

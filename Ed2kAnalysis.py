@@ -7,9 +7,29 @@
 # 最后询问我是否继续，默认（y，或回车），返回开头，询问我 ed2k 链接。按"n"，择退出。
 
 # 导入模块
+import signal
 import subprocess
 import sys
 import urllib.parse
+
+# --- 常量 ---
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+MSG_CLIPBOARD_FAIL = "复制到剪贴板失败：{}"
+MSG_PROMPT_ED2K = "请输入 ed2k 链接（或按 N 退出程序）："
+MSG_EXIT_OK = "程序已退出。"
+MSG_INVALID_ED2K = "未包含有效的 ed2k 链接。"
+MSG_FILENAME = "文件名：{}"
+MSG_FILESIZE = "大小：{}"
+MSG_FILEHASH = "哈希：{}"
+MSG_CLIPBOARD_OK = "文件大小和哈希已复制到剪贴板。"
+MSG_INCOMPLETE_ED2K = "ed2k 链接格式不完整。"
+MSG_PROCESS_ERROR = "处理链接时发生错误：{}"
+MSG_CONTINUE = "是否继续？（回车继续，N 退出）："
 
 
 def copy_to_clipboard(text: str) -> None:
@@ -23,7 +43,7 @@ def copy_to_clipboard(text: str) -> None:
             check=True,
         )
     except Exception as e:
-        print(f"复制到剪贴板失败：{e}")
+        print(MSG_CLIPBOARD_FAIL.format(e))
 
 
 def format_size(size_str: str) -> str:
@@ -39,20 +59,48 @@ def format_size(size_str: str) -> str:
     return f"{size:.4f} TB"
 
 
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
+
+
 def main() -> None:
     """主循环：输入 ed2k 链接 → 解码 → 打印信息 → 复制到剪贴板 → 询问是否继续。"""
+    _init_quit_handler()
     while True:
         # 提示用户输入 ed2k 链接
-        ed2k_link = input("请输入 ed2k 链接（或按 N 退出程序）：").strip()
+        ed2k_link = input(MSG_PROMPT_ED2K).strip()
 
         # 判断用户是否选择退出
         if ed2k_link.lower() == "n":
-            print("程序已退出。")
+            print(MSG_EXIT_OK)
             break
 
         # 检查是否为有效的 ed2k 链接
-        if not ed2k_link.startswith("ed2k://|file|"):
-            print("未包含有效的 ed2k 链接。")
+        if not ed2k_link.lower().startswith("ed2k://|file|"):
+            print(MSG_INVALID_ED2K)
             continue
 
         try:
@@ -70,30 +118,30 @@ def main() -> None:
                 formatted_size = format_size(filesize)
 
                 # 打印文件信息
-                print(f"文件名：{filename}")
-                print(f"大小：{formatted_size}")
-                print(f"哈希：{filehash}")
+                print(MSG_FILENAME.format(filename))
+                print(MSG_FILESIZE.format(formatted_size))
+                print(MSG_FILEHASH.format(filehash))
 
                 # 将大小和哈希复制到剪贴板
                 copy_to_clipboard(f"{formatted_size}\n{filehash}")
-                print("文件大小和哈希已复制到剪贴板。")
+                print(MSG_CLIPBOARD_OK)
             else:
-                print("ed2k 链接格式不完整。")
+                print(MSG_INCOMPLETE_ED2K)
         except Exception as e:
-            print(f"处理链接时发生错误：{e}")
+            print(MSG_PROCESS_ERROR.format(e))
 
-        # 询问是否继续
-        choice = input("是否继续？（回车继续，N 退出）：").strip().lower()
-        if choice == "n":
-            print("程序已退出。")
-            break
+        print()  # 空行分隔，让输出更清晰
 
 
-# 程序入口
+# ==================== 程序入口 ====================
+
 if __name__ == "__main__":
-    # 强制 stdout 使用 UTF-8，避免中文/特殊字符打印报错
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    main()
-
-# 按下回车键退出。
-input("按回车键退出...")
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(MSG_INTERRUPTED)
+    except Exception as e:
+        print(MSG_ERROR.format(e))
+    finally:
+        input(MSG_EXIT)

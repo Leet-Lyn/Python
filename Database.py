@@ -16,6 +16,7 @@
 # 0. 退出程序。
 # 完成后，反复循环我要做什么。
 
+import signal
 import csv
 import datetime
 import re
@@ -35,6 +36,140 @@ try:
     ZHCONV_AVAILABLE = True
 except ImportError:
     ZHCONV_AVAILABLE = False
+
+
+# ==================== 全局配置 ====================
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+
+# 程序退出相关
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+
+# 主菜单
+MSG_MENU_SEPARATOR = "\n" + "=" * 50
+MSG_MENU_TITLE = "请选择操作："
+MSG_MENU_PROMPT = "请输入数字选择操作（1-13,0）："
+MSG_MENU_INVALID = "无效选择，请重新输入"
+MSG_MENU_EXIT = "程序已退出"
+
+MSG_MENU_1 = "1. 根据文件夹生成 Excel 文件"
+MSG_MENU_2 = "2. 根据 Excel 生成 Markdown 文件夹"
+MSG_MENU_3 = "3. 从 CSV 生成 Markdown 文件"
+MSG_MENU_4 = "4. 删除字段"
+MSG_MENU_5 = "5. 添加字段"
+MSG_MENU_6 = "6. 查找与替换（普通）"
+MSG_MENU_7 = "7. 查找与替换（正则表达式）"
+MSG_MENU_8 = "8. 元替换"
+MSG_MENU_9 = "9. 生成数据结构文件"
+MSG_MENU_10 = "10. 结构化数据文件"
+MSG_MENU_11 = "11. 删除没有数据的字段名"
+MSG_MENU_12 = "12. 双引号置换单引号"
+MSG_MENU_13 = "13. 属性内容处理"
+MSG_MENU_0 = "0. 退出程序"
+
+# 通用提示
+MSG_PROMPT_DEFAULT_FMT = " (默认：{}): "
+MSG_PROMPT_SOURCE_DIR = "请输入源文件夹位置"
+MSG_PROMPT_EXCEL_PATH = "请输入 Excel 文件路径"
+MSG_PROMPT_CSV_PATH = "请输入 CSV 文件路径（默认：d:\\Downloads\\CSV.csv）："
+MSG_PROMPT_TARGET_DIR = "请输入目标文件夹（默认：d:\\Studios\\Attachments\\Android\\）："
+MSG_PROMPT_SOURCE_DIR2 = "请输入源文件夹（默认：d:\\Studios\\Attachments\\Android\\）："
+MSG_PROMPT_FIELD_NAME_DEL = "请输入要删除的字段名称："
+MSG_PROMPT_FIELD_NAME_ADD = "请输入要添加的字段名称："
+MSG_PROMPT_TARGET_FIELD = "请输入要插入在哪个字段之前："
+MSG_PROMPT_FIND_CONTENT = "请输入要查找的内容："
+MSG_PROMPT_REPLACE_CONTENT = "请输入要替换的内容："
+MSG_PROMPT_REGEX_FIND_FILE = "请输入查找正则表达式文件位置（默认：e:\\Documents\\Softwares\\Codes\\Python\\RegexFind.txt）："
+MSG_PROMPT_REGEX_REPLACE_FILE = "请输入替换内容文件位置（默认：e:\\Documents\\Softwares\\Codes\\Python\\RegexReplace.txt）："
+MSG_PROMPT_ATTRIBUTE_NAME = "请输入要处理的属性名称："
+MSG_PROMPT_ATTRIBUTE_CONTENT = "请输入要设置的属性内容："
+
+# 错误消息
+MSG_ERR_FOLDER_NOT_FOUND = "错误：文件夹 '{}' 不存在"
+MSG_ERR_EXCEL_NOT_FOUND = "错误：Excel 文件 '{}' 不存在"
+MSG_ERR_NO_NAME_FIELD = "错误：Excel 文件中缺少'名字'字段，无法生成 Markdown 文件"
+MSG_ERR_CSV_NO_NAME = "CSV 中缺少'名字'字段"
+MSG_ERR_NAME_EMPTY = "文件名经净化后为空"
+MSG_ERR_REGEX_FILE_NOT_FOUND = "查找正则表达式文件不存在：{}"
+MSG_ERR_REPLACE_FILE_NOT_FOUND = "替换内容文件不存在：{}"
+MSG_ERR_REGEX_INVALID = "正则表达式错误：{}"
+MSG_ERR_FIND_EMPTY = "查找内容为空，操作取消"
+MSG_ERR_STRUCT_FILE_FORMAT = "数据结构文件格式错误：{}"
+MSG_ERR_STRUCT_FILE_EMPTY = "数据结构文件内容为空：{}"
+MSG_ERR_INVALID_OPERATION = "无效的操作选择：{}"
+
+# 警告消息
+MSG_WARN_NO_YAML = "警告：文件 {} 中未找到 YAML 属性块"
+MSG_WARN_PARSE_FAIL = "解析 YAML 失败 {}: {}"
+MSG_WARN_READ_FAIL = "读取文件失败 {}: {}"
+MSG_WARN_PROCESS_FAIL = "处理文件 {} 时出错：{}"
+MSG_WARN_MISSING_SEP = "文件 {} 缺少 YAML 分隔符，跳过处理"
+MSG_WARN_TARGET_NOT_FOUND = "在 {} 中未找到目标字段 {}"
+MSG_WARN_CSV_ROW_FAIL = "处理第 {} 行时出错：{}"
+MSG_WARN_CSV_FAIL = "处理 CSV 文件时出错：{}"
+MSG_WARN_WRITE_FAIL = "写入数据结构文件时出错：{}"
+MSG_WARN_READ_STRUCT_FAIL = "读取数据结构文件时出错：{}"
+MSG_WARN_ZVCONV = "警告：zhconv 库未安装，无法进行简繁转换。请使用 pip install zhconv 安装。"
+MSG_WARN_SKIP_NO_YAML = "跳过：{}（未找到 YAML 块）"
+
+# 状态消息
+MSG_STATUS_EXCEL_PATH = "Excel 文件位置: {}"
+MSG_STATUS_NO_FILES = "未找到任何 Markdown 文件或解析失败"
+MSG_STATUS_UPDATED_EXCEL = "已增量更新现有 Excel 文件"
+MSG_STATUS_NO_NAME_COL = "无法找到'名字'字段，将创建新 Excel 文件"
+MSG_STATUS_READ_EXCEL_FAIL = "读取现有 Excel 文件失败: {}，将创建新 Excel 文件"
+MSG_STATUS_CREATE_NEW_EXCEL = "将创建新 Excel 文件"
+MSG_STATUS_EXPORT_OK = "成功导出 {} 条记录到: {}"
+MSG_STATUS_FIELD_INFO = "包含字段 ({} 个): {}"
+MSG_STATUS_EXPORT_FAIL = "导出 Excel 失败: {}"
+MSG_STATUS_CSV_FALLBACK = "已备选导出为 CSV: {}"
+MSG_STATUS_MD_DIR = "将在以下位置生成/更新 Markdown 文件: {}"
+MSG_STATUS_EXCEL_EMPTY = "Excel 文件为空"
+MSG_STATUS_SKIP_EMPTY_NAME = "跳过：'名字'字段为空"
+MSG_STATUS_GENERATED = "已生成: {}"
+MSG_STATUS_UPDATED = "已更新: {}"
+MSG_STATUS_GENERATE_FAIL = "生成文件失败 {}: {}"
+MSG_STATUS_MD_DONE = "成功处理 {} 个 Markdown 文件到: {}"
+MSG_STATUS_MD_UPDATED = "其中 {} 个文件已更新"
+MSG_STATUS_CSV_GENERATED = "已生成：{}"
+MSG_STATUS_CSV_DONE = "\nCSV 转换完成！"
+MSG_STATUS_FIELD_DEL_DONE = "\n字段删除完成！共处理 {} 个文件"
+MSG_STATUS_PROCESSED = "已处理：{}"
+MSG_STATUS_FIELD_ADD_DONE = "\n字段添加完成！共处理 {} 个文件"
+MSG_STATUS_UPDATED_FILE = "已更新：{}"
+MSG_STATUS_CONFIRM_FIND = "确认执行替换操作？(y/N): "
+MSG_STATUS_OPERATION_CANCELLED = "操作已取消"
+MSG_STATUS_FIND_DONE = "\n查找与替换完成！共处理 {} 个文件"
+MSG_STATUS_REGEX_DONE = "\n正则表达式查找与替换完成！共处理 {} 个文件"
+MSG_STATUS_META_DONE = "\n元替换完成！共处理 {} 个文件"
+MSG_STATUS_STRUCT_GENERATED = "\n数据结构文件已生成：{}"
+MSG_STATUS_STRUCT_STATS = "共处理 {} 个文件，发现 {} 个唯一字段"
+MSG_STATUS_RESTRUCTURE_DONE = "\n文件结构化完成！共处理 {} 个文件"
+MSG_STATUS_RESTRUCTURED = "已结构化：{}"
+MSG_STATUS_EMPTY_DEL_DONE = "\n空字段删除完成！共处理 {} 个文件"
+MSG_STATUS_CLEANED = "已清理空字段：{}"
+MSG_STATUS_QUOTE_DONE = "\n双引号置换单引号完成！共处理 {} 个文件"
+MSG_STATUS_QUOTE_PROCESSED = "已处理：{}"
+MSG_STATUS_ATTR_DONE = "\n属性内容处理完成！共处理 {} 个文件"
+
+# 属性处理菜单
+MSG_ATTR_MENU_TITLE = "\n请选择处理方式："
+MSG_ATTR_1 = '1. 将该属性内容设置为空（""）'
+MSG_ATTR_2 = "2. 将该属性内容设置为指定内容"
+MSG_ATTR_3 = "3. 将该属性内容每个单词大写"
+MSG_ATTR_4 = "4. 将该属性内容每个单词小写"
+MSG_ATTR_5 = "5. 将该属性内容每个单词首字母大写，其余小写"
+MSG_ATTR_6 = "6. 将该属性内容（汉字、英文、或数字）用空格隔开"
+MSG_ATTR_7 = "7. 将该属性内容的汉字繁体中文转为简体中文"
+MSG_ATTR_8 = "8. 所有半角标点符号转为全角标点符号"
+MSG_ATTR_PROMPT = "请输入数字选择操作（1/2/3/4/5/6/7/8）："
+
+# 查找替换
+MSG_FIND_PROMPT = "将在文件夹 {} 中查找 '{}' 并替换为 '{}'"
 
 
 # =========================
@@ -61,7 +196,7 @@ def sanitize_filename(name: str) -> str:
 
 def get_default_path(prompt: str, default: str) -> str:
     """获取带默认值的路径输入。"""
-    path = input(f"{prompt} (默认：{default}): ").strip()
+    path = input(f"{prompt}" + MSG_PROMPT_DEFAULT_FMT.format(default)).strip()
     return path if path else default
 
 
@@ -138,13 +273,13 @@ def format_file_size(size_bytes: int) -> str:
 
 def generate_excel_from_folder() -> None:
     """从文件夹生成 Excel 文件——增量更新模式。"""
-    source_dir = Path(get_default_path("请输入源文件夹位置", r"d:\Studios\Attachments\Android"))
+    source_dir = Path(get_default_path(MSG_PROMPT_SOURCE_DIR, r"d:\Studios\Attachments\Android"))
     if not source_dir.is_dir():
-        print(f"错误：文件夹 '{source_dir}' 不存在")
+        print(MSG_ERR_FOLDER_NOT_FOUND.format(source_dir))
         return
 
     output_path = source_dir.parent / f"{source_dir.name}.xlsx"
-    print(f"Excel 文件位置: {output_path}")
+    print(MSG_STATUS_EXCEL_PATH.format(output_path))
 
     all_records = []
     field_order = OrderedDict()
@@ -169,7 +304,7 @@ def generate_excel_from_folder() -> None:
         all_records.append(record)
 
     if not all_records:
-        print("未找到任何 Markdown 文件或解析失败")
+        print(MSG_STATUS_NO_FILES)
         return
 
     field_list = list(field_order.keys())
@@ -204,26 +339,26 @@ def generate_excel_from_folder() -> None:
                 for col in [c for c in new_df.columns if c not in existing_df.columns]:
                     final_df[col] = new_df[col]
                 df = final_df
-                print("已增量更新现有 Excel 文件")
+                print(MSG_STATUS_UPDATED_EXCEL)
             else:
                 df = new_df
-                print("无法找到'名字'字段，将创建新 Excel 文件")
+                print(MSG_STATUS_NO_NAME_COL)
         except Exception as e:
-            print(f"读取现有 Excel 文件失败: {e}，将创建新 Excel 文件")
+            print(MSG_STATUS_READ_EXCEL_FAIL.format(e))
             df = new_df
     else:
         df = new_df
-        print("将创建新 Excel 文件")
+        print(MSG_STATUS_CREATE_NEW_EXCEL)
 
     try:
         df.to_excel(output_path, index=False, engine="openpyxl")
-        print(f"成功导出 {len(df)} 条记录到: {output_path}")
-        print(f"包含字段 ({len(df.columns)} 个): {', '.join(df.columns)}")
+        print(MSG_STATUS_EXPORT_OK.format(len(df), output_path))
+        print(MSG_STATUS_FIELD_INFO.format(len(df.columns), ', '.join(df.columns)))
     except Exception as e:
-        print(f"导出 Excel 失败: {e}")
+        print(MSG_STATUS_EXPORT_FAIL.format(e))
         csv_path = output_path.with_suffix(".csv")
         df.to_csv(csv_path, index=False, encoding="utf-8-sig")
-        print(f"已备选导出为 CSV: {csv_path}")
+        print(MSG_STATUS_CSV_FALLBACK.format(csv_path))
 
 
 def parse_markdown_yaml(filepath: Path):
@@ -233,7 +368,7 @@ def parse_markdown_yaml(filepath: Path):
         yaml_pattern = r"^---\s*\n(.*?)\n---\s*$"
         match = re.search(yaml_pattern, content, re.DOTALL | re.MULTILINE)
         if not match:
-            print(f"警告：文件 {filepath} 中未找到 YAML 属性块")
+            print(MSG_WARN_NO_YAML.format(filepath))
             return None, []
 
         yaml_content = match.group(1)
@@ -257,10 +392,10 @@ def parse_markdown_yaml(filepath: Path):
                 return data, field_order
             return None, []
         except yaml.YAMLError as e:
-            print(f"解析 YAML 失败 {filepath}: {e}")
+            print(MSG_WARN_PARSE_FAIL.format(filepath, e))
             return None, []
     except Exception as e:
-        print(f"读取文件失败 {filepath}: {e}")
+        print(MSG_WARN_READ_FAIL.format(filepath, e))
         return None, []
 
 
@@ -270,28 +405,28 @@ def parse_markdown_yaml(filepath: Path):
 
 def generate_markdown_from_excel() -> None:
     """从 Excel 生成 Markdown 文件夹——增量更新模式。"""
-    excel_path = Path(get_default_path("请输入 Excel 文件路径", r"d:\Studios\Attachments\Android\标准.xlsx"))
+    excel_path = Path(get_default_path(MSG_PROMPT_EXCEL_PATH, r"d:\Studios\Attachments\Android\标准.xlsx"))
     if not excel_path.is_file():
-        print(f"错误：Excel 文件 '{excel_path}' 不存在")
+        print(MSG_ERR_EXCEL_NOT_FOUND.format(excel_path))
         return
 
     output_dir = excel_path.parent / excel_path.stem
     output_dir.mkdir(parents=True, exist_ok=True)
-    print(f"将在以下位置生成/更新 Markdown 文件: {output_dir}")
+    print(MSG_STATUS_MD_DIR.format(output_dir))
 
     try:
         df = pd.read_excel(excel_path, engine="openpyxl")
     except Exception as e:
-        print(f"读取 Excel 文件失败: {e}")
+        print(MSG_STATUS_READ_EXCEL_FAIL.format(e))
         return
 
     if df.empty:
-        print("Excel 文件为空")
+        print(MSG_STATUS_EXCEL_EMPTY)
         return
 
     field_names = df.columns.tolist()
     if "名字" not in field_names:
-        print("错误：Excel 文件中缺少'名字'字段，无法生成 Markdown 文件")
+        print(MSG_ERR_NO_NAME_FIELD)
         return
 
     success_count = 0
@@ -299,7 +434,7 @@ def generate_markdown_from_excel() -> None:
     for _, row in df.iterrows():
         name_value = row.get("名字", "")
         if not name_value or pd.isna(name_value):
-            print(f"跳过：'名字'字段为空")
+            print(MSG_STATUS_SKIP_EMPTY_NAME)
             continue
 
         processed_name = name_value.replace(": ", " - ")
@@ -332,7 +467,7 @@ def generate_markdown_from_excel() -> None:
                         yaml_data = standardized
                     update_count += 1
             except Exception as e:
-                print(f"读取现有文件失败 {filename}: {e}")
+                print(MSG_STATUS_GENERATE_FAIL.format(filename, e))
 
         try:
             with filepath.open("w", encoding="utf-8") as f:
@@ -343,14 +478,16 @@ def generate_markdown_from_excel() -> None:
                         f.write(f"  - {escape_yaml_value(item)}\n")
                 f.write("---\n")
             success_count += 1
-            label = "已更新" if update_count > 0 and filepath.is_file() else "已生成"
-            print(f"{label}: {filename}")
+            if update_count > 0 and filepath.is_file():
+                print(MSG_STATUS_UPDATED.format(filename))
+            else:
+                print(MSG_STATUS_GENERATED.format(filename))
         except Exception as e:
-            print(f"生成文件失败 {filename}: {e}")
+            print(MSG_STATUS_GENERATE_FAIL.format(filename, e))
 
-    print(f"成功处理 {success_count} 个 Markdown 文件到: {output_dir}")
+    print(MSG_STATUS_MD_DONE.format(success_count, output_dir))
     if update_count > 0:
-        print(f"其中 {update_count} 个文件已更新")
+        print(MSG_STATUS_MD_UPDATED.format(update_count))
 
 
 # =========================
@@ -359,8 +496,8 @@ def generate_markdown_from_excel() -> None:
 
 def generate_from_csv() -> None:
     """从 CSV 生成 Markdown 文件——所有字段内容用双引号包绕并使用列表格式。"""
-    csv_path = Path(input(r"请输入 CSV 文件路径（默认：d:\Studios\Attachments\Android\CSV.csv）：") or r"d:\Studios\Attachments\Android\CSV.csv")
-    output_dir = Path(input(r"请输入目标文件夹（默认：d:\Studios\Attachments\Android\）：") or r"d:\Studios\Attachments\Android")
+    csv_path = Path(input(MSG_PROMPT_CSV_PATH) or r"d:\Downloads\CSV.csv")
+    output_dir = Path(input(MSG_PROMPT_TARGET_DIR) or r"d:\Studios\Attachments\Android")
 
     output_subdir = output_dir / csv_path.stem
     output_subdir.mkdir(parents=True, exist_ok=True)
@@ -384,21 +521,21 @@ def generate_from_csv() -> None:
 
                     name_field = next((v for h, v in zip(headers, row) if h == "名字"), None)
                     if not name_field:
-                        raise ValueError("CSV 中缺少'名字'字段")
+                        raise ValueError(MSG_ERR_CSV_NO_NAME)
 
                     safe_name = sanitize_filename(name_field)
                     if not safe_name:
-                        raise ValueError("文件名经净化后为空")
+                        raise ValueError(MSG_ERR_NAME_EMPTY)
 
                     (output_subdir / f"{safe_name}.md").write_text(
                         "\n".join(yaml_lines), encoding="utf-8"
                     )
-                    print(f"已生成：{output_subdir / safe_name}.md")
+                    print(MSG_STATUS_CSV_GENERATED.format(output_subdir / safe_name))
                 except Exception as e:
-                    print(f"处理第 {row_idx} 行时出错：{e}")
-        print("\nCSV 转换完成！")
+                    print(MSG_WARN_CSV_ROW_FAIL.format(row_idx, e))
+        print(MSG_STATUS_CSV_DONE)
     except Exception as e:
-        print(f"处理 CSV 文件时出错：{e}")
+        print(MSG_WARN_CSV_FAIL.format(e))
 
 
 # =========================
@@ -407,14 +544,14 @@ def generate_from_csv() -> None:
 
 def delete_field() -> None:
     """删除指定字段。"""
-    source_dir = Path(input(r"请输入源文件夹（默认：d:\Studios\Attachments\Android\）：") or r"d:\Studios\Attachments\Android")
-    field_name = input("请输入要删除的字段名称：")
+    source_dir = Path(input(MSG_PROMPT_SOURCE_DIR2) or r"d:\Studios\Attachments\Android")
+    field_name = input(MSG_PROMPT_FIELD_NAME_DEL)
 
     processed_count = 0
     for file_path in source_dir.rglob("*.md"):
         if process_delete_field(file_path, field_name):
             processed_count += 1
-    print(f"\n字段删除完成！共处理 {processed_count} 个文件")
+    print(MSG_STATUS_FIELD_DEL_DONE.format(processed_count))
 
 
 def process_delete_field(file_path: Path, field_name: str) -> bool:
@@ -430,11 +567,11 @@ def process_delete_field(file_path: Path, field_name: str) -> bool:
 
         if new_content != content:
             file_path.write_text(new_content, encoding="utf-8")
-            print(f"已处理：{file_path}")
+            print(MSG_STATUS_PROCESSED.format(file_path))
             return True
         return False
     except Exception as e:
-        print(f"处理文件 {file_path} 时出错：{e}")
+        print(MSG_WARN_PROCESS_FAIL.format(file_path, e))
         return False
 
 
@@ -444,15 +581,15 @@ def process_delete_field(file_path: Path, field_name: str) -> bool:
 
 def add_field() -> None:
     """添加新字段。"""
-    source_dir = Path(input(r"请输入源文件夹（默认：d:\Studios\Attachments\Android\）：") or r"d:\Studios\Attachments\Android")
-    new_field = input("请输入要添加的字段名称：")
-    target_field = input("请输入要插入在哪个字段之前：")
+    source_dir = Path(input(MSG_PROMPT_SOURCE_DIR2) or r"d:\Studios\Attachments\Android")
+    new_field = input(MSG_PROMPT_FIELD_NAME_ADD)
+    target_field = input(MSG_PROMPT_TARGET_FIELD)
 
     processed_count = 0
     for file_path in source_dir.rglob("*.md"):
         if process_add_field(file_path, new_field, target_field):
             processed_count += 1
-    print(f"\n字段添加完成！共处理 {processed_count} 个文件")
+    print(MSG_STATUS_FIELD_ADD_DONE.format(processed_count))
 
 
 def process_add_field(file_path: Path, new_field: str, target_field: str) -> bool:
@@ -463,7 +600,7 @@ def process_add_field(file_path: Path, new_field: str, target_field: str) -> boo
             yaml_start = lines.index("---\n")
             yaml_end = lines.index("---\n", yaml_start + 1)
         except ValueError:
-            print(f"文件 {file_path} 缺少 YAML 分隔符，跳过处理")
+            print(MSG_WARN_MISSING_SEP.format(file_path))
             return False
 
         insert_pos = -1
@@ -473,15 +610,15 @@ def process_add_field(file_path: Path, new_field: str, target_field: str) -> boo
                 break
 
         if insert_pos == -1:
-            print(f"在 {file_path} 中未找到目标字段 {target_field}")
+            print(MSG_WARN_TARGET_NOT_FOUND.format(file_path, target_field))
             return False
 
         lines.insert(insert_pos, f"{new_field}: \n")
         file_path.write_text("".join(lines), encoding="utf-8")
-        print(f"已更新：{file_path}")
+        print(MSG_STATUS_UPDATED_FILE.format(file_path))
         return True
     except Exception as e:
-        print(f"处理文件 {file_path} 时出错：{e}")
+        print(MSG_WARN_PROCESS_FAIL.format(file_path, e))
         return False
 
 
@@ -491,25 +628,25 @@ def process_add_field(file_path: Path, new_field: str, target_field: str) -> boo
 
 def find_and_replace() -> None:
     """查找与替换功能（普通）。"""
-    source_dir = Path(input(r"请输入源文件夹（默认：d:\Studios\Attachments\Android\）：") or r"d:\Studios\Attachments\Android")
-    find_content = input("请输入要查找的内容：")
-    replace_content = input("请输入要替换的内容：")
+    source_dir = Path(input(MSG_PROMPT_SOURCE_DIR2) or r"d:\Studios\Attachments\Android")
+    find_content = input(MSG_PROMPT_FIND_CONTENT)
+    replace_content = input(MSG_PROMPT_REPLACE_CONTENT)
 
     if not find_content.strip():
-        print("查找内容为空，操作取消")
+        print(MSG_ERR_FIND_EMPTY)
         return
 
-    print(f"将在文件夹 {source_dir} 中查找 '{find_content}' 并替换为 '{replace_content}'")
-    confirm = input("确认执行替换操作？(y/N): ")
+    print(MSG_FIND_PROMPT.format(source_dir, find_content, replace_content))
+    confirm = input(MSG_STATUS_CONFIRM_FIND)
     if confirm.lower() != "y":
-        print("操作已取消")
+        print(MSG_STATUS_OPERATION_CANCELLED)
         return
 
     processed_count = 0
     for file_path in source_dir.rglob("*.md"):
         if process_find_replace(file_path, find_content, replace_content):
             processed_count += 1
-    print(f"\n查找与替换完成！共处理 {processed_count} 个文件")
+    print(MSG_STATUS_FIND_DONE.format(processed_count))
 
 
 def process_find_replace(file_path: Path, find_content: str, replace_content: str) -> bool:
@@ -520,10 +657,10 @@ def process_find_replace(file_path: Path, find_content: str, replace_content: st
         if new_content == content:
             return False
         file_path.write_text(new_content, encoding="utf-8")
-        print(f"已更新：{file_path}")
+        print(MSG_STATUS_UPDATED_FILE.format(file_path))
         return True
     except Exception as e:
-        print(f"处理文件 {file_path} 时出错：{e}")
+        print(MSG_WARN_PROCESS_FAIL.format(file_path, e))
         return False
 
 
@@ -533,37 +670,33 @@ def process_find_replace(file_path: Path, find_content: str, replace_content: st
 
 def find_and_replace_regex() -> None:
     """查找与替换功能（正则表达式）。"""
-    source_dir = Path(input(r"请输入源文件夹（默认：d:\Studios\Attachments\Android\）：") or r"d:\Studios\Attachments\Android")
-    find_file = Path(input(
-        r"请输入查找正则表达式文件位置（默认：e:\Documents\Softwares\Codes\Python\RegexFind.txt）："
-    ) or r"e:\Documents\Softwares\Codes\Python\RegexFind.txt")
-    replace_file = Path(input(
-        r"请输入替换内容文件位置（默认：e:\Documents\Softwares\Codes\Python\RegexReplace.txt）："
-    ) or r"e:\Documents\Softwares\Codes\Python\RegexReplace.txt")
+    source_dir = Path(input(MSG_PROMPT_SOURCE_DIR2) or r"d:\Studios\Attachments\Android")
+    find_file = Path(input(MSG_PROMPT_REGEX_FIND_FILE) or r"e:\Documents\Softwares\Codes\Python\RegexFind.txt")
+    replace_file = Path(input(MSG_PROMPT_REGEX_REPLACE_FILE) or r"e:\Documents\Softwares\Codes\Python\RegexReplace.txt")
 
     try:
         find_pattern = find_file.read_text(encoding="utf-8").strip()
     except FileNotFoundError:
-        print(f"查找正则表达式文件不存在：{find_file}")
+        print(MSG_ERR_REGEX_FILE_NOT_FOUND.format(find_file))
         return
 
     try:
         replace_content = replace_file.read_text(encoding="utf-8")
     except FileNotFoundError:
-        print(f"替换内容文件不存在：{replace_file}")
+        print(MSG_ERR_REPLACE_FILE_NOT_FOUND.format(replace_file))
         return
 
     try:
         regex = re.compile(find_pattern, flags=re.MULTILINE)
     except re.error as e:
-        print(f"正则表达式错误：{e}")
+        print(MSG_ERR_REGEX_INVALID.format(e))
         return
 
     processed_count = 0
     for file_path in source_dir.rglob("*.md"):
         if process_regex_replace(file_path, regex, replace_content):
             processed_count += 1
-    print(f"\n正则表达式查找与替换完成！共处理 {processed_count} 个文件")
+    print(MSG_STATUS_REGEX_DONE.format(processed_count))
 
 
 def process_regex_replace(file_path: Path, regex: re.Pattern, replace_content: str) -> bool:
@@ -574,10 +707,10 @@ def process_regex_replace(file_path: Path, regex: re.Pattern, replace_content: s
         if new_content == content:
             return False
         file_path.write_text(new_content, encoding="utf-8")
-        print(f"已更新：{file_path}")
+        print(MSG_STATUS_UPDATED_FILE.format(file_path))
         return True
     except Exception as e:
-        print(f"处理文件 {file_path} 时出错：{e}")
+        print(MSG_WARN_PROCESS_FAIL.format(file_path, e))
         return False
 
 
@@ -587,13 +720,13 @@ def process_regex_replace(file_path: Path, regex: re.Pattern, replace_content: s
 
 def meta_replacement() -> None:
     """元替换功能。"""
-    source_dir = Path(input(r"请输入源文件夹（默认：d:\Studios\Attachments\Android\）：") or r"d:\Studios\Attachments\Android")
+    source_dir = Path(input(MSG_PROMPT_SOURCE_DIR2) or r"d:\Studios\Attachments\Android")
 
     processed_count = 0
     for file_path in source_dir.rglob("*.md"):
         if process_meta_replacement(file_path):
             processed_count += 1
-    print(f"\n元替换完成！共处理 {processed_count} 个文件")
+    print(MSG_STATUS_META_DONE.format(processed_count))
 
 
 def process_meta_replacement(file_path: Path) -> bool:
@@ -629,10 +762,10 @@ def process_meta_replacement(file_path: Path) -> bool:
             return False
 
         file_path.write_text(new_content, encoding="utf-8")
-        print(f"已更新：{file_path}")
+        print(MSG_STATUS_UPDATED_FILE.format(file_path))
         return True
     except Exception as e:
-        print(f"处理文件 {file_path} 时出错：{e}")
+        print(MSG_WARN_PROCESS_FAIL.format(file_path, e))
         return False
 
 
@@ -642,7 +775,7 @@ def process_meta_replacement(file_path: Path) -> bool:
 
 def generate_structure_file() -> None:
     """生成数据结构文件。"""
-    source_dir = Path(input(r"请输入源文件夹（默认：d:\Studios\Attachments\Android\）：") or r"d:\Studios\Attachments\Android")
+    source_dir = Path(input(MSG_PROMPT_SOURCE_DIR2) or r"d:\Studios\Attachments\Android")
     output_file = source_dir / ".DatabaseStructure.md"
 
     field_types: dict[str, str] = {}
@@ -657,13 +790,13 @@ def generate_structure_file() -> None:
             content = file_path.read_text(encoding="utf-8")
             yaml_block = extract_yaml_block(content)
             if not yaml_block:
-                print(f"跳过：{file_path}（未找到 YAML 块）")
+                print(MSG_WARN_SKIP_NO_YAML.format(file_path))
                 continue
 
             try:
                 data = yaml.safe_load(yaml_block)
             except Exception as e:
-                print(f"解析 YAML 失败：{file_path} - {e}")
+                print(MSG_WARN_PARSE_FAIL.format(file_path, e))
                 continue
 
             for field, value in data.items():
@@ -672,7 +805,7 @@ def generate_structure_file() -> None:
                     field_order.append(field)
                     processed_files += 1
         except Exception as e:
-            print(f"处理文件 {file_path} 时出错：{e}")
+            print(MSG_WARN_PROCESS_FAIL.format(file_path, e))
 
     try:
         with output_file.open("w", encoding="utf-8") as f:
@@ -680,10 +813,10 @@ def generate_structure_file() -> None:
             for field in field_order:
                 f.write(f"{field}: {field_types[field]}\n")
             f.write("---\n")
-        print(f"\n数据结构文件已生成：{output_file}")
-        print(f"共处理 {processed_files} 个文件，发现 {len(field_order)} 个唯一字段")
+        print(MSG_STATUS_STRUCT_GENERATED.format(output_file))
+        print(MSG_STATUS_STRUCT_STATS.format(processed_files, len(field_order)))
     except Exception as e:
-        print(f"写入数据结构文件时出错：{e}")
+        print(MSG_WARN_WRITE_FAIL.format(e))
 
 
 # =========================
@@ -692,24 +825,24 @@ def generate_structure_file() -> None:
 
 def restructure_files() -> None:
     """根据数据结构文件重新组织数据文件。"""
-    source_dir = Path(input(r"请输入源文件夹（默认：d:\Studios\Attachments\Android\）：") or r"d:\Studios\Attachments\Android")
+    source_dir = Path(input(MSG_PROMPT_SOURCE_DIR2) or r"d:\Studios\Attachments\Android")
     structure_file = source_dir / ".DatabaseStructure.md"
 
     try:
         content = structure_file.read_text(encoding="utf-8")
         yaml_block = extract_yaml_block(content)
         if not yaml_block:
-            print(f"数据结构文件格式错误：{structure_file}")
+            print(MSG_ERR_STRUCT_FILE_FORMAT.format(structure_file))
             return
 
         structure_data = yaml.safe_load(yaml_block)
         if not structure_data:
-            print(f"数据结构文件内容为空：{structure_file}")
+            print(MSG_ERR_STRUCT_FILE_EMPTY.format(structure_file))
             return
 
         field_order = list(structure_data.keys())
     except Exception as e:
-        print(f"读取数据结构文件时出错：{e}")
+        print(MSG_WARN_READ_STRUCT_FAIL.format(e))
         return
 
     processed_count = 0
@@ -718,7 +851,7 @@ def restructure_files() -> None:
             continue
         if process_restructure_file(file_path, field_order):
             processed_count += 1
-    print(f"\n文件结构化完成！共处理 {processed_count} 个文件")
+    print(MSG_STATUS_RESTRUCTURE_DONE.format(processed_count))
 
 
 def process_restructure_file(file_path: Path, field_order: list[str]) -> bool:
@@ -727,7 +860,7 @@ def process_restructure_file(file_path: Path, field_order: list[str]) -> bool:
         content = file_path.read_text(encoding="utf-8")
         match = re.search(r"(^---\n.*?\n---)(.*)", content, flags=re.DOTALL)
         if not match:
-            print(f"跳过：{file_path}（未找到 YAML 块）")
+            print(MSG_WARN_SKIP_NO_YAML.format(file_path))
             return False
 
         yaml_block = match.group(1)
@@ -736,7 +869,7 @@ def process_restructure_file(file_path: Path, field_order: list[str]) -> bool:
         try:
             data = yaml.safe_load(extract_yaml_block(yaml_block))
         except Exception as e:
-            print(f"解析 YAML 失败：{file_path} - {e}")
+            print(MSG_WARN_PARSE_FAIL.format(file_path, e))
             return False
 
         new_yaml_lines = ["---"]
@@ -760,10 +893,10 @@ def process_restructure_file(file_path: Path, field_order: list[str]) -> bool:
         new_content = "\n".join(new_yaml_lines) + rest_content
 
         file_path.write_text(new_content, encoding="utf-8")
-        print(f"已结构化：{file_path}")
+        print(MSG_STATUS_RESTRUCTURED.format(file_path))
         return True
     except Exception as e:
-        print(f"处理文件 {file_path} 时出错：{e}")
+        print(MSG_WARN_PROCESS_FAIL.format(file_path, e))
         return False
 
 
@@ -773,7 +906,7 @@ def process_restructure_file(file_path: Path, field_order: list[str]) -> bool:
 
 def delete_empty_fields() -> None:
     """删除没有数据的字段名。"""
-    source_dir = Path(input(r"请输入源文件夹（默认：d:\Studios\Attachments\Android\）：") or r"d:\Studios\Attachments\Android")
+    source_dir = Path(input(MSG_PROMPT_SOURCE_DIR2) or r"d:\Studios\Attachments\Android")
 
     processed_count = 0
     for file_path in source_dir.rglob("*.md"):
@@ -781,7 +914,7 @@ def delete_empty_fields() -> None:
             continue
         if process_delete_empty_fields(file_path):
             processed_count += 1
-    print(f"\n空字段删除完成！共处理 {processed_count} 个文件")
+    print(MSG_STATUS_EMPTY_DEL_DONE.format(processed_count))
 
 
 def process_delete_empty_fields(file_path: Path) -> bool:
@@ -790,7 +923,7 @@ def process_delete_empty_fields(file_path: Path) -> bool:
         content = file_path.read_text(encoding="utf-8")
         match = re.search(r"(^---\n.*?\n---)(.*)", content, flags=re.DOTALL)
         if not match:
-            print(f"跳过：{file_path}（未找到 YAML 块）")
+            print(MSG_WARN_SKIP_NO_YAML.format(file_path))
             return False
 
         yaml_block = match.group(1)
@@ -799,7 +932,7 @@ def process_delete_empty_fields(file_path: Path) -> bool:
         try:
             data = yaml.safe_load(extract_yaml_block(yaml_block))
         except Exception as e:
-            print(f"解析 YAML 失败：{file_path} - {e}")
+            print(MSG_WARN_PARSE_FAIL.format(file_path, e))
             return False
 
         new_yaml_lines = ["---"]
@@ -828,10 +961,10 @@ def process_delete_empty_fields(file_path: Path) -> bool:
             return False
 
         file_path.write_text(new_content, encoding="utf-8")
-        print(f"已清理空字段：{file_path}")
+        print(MSG_STATUS_CLEANED.format(file_path))
         return True
     except Exception as e:
-        print(f"处理文件 {file_path} 时出错：{e}")
+        print(MSG_WARN_PROCESS_FAIL.format(file_path, e))
         return False
 
 
@@ -841,13 +974,13 @@ def process_delete_empty_fields(file_path: Path) -> bool:
 
 def replace_double_quotes() -> None:
     """双引号置换单引号功能。"""
-    source_dir = Path(input(r"请输入源文件夹（默认：d:\Studios\Attachments\Android\）：") or r"d:\Studios\Attachments\Android")
+    source_dir = Path(input(MSG_PROMPT_SOURCE_DIR2) or r"d:\Studios\Attachments\Android")
 
     processed_count = 0
     for file_path in source_dir.rglob("*.md"):
         if process_replace_double_quotes(file_path):
             processed_count += 1
-    print(f"\n双引号置换单引号完成！共处理 {processed_count} 个文件")
+    print(MSG_STATUS_QUOTE_DONE.format(processed_count))
 
 
 def process_replace_double_quotes(file_path: Path) -> bool:
@@ -880,10 +1013,10 @@ def process_replace_double_quotes(file_path: Path) -> bool:
             return False
 
         file_path.write_text("".join(new_lines), encoding="utf-8")
-        print(f"已处理：{file_path}")
+        print(MSG_STATUS_QUOTE_PROCESSED.format(file_path))
         return True
     except Exception as e:
-        print(f"处理文件 {file_path} 时出错：{e}")
+        print(MSG_WARN_PROCESS_FAIL.format(file_path, e))
         return False
 
 
@@ -893,27 +1026,27 @@ def process_replace_double_quotes(file_path: Path) -> bool:
 
 def process_attribute_content() -> None:
     """属性内容处理功能。"""
-    source_dir = Path(input(r"请输入源文件夹（默认：d:\Studios\Attachments\Android\）：") or r"d:\Studios\Attachments\Android")
-    attribute_name = input("请输入要处理的属性名称：")
+    source_dir = Path(input(MSG_PROMPT_SOURCE_DIR2) or r"d:\Studios\Attachments\Android")
+    attribute_name = input(MSG_PROMPT_ATTRIBUTE_NAME)
 
-    print("\n请选择处理方式：")
-    print('1. 将该属性内容设置为空（""）')
-    print("2. 将该属性内容设置为指定内容")
-    print("3. 将该属性内容每个单词大写")
-    print("4. 将该属性内容每个单词小写")
-    print("5. 将该属性内容每个单词首字母大写，其余小写")
-    print("6. 将该属性内容（汉字、英文、或数字）用空格隔开")
-    print("7. 将该属性内容的汉字繁体中文转为简体中文")
-    print("8. 所有半角标点符号转为全角标点符号")
+    print(MSG_ATTR_MENU_TITLE)
+    print(MSG_ATTR_1)
+    print(MSG_ATTR_2)
+    print(MSG_ATTR_3)
+    print(MSG_ATTR_4)
+    print(MSG_ATTR_5)
+    print(MSG_ATTR_6)
+    print(MSG_ATTR_7)
+    print(MSG_ATTR_8)
 
-    choice = input("请输入数字选择操作（1/2/3/4/5/6/7/8）：")
-    new_content = input("请输入要设置的属性内容：") if choice == "2" else None
+    choice = input(MSG_ATTR_PROMPT)
+    new_content = input(MSG_PROMPT_ATTRIBUTE_CONTENT) if choice == "2" else None
 
     processed_count = 0
     for file_path in source_dir.rglob("*.md"):
         if process_attribute_content_file(file_path, attribute_name, choice, new_content):
             processed_count += 1
-    print(f"\n属性内容处理完成！共处理 {processed_count} 个文件")
+    print(MSG_STATUS_ATTR_DONE.format(processed_count))
 
 
 def process_attribute_content_file(
@@ -924,7 +1057,7 @@ def process_attribute_content_file(
         content = file_path.read_text(encoding="utf-8")
         match = re.search(r"(^---\n.*?\n---)(.*)", content, flags=re.DOTALL)
         if not match:
-            print(f"跳过：{file_path}（未找到 YAML 块）")
+            print(MSG_WARN_SKIP_NO_YAML.format(file_path))
             return False
 
         yaml_block = match.group(1)
@@ -933,7 +1066,7 @@ def process_attribute_content_file(
         try:
             data = yaml.safe_load(extract_yaml_block(yaml_block))
         except Exception as e:
-            print(f"解析 YAML 失败：{file_path} - {e}")
+            print(MSG_WARN_PARSE_FAIL.format(file_path, e))
             return False
 
         if attribute_name not in data:
@@ -971,7 +1104,7 @@ def process_attribute_content_file(
             )
         elif operation == "7":
             if not ZHCONV_AVAILABLE:
-                print("警告：zhconv 库未安装，无法进行简繁转换。请使用 pip install zhconv 安装。")
+                print(MSG_WARN_ZVCONV)
                 return False
             processed_value = (
                 [zhconv.convert(item, "zh-cn") for item in original_value]
@@ -985,7 +1118,7 @@ def process_attribute_content_file(
                 else half_to_full_width(original_value)
             )
         else:
-            print(f"无效的操作选择：{operation}")
+            print(MSG_ERR_INVALID_OPERATION.format(operation))
             return False
 
         data[attribute_name] = processed_value
@@ -1005,10 +1138,10 @@ def process_attribute_content_file(
 
         new_yaml_lines.append("---")
         file_path.write_text("\n".join(new_yaml_lines) + rest_content, encoding="utf-8")
-        print(f"已处理：{file_path}")
+        print(MSG_STATUS_QUOTE_PROCESSED.format(file_path))
         return True
     except Exception as e:
-        print(f"处理文件 {file_path} 时出错：{e}")
+        print(MSG_WARN_PROCESS_FAIL.format(file_path, e))
         return False
 
 
@@ -1059,27 +1192,53 @@ def half_to_full_width(text: str) -> str:
 # =========================
 # 主菜单
 # =========================
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
+
 
 def main() -> None:
     """主循环：显示菜单 → 选择功能 → 执行。"""
     while True:
-        print("\n" + "=" * 50)
-        print("请选择操作：")
-        print("1. 根据文件夹生成 Excel 文件")
-        print("2. 根据 Excel 生成 Markdown 文件夹")
-        print("3. 从 CSV 生成 Markdown 文件")
-        print("4. 删除字段")
-        print("5. 添加字段")
-        print("6. 查找与替换（普通）")
-        print("7. 查找与替换（正则表达式）")
-        print("8. 元替换")
-        print("9. 生成数据结构文件")
-        print("10. 结构化数据文件")
-        print("11. 删除没有数据的字段名")
-        print("12. 双引号置换单引号")
-        print("13. 属性内容处理")
-        print("0. 退出程序")
-        choice = input("请输入数字选择操作（1-13,0）：")
+        print(MSG_MENU_SEPARATOR)
+        print(MSG_MENU_TITLE)
+        print(MSG_MENU_1)
+        print(MSG_MENU_2)
+        print(MSG_MENU_3)
+        print(MSG_MENU_4)
+        print(MSG_MENU_5)
+        print(MSG_MENU_6)
+        print(MSG_MENU_7)
+        print(MSG_MENU_8)
+        print(MSG_MENU_9)
+        print(MSG_MENU_10)
+        print(MSG_MENU_11)
+        print(MSG_MENU_12)
+        print(MSG_MENU_13)
+        print(MSG_MENU_0)
+        choice = input(MSG_MENU_PROMPT)
 
         if choice == "1":
             generate_excel_from_folder()
@@ -1108,13 +1267,22 @@ def main() -> None:
         elif choice == "13":
             process_attribute_content()
         elif choice == "0":
-            print("程序已退出")
+            print(MSG_MENU_EXIT)
             break
         else:
-            print("无效选择，请重新输入")
+            print(MSG_MENU_INVALID)
 
+
+
+# ==================== 程序入口 ====================
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    main()
-    input("按回车键退出程序...")
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(MSG_INTERRUPTED)
+    except Exception as e:
+        print(MSG_ERROR.format(e))
+    finally:
+        input(MSG_EXIT)

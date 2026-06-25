@@ -5,6 +5,7 @@
 # 反复循环。
 
 # 导入模块
+import signal
 import os
 import re
 import sys
@@ -14,23 +15,53 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-# ------------------- 配置区域 -------------------
-# 代理设置（如需代理请取消注释并填写地址）
+# ==================== 全局配置 ====================
+
+# --- 代理设置 ---
 PROXY = {
      "http": "http://127.0.0.1:10808",
      "https": "http://127.0.0.1:10808"
 }
 
-# SteamGridDB API Key 文件路径
-SGDB_API_KEY_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\SteamGridDBAPIKey.txt")
-
-# IGDB 凭证文件路径
-IGDB_CLIENT_ID_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\IGDBClientID.txt")
-IGDB_CLIENT_SECRET_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\IGDBClientSecret.txt")
+# --- 默认路径 ---
 DEFAULT_EXCEL_PATH = Path(r"d:\Studios\Attachments\标准.xlsx")
 
-# 请求延迟（秒），避免触发 API 速率限制
+# --- API 配置 ---
+SGDB_API_KEY_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\SteamGridDBAPIKey.txt")
+IGDB_CLIENT_ID_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\IGDBClientID.txt")
+IGDB_CLIENT_SECRET_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\IGDBClientSecret.txt")
 REQUEST_DELAY = 0.8
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_PROMPT_EXCEL = "请输入 Excel 文件路径"
+MSG_ERR_FILE_NOT_FOUND = "错误：文件不存在 - {}"
+MSG_READING_EXCEL = "\n正在读取 Excel：{}"
+MSG_ROW_COUNT = "成功读取 {} 行"
+MSG_READ_FAILED = "读取失败：{}"
+MSG_MISSING_COLUMNS = '错误：Excel 缺少"名字"或"平台"列'
+MSG_SGDB_LOADED = "✅ SteamGridDB API Key 已加载"
+MSG_SGDB_SKIPPED = "⚠️ SteamGridDB API Key 未配置，将跳过"
+MSG_IGDB_LOADED = "✅ IGDB 凭证已加载"
+MSG_IGDB_SKIPPED = "⚠️ IGDB 凭证不完整，将跳过"
+MSG_QUERY_START = "\n开始查询（封面来自 SteamGridDB，类型/发行公司由 IGDB / Steam 补全）"
+MSG_SKIP_EMPTY_NAME = "[{}/{}] 游戏名为空，跳过"
+MSG_PROCESSING_ROW = "\n[{}/{}] 处理：{} | 平台：{}"
+MSG_CLEANED_NAME = "    搜索名称清理为：{}"
+MSG_FINAL_RESULT = "    最终结果 → 封面: {}, 类型: {}, 发行公司: {}"
+MSG_NO_INFO = "    未获取到任何信息"
+MSG_DONE_SUMMARY = "完成！共 {} 行，获取到封面 {} 行"
+MSG_DONE_PATH = "文件保存至：{}"
+MSG_TOOL_TITLE = "游戏封面多源查询工具（SteamGridDB → IGDB → Steam）"
+MSG_CONTINUE = "\n是否继续处理另一个文件？(y/n，默认 n): "
+MSG_PROGRAM_END = "程序结束。"
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+MSG_PLATFORM_EMPTY = "未填写"
+MSG_COVER_HAS = "有"
+MSG_COVER_NONE = "无"
 
 # IGDB 平台名称 -> 平台 ID 映射
 PLATFORM_MAPPING_IGDB = {
@@ -53,7 +84,12 @@ PLATFORM_MAPPING_IGDB = {
     "ios": 39, "android": 34, "mac": 14, "linux": 3,
 }
 
-# ------------------- 工具函数 -------------------
+# ==================== 辅助函数 ====================
+
+def get_input_with_default(prompt_text: str, default_value: str) -> str:
+    """获取带默认值的用户输入。"""
+    user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
+    return user_input if user_input else str(default_value)
 def clean_game_name(name):
     """清理游戏名称：删除所有中英文括号及内部内容"""
     if not name:
@@ -298,23 +334,23 @@ def safe_save_excel(df, path):
 
 # ------------------- 单次批量处理 -------------------
 def run_once():
-    raw = input(f"请输入 Excel 文件路径（直接回车使用默认：{DEFAULT_EXCEL_PATH}）: ").strip()
+    raw = get_input_with_default(MSG_PROMPT_EXCEL, str(DEFAULT_EXCEL_PATH))
     excel_path = Path(raw) if raw else DEFAULT_EXCEL_PATH
     if not excel_path.is_file():
-        print(f"错误：文件不存在 - {excel_path}")
+        print(MSG_ERR_FILE_NOT_FOUND.format(excel_path))
         return
 
-    print(f"\n正在读取 Excel：{excel_path}")
+    print(MSG_READING_EXCEL.format(excel_path))
     try:
         df = pd.read_excel(excel_path, dtype=str)
-        print(f"成功读取 {len(df)} 行")
+        print(MSG_ROW_COUNT.format(len(df)))
     except Exception as e:
-        print(f"读取失败：{e}")
+        print(MSG_READ_FAILED.format(e))
         return
 
     # 检查必要列
     if "名字" not in df.columns or "平台" not in df.columns:
-        print("错误：Excel 缺少“名字”或“平台”列")
+        print(MSG_MISSING_COLUMNS)
         return
     # 自动补充缺失列
     for col in ["封面", "类型", "发行公司"]:
@@ -324,31 +360,31 @@ def run_once():
     # 加载凭证
     sgdb_api_key = read_file_content(SGDB_API_KEY_FILE, "SteamGridDB API Key")
     if sgdb_api_key:
-        print("✅ SteamGridDB API Key 已加载")
+        print(MSG_SGDB_LOADED)
     else:
-        print("⚠️ SteamGridDB API Key 未配置，将跳过")
+        print(MSG_SGDB_SKIPPED)
 
     igdb_id = read_file_content(IGDB_CLIENT_ID_FILE, "IGDB Client ID")
     igdb_secret = read_file_content(IGDB_CLIENT_SECRET_FILE, "IGDB Client Secret")
     if igdb_id and igdb_secret:
-        print("✅ IGDB 凭证已加载")
+        print(MSG_IGDB_LOADED)
     else:
-        print("⚠️ IGDB 凭证不完整，将跳过")
+        print(MSG_IGDB_SKIPPED)
 
-    print("\n开始查询（封面来自 SteamGridDB，类型/发行公司由 IGDB / Steam 补全）")
+    print(MSG_QUERY_START)
     success = 0
     for idx, row in df.iterrows():
         name = str(row["名字"]).strip() if pd.notna(row["名字"]) else ""
         platform = str(row["平台"]).strip() if pd.notna(row["平台"]) else ""
 
         if not name:
-            print(f"[{idx+1}/{len(df)}] 游戏名为空，跳过")
+            print(MSG_SKIP_EMPTY_NAME.format(idx+1, len(df)))
             continue
 
         clean_name = clean_game_name(name)
-        print(f"\n[{idx+1}/{len(df)}] 处理：{name} | 平台：{platform or '未填写'}")
+        print(MSG_PROCESSING_ROW.format(idx+1, len(df), name, platform or MSG_PLATFORM_EMPTY))
         if clean_name != name:
-            print(f"    搜索名称清理为：{clean_name}")
+            print(MSG_CLEANED_NAME.format(clean_name))
 
         cover_url = ""
         genre = ""
@@ -390,36 +426,42 @@ def run_once():
 
         # 立即保存
         if cover_url or genre or publisher:
-            print(f"    最终结果 → 封面: {'有' if cover_url else '无'}, 类型: {genre or '无'}, 发行公司: {publisher or '无'}")
+            print(MSG_FINAL_RESULT.format(
+                MSG_COVER_HAS if cover_url else MSG_COVER_NONE,
+                genre or MSG_COVER_NONE,
+                publisher or MSG_COVER_NONE))
         else:
-            print("    未获取到任何信息")
+            print(MSG_NO_INFO)
 
         safe_save_excel(df, excel_path)
         time.sleep(REQUEST_DELAY)
 
     print(f"\n{'='*50}")
-    print(f"完成！共 {len(df)} 行，获取到封面 {success} 行")
-    print(f"文件保存至：{excel_path}")
+    print(MSG_DONE_SUMMARY.format(len(df), success))
+    print(MSG_DONE_PATH.format(excel_path))
     print("="*50)
 
 def main():
     while True:
         print("\n" + "="*60)
-        print("游戏封面多源查询工具（SteamGridDB → IGDB → Steam）")
+        print(MSG_TOOL_TITLE)
         print("="*60)
         run_once()
-        cont = input("\n是否继续处理另一个文件？(y/n，默认 n): ").strip().lower()
+        cont = input(MSG_CONTINUE).strip().lower()
         if cont != 'y':
-            print("程序结束。")
+            print(MSG_PROGRAM_END)
             break
+
+
+# ==================== 程序入口 ====================
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)

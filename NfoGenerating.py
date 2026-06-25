@@ -6,30 +6,63 @@
 
 # 导入模块
 import os
+import sys
+
+# ==================== 全局配置 ====================
+
+DEFAULT_SOURCE_DIR = r"d:\Studios\Folders\Outs"
+
+# --- 消息常量 ---
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+MSG_PATH_INVALID = "错误：路径 '{}' 不存在或不是文件夹，请重新输入。"
+MSG_NFO_GENERATED = "已生成 NFO 文件: {}"
+MSG_NFO_SKIP_EXISTS = "跳过，NFO 文件已存在: {}"
+MSG_NFO_GEN_DONE = "\nNFO 文件生成完成。共生成 {} 个新文件。"
+MSG_NFO_UPDATED = "已更新 NFO 文件: {}"
+MSG_NFO_SKIP_NO_TITLE = "跳过，未找到 <title> </title> 标签: {}"
+MSG_NFO_PROCESS_ERROR = "处理文件时出错 {}: {}"
+MSG_NFO_UPDATE_DONE = "\nNFO 文件更新完成。共更新 {} 个文件。"
+MSG_TITLE = "批量生成和更新 NFO 文件工具"
+MSG_PROMPT_SOURCE_DIR = "请输入源文件夹路径（直接回车使用默认路径 '{}'）: "
+MSG_USING_FOLDER = "使用文件夹: {}"
+MSG_PROMPT_TEMPLATE = "\n请输入 NFO 文件的内容模板（直接回车使用默认模板）:"
+MSG_DEFAULT_TEMPLATE_LABEL = "默认模板为："
+MSG_TEMPLATE_INPUT = "您的模板: "
+MSG_USING_USER_TEMPLATE = "使用用户提供的模板。"
+MSG_USING_DEFAULT_TEMPLATE = "使用默认模板。"
+MSG_START_GENERATING = "\n开始生成 NFO 文件..."
+MSG_START_UPDATING = "\n开始更新 NFO 文件..."
+MSG_ALL_DONE = "\n操作完成！"
+MSG_GENERATED_COUNT = "共生成 {} 个新 NFO 文件"
+MSG_UPDATED_COUNT = "共更新 {} 个 NFO 文件"
+MSG_PRESS_ENTER = "\n按回车键退出程序..."
+
 
 def 获取有效文件夹路径(提示信息, 默认文件夹=None):
     """
     获取用户输入的文件夹路径，支持默认路径和验证有效性
-    
+
     参数:
         提示信息: 显示给用户的提示文本
         默认文件夹: 用户不输入时使用的默认路径
-    
+
     返回:
         有效的文件夹路径字符串
     """
     while True:
         文件夹路径 = input(提示信息).strip()
-        
+
         # 如果用户没有输入且提供了默认路径，则使用默认路径
         if not 文件夹路径 and 默认文件夹 is not None:
             文件夹路径 = 默认文件夹
-        
+
         # 验证路径是否存在且是文件夹
         if os.path.isdir(文件夹路径):
             return 文件夹路径
         else:
-            print(f"错误：路径 '{文件夹路径}' 不存在或不是文件夹，请重新输入。")
+            print(MSG_PATH_INVALID.format(文件夹路径))
 
 def 处理文件名(原始文件名):
     """
@@ -88,11 +121,11 @@ def 生成NFO文件(源文件夹路径, XML模板):
                     with open(NFO文件路径, 'w', encoding='utf-8') as NFO文件:
                         NFO文件.write(XML模板)
                     已生成文件数 += 1
-                    print(f"已生成 NFO 文件: {NFO文件路径}")
+                    print(MSG_NFO_GENERATED.format(NFO文件路径))
                 else:
-                    print(f"跳过，NFO 文件已存在: {NFO文件路径}")
-    
-    print(f"\nNFO 文件生成完成。共生成 {已生成文件数} 个新文件。")
+                    print(MSG_NFO_SKIP_EXISTS.format(NFO文件路径))
+
+    print(MSG_NFO_GEN_DONE.format(已生成文件数))
     return 已生成文件数
 
 def 更新NFO文件(源文件夹路径):
@@ -139,79 +172,78 @@ def 更新NFO文件(源文件夹路径):
                             文件.write(新内容)
                         
                         已更新文件数 += 1
-                        print(f"已更新 NFO 文件: {NFO文件路径}")
+                        print(MSG_NFO_UPDATED.format(NFO文件路径))
                     else:
-                        print(f"跳过，未找到 <title> </title> 标签: {NFO文件路径}")
-                        
+                        print(MSG_NFO_SKIP_NO_TITLE.format(NFO文件路径))
+
                 except Exception as 错误:
-                    print(f"处理文件时出错 {NFO文件路径}: {错误}")
-    
-    print(f"\nNFO 文件更新完成。共更新 {已更新文件数} 个文件。")
+                    print(MSG_NFO_PROCESS_ERROR.format(NFO文件路径, 错误))
+
+    print(MSG_NFO_UPDATE_DONE.format(已更新文件数))
     return 已更新文件数
 
-def 主程序():
+def main():
     """
     主程序流程控制
     """
     print("=" * 50)
-    print("批量生成和更新 NFO 文件工具")
+    print(MSG_TITLE)
     print("=" * 50)
-    
-    # 默认源文件夹路径
-    默认源文件夹路径 = r"d:\Studios\Folders\Outs"
-    
+
     # 获取源文件夹路径
-    提示信息 = f"请输入源文件夹路径（直接回车使用默认路径 '{默认源文件夹路径}'）: "
-    源文件夹路径 = 获取有效文件夹路径(提示信息, 默认源文件夹路径)
-    
-    print(f"使用文件夹: {源文件夹路径}")
-    
+    提示信息 = MSG_PROMPT_SOURCE_DIR.format(DEFAULT_SOURCE_DIR)
+    源文件夹路径 = 获取有效文件夹路径(提示信息, DEFAULT_SOURCE_DIR)
+
+    print(MSG_USING_FOLDER.format(源文件夹路径))
+
     # 获取 XML 模板内容
-    print("\n请输入 NFO 文件的内容模板（直接回车使用默认模板）:")
-    print("默认模板为：")
+    print(MSG_PROMPT_TEMPLATE)
+    print(MSG_DEFAULT_TEMPLATE_LABEL)
     print('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
     print('<movie>')
     print('  <title> </title>')
     print('</movie>')
-    
-    用户输入模板 = input("您的模板: ").strip()
-    
+
+    用户输入模板 = input(MSG_TEMPLATE_INPUT).strip()
+
     # 使用用户输入的模板或默认模板
     if 用户输入模板:
         XML模板 = 用户输入模板
-        print("使用用户提供的模板。")
+        print(MSG_USING_USER_TEMPLATE)
     else:
         XML模板 = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<movie>\n  <title> </title>\n</movie>'
-        print("使用默认模板。")
-    
+        print(MSG_USING_DEFAULT_TEMPLATE)
+
     print("\n" + "=" * 50)
-    print("开始生成 NFO 文件...")
+    print(MSG_START_GENERATING.strip())
     print("=" * 50)
-    
+
     # 生成 NFO 文件
     生成的文件数 = 生成NFO文件(源文件夹路径, XML模板)
-    
+
     print("\n" + "=" * 50)
-    print("开始更新 NFO 文件...")
+    print(MSG_START_UPDATING.strip())
     print("=" * 50)
-    
+
     # 更新 NFO 文件
     更新的文件数 = 更新NFO文件(源文件夹路径)
-    
-    print("\n" + "=" * 50)
-    print("操作完成！")
-    print(f"共生成 {生成的文件数} 个新 NFO 文件")
-    print(f"共更新 {更新的文件数} 个 NFO 文件")
-    print("=" * 50)
-    
-    # 等待用户按回车键退出
-    input("\n按回车键退出程序...")
 
-# 程序入口点
+    print("\n" + "=" * 50)
+    print(MSG_ALL_DONE.strip())
+    print(MSG_GENERATED_COUNT.format(生成的文件数))
+    print(MSG_UPDATED_COUNT.format(更新的文件数))
+    print("=" * 50)
+
+
+# ==================== 程序入口 ====================
+
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     try:
-        主程序()
+        main()
     except KeyboardInterrupt:
-        print("\n\n程序被用户中断。")
-    except Exception as 错误:
-        print(f"\n程序运行出错: {错误}")
+        print(MSG_INTERRUPTED)
+    except Exception as e:
+        print(MSG_ERROR.format(e))
+    finally:
+        input(MSG_EXIT)

@@ -6,12 +6,36 @@
 # 先清空目标文件，然后将生成的 ed2k 链接依次写入，一行一个。
 
 # 导入模块
+import signal
 import subprocess
 import sys
 from pathlib import Path
 
 # --- 常量 ---
 RHASH = Path(r"d:\ProApps\rhash\current\rhash.exe")
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+MSG_RHASH_MISSING = "错误：未找到 RHash —— {}"
+MSG_RHASH_ERROR = "RHash 执行错误：{}"
+MSG_NO_FILES = "源文件夹中没有文件。"
+MSG_FOUND_FILES = "找到 {} 个文件，开始生成 ed2k 链接...\n"
+MSG_SUCCESS = "  ✓ 成功"
+MSG_FAIL = "  ✗ 失败"
+MSG_DONE = "\n处理完成：成功 {} 个，失败 {} 个，共 {} 个。"
+MSG_SAVED_TO = "ed2k 链接已保存到：{}"
+MSG_PROMPT_SRC = "请输入源文件夹位置（回车使用默认 {}）："
+MSG_SRC_NOT_FOUND = "错误：源文件夹 '{}' 不存在"
+MSG_PROMPT_DST = "请输入目标文件位置（回车使用默认 {}）："
+MSG_CONFIRM_INFO = "\n确认信息："
+MSG_SRC_DIR = "  源文件夹：{}"
+MSG_DST_FILE = "  目标文件：{}"
+MSG_CONFIRM_START = "\n是否开始处理？（回车继续，N 取消）："
+MSG_CANCELLED = "已取消操作"
 
 
 def get_ed2k_link(file_path: Path) -> str | None:
@@ -28,10 +52,10 @@ def get_ed2k_link(file_path: Path) -> str | None:
         )
         return result.stdout.strip()
     except FileNotFoundError:
-        print(f"  错误：未找到 RHash —— {RHASH}")
+        print(MSG_RHASH_MISSING.format(RHASH))
         return None
     except subprocess.CalledProcessError as e:
-        print(f"  RHash 执行错误：{e}")
+        print(MSG_RHASH_ERROR.format(e))
         return None
 
 
@@ -44,11 +68,11 @@ def process_directory(source_dir: Path, target_file: Path) -> None:
     )
 
     if not all_files:
-        print("源文件夹中没有文件。")
+        print(MSG_NO_FILES)
         return
 
     total = len(all_files)
-    print(f"找到 {total} 个文件，开始生成 ed2k 链接...\n")
+    print(MSG_FOUND_FILES.format(total))
 
     # 清空目标文件
     target_file.parent.mkdir(parents=True, exist_ok=True)
@@ -72,13 +96,38 @@ def process_directory(source_dir: Path, target_file: Path) -> None:
             if link:
                 fh.write(link + "\n")
                 ok += 1
-                print(f"  ✓ 成功")
+                print(MSG_SUCCESS)
             else:
                 fail += 1
-                print(f"  ✗ 失败")
+                print(MSG_FAIL)
 
-    print(f"\n处理完成：成功 {ok} 个，失败 {fail} 个，共 {total} 个。")
-    print(f"ed2k 链接已保存到：{target_file}")
+    print(MSG_DONE.format(ok, fail, total))
+    print(MSG_SAVED_TO.format(target_file))
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
 
 
 def main() -> None:
@@ -86,39 +135,46 @@ def main() -> None:
     try:
         # --- 源文件夹 ---
         default_src = r"d:\Studios\Folders\Downloads"
-        raw = input(f"请输入源文件夹位置（回车使用默认 {default_src}）：").strip()
+        raw = input(MSG_PROMPT_SRC.format(default_src)).strip()
         source_dir = Path(raw.strip("\"'")) if raw else Path(default_src)
 
         if not source_dir.is_dir():
-            print(f"错误：源文件夹 '{source_dir}' 不存在")
+            print(MSG_SRC_NOT_FOUND.format(source_dir))
             return
 
         # --- 目标文件 ---
         default_dst = r"e:\Documents\Softwares\Codes\Python\Ed2kList.txt"
-        raw = input(f"请输入目标文件位置（回车使用默认 {default_dst}）：").strip()
+        raw = input(MSG_PROMPT_DST.format(default_dst)).strip()
         target_file = Path(raw.strip("\"'")) if raw else Path(default_dst)
 
         # --- 确认 ---
-        print(f"\n确认信息：")
-        print(f"  源文件夹：{source_dir}")
-        print(f"  目标文件：{target_file}")
+        print(MSG_CONFIRM_INFO)
+        print(MSG_SRC_DIR.format(source_dir))
+        print(MSG_DST_FILE.format(target_file))
 
-        confirm = input("\n是否开始处理？（回车继续，N 取消）：").strip().lower()
+        confirm = input(MSG_CONFIRM_START).strip().lower()
         if confirm in ("n", "no"):
-            print("已取消操作")
+            print(MSG_CANCELLED)
             return
 
         process_directory(source_dir, target_file)
 
     except KeyboardInterrupt:
-        print("\n程序被用户中断")
+        print(MSG_INTERRUPTED)
 
 
-# 程序入口
+# ==================== 程序入口 ====================
+
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if not RHASH.is_file():
-        print(f"错误：未找到 RHash 程序 —— {RHASH}")
+        print(MSG_RHASH_MISSING.format(RHASH))
         sys.exit(1)
-    main()
-    input("按回车键退出...")
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(MSG_INTERRUPTED)
+    except Exception as e:
+        print(MSG_ERROR.format(e))
+    finally:
+        input(MSG_EXIT)

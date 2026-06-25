@@ -3,6 +3,7 @@
 # 我安装了 RHash，位置"d:\ProApps\rhash\current\rhash.exe"。生成 ed2k 的命令类似：rhash.exe --uppercase --ed2k-link "\\TS-464C\Temps\rustdesk-1.4.3-x86_64.exe"。生成如"ed2k://|file|rustdesk-1.4.3-x86_64.exe|23369352|DF952EEB0438E288409858E6C960E261|h=T7BJKLDRQ7VDCDKOO525FO7YHJCZVKDK|/"的ed2k链接。
 # 用文件名大小与 ed2k hash 对文件夹及其子文件夹下所有文件重命名。如 rustdesk-1.4.3-x86_64.exe 重命名为 [23369352][DF952EEB0438E288409858E6C960E261].exe（用方括号包绕，扩展名不变）。
 
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -11,6 +12,25 @@ from pathlib import Path
 
 DEFAULT_SOURCE_DIR = Path(r"d:\Studios\Folders\Downloads")
 DEFAULT_RHASH_PATH = Path(r"d:\ProApps\rhash\current\rhash.exe")
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_PROMPT_SOURCE_DIR = "请输入源文件夹位置："
+MSG_ERROR_RHASH_NOT_FOUND = "错误：找不到 RHash 工具 —— {}"
+MSG_ERROR_PARSE_RHASH = "无法解析 RHash 输出：{}"
+MSG_ERROR_RHASH_EXEC = "RHash 执行错误：{}"
+MSG_ERROR_ED2K_HASH = "计算文件 {} 的 ED2K 哈希时出错：{}"
+MSG_ERROR_INVALID_DIR = "指定的路径无效，请确保它是一个文件夹。"
+MSG_SKIP_EMPTY = "{} 是空文件，已跳过。"
+MSG_SKIP_NO_HASH = "无法计算文件 {} 的 ED2K 哈希，已跳过。"
+MSG_SKIP_EXISTS = "目标文件已存在，跳过重命名：{}"
+MSG_RENAME_OK = "成功重命名：{} -> {}"
+MSG_RENAME_FAIL = "无法重命名文件 {}: {}"
+MSG_DONE = "完成！共重命名了 {} 个文件。"
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
 
 # ==================== 辅助函数 ====================
 
@@ -27,7 +47,7 @@ def ed2k_hash(file_path: Path) -> str:
     返回哈希值字符串，失败时返回空字符串。
     """
     if not DEFAULT_RHASH_PATH.is_file():
-        print(f"错误：找不到 RHash 工具 —— {DEFAULT_RHASH_PATH}")
+        print(MSG_ERROR_RHASH_NOT_FOUND.format(DEFAULT_RHASH_PATH))
         return ""
 
     try:
@@ -39,13 +59,13 @@ def ed2k_hash(file_path: Path) -> str:
         if len(parts) >= 5:
             return parts[4]  # 哈希值在第五个位置
         else:
-            print(f"无法解析 RHash 输出：{result.stdout.strip()}")
+            print(MSG_ERROR_PARSE_RHASH.format(result.stdout.strip()))
             return ""
     except subprocess.CalledProcessError as e:
-        print(f"RHash 执行错误：{e}")
+        print(MSG_ERROR_RHASH_EXEC.format(e))
         return ""
     except OSError as e:
-        print(f"计算文件 {file_path.name} 的 ED2K 哈希时出错：{e}")
+        print(MSG_ERROR_ED2K_HASH.format(file_path.name, e))
         return ""
 
 
@@ -58,7 +78,7 @@ def rename_files_by_ed2k(source_dir: Path) -> int:
     返回重命名的文件数量。
     """
     if not source_dir.is_dir():
-        print("指定的路径无效，请确保它是一个文件夹。")
+        print(MSG_ERROR_INVALID_DIR)
         return 0
 
     renamed_count = 0
@@ -69,43 +89,68 @@ def rename_files_by_ed2k(source_dir: Path) -> int:
 
         file_size = file_path.stat().st_size
         if file_size == 0:
-            print(f"{file_path.name} 是空文件，已跳过。")
+            print(MSG_SKIP_EMPTY.format(file_path.name))
             continue
 
         file_hash = ed2k_hash(file_path)
         if not file_hash:
-            print(f"无法计算文件 {file_path.name} 的 ED2K 哈希，已跳过。")
+            print(MSG_SKIP_NO_HASH.format(file_path.name))
             continue
 
         new_name = f"[{file_size}][{file_hash}]{file_path.suffix.lower()}"
         new_path = file_path.parent / new_name
 
         if new_path.exists():
-            print(f"目标文件已存在，跳过重命名：{new_name}")
+            print(MSG_SKIP_EXISTS.format(new_name))
             continue
 
         try:
             file_path.rename(new_path)
-            print(f"成功重命名：{file_path.name} -> {new_name}")
+            print(MSG_RENAME_OK.format(file_path.name, new_name))
             renamed_count += 1
         except OSError as e:
-            print(f"无法重命名文件 {file_path}: {e}")
+            print(MSG_RENAME_FAIL.format(file_path, e))
 
     return renamed_count
 
 
 # ==================== 主程序 ====================
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
 
 
 def main() -> None:
     """主函数：获取用户输入并执行文件重命名操作。"""
 
     source_str = get_input_with_default(
-        "请输入源文件夹位置：", str(DEFAULT_SOURCE_DIR))
+        MSG_PROMPT_SOURCE_DIR, str(DEFAULT_SOURCE_DIR))
     source_dir = Path(source_str)
 
     count = rename_files_by_ed2k(source_dir)
-    print(f"\n完成！共重命名了 {count} 个文件。")
+    print(MSG_DONE.format(count))
 
 
 # ==================== 程序入口 ====================
@@ -115,8 +160,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)

@@ -6,14 +6,34 @@
 
 # 运行前请执行：pip install pypinyin
 
+import signal
 import subprocess
 import sys
 from pathlib import Path
 
 from pypinyin import lazy_pinyin, Style
 
-# --- 常量 ---
+# ==================== 全局配置 ====================
+
+# --- 路径常量 ---
 DICT_PATH = Path(r"D:\ProApps\Rime\config\dicts\user.dict.yaml")
+
+# --- 配置常量 ---
+DEFAULT_WEIGHT = 10
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_CLIPBOARD_EMPTY = "剪贴板内容为空！"
+MSG_READ_CLIPBOARD_FAIL = "读取剪贴板失败：{}"
+MSG_WRITE_SUCCESS = "成功添加到词典："
+MSG_WRITE_DETAIL_WORD = "  词组：{}"
+MSG_WRITE_DETAIL_PINYIN = "  拼音：{}"
+MSG_WRITE_DETAIL_PATH = "  已写入：{}"
+MSG_WRITE_FAIL = "写入文件时出错：{}"
+MSG_INTERRUPTED = "\n用户中断，程序退出。"
+MSG_ERROR = "❌ 发生未捕获的异常：{}"
+MSG_EXIT = "\n按回车键退出..."
 
 
 def read_clipboard() -> str | None:
@@ -27,7 +47,7 @@ def read_clipboard() -> str | None:
         )
         return result.stdout
     except Exception as e:
-        print(f"读取剪贴板失败：{e}")
+        print(MSG_READ_CLIPBOARD_FAIL.format(e))
         return None
 
 
@@ -70,31 +90,56 @@ def text_to_pinyin(text: str) -> str:
             result.append(block)
 
     return " ".join(result)
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
 
 
 def main() -> None:
     """主流程：读取剪贴板 → 转拼音 → 追加写入词典。"""
     clipboard_content = read_clipboard()
     if not clipboard_content:
-        print("剪贴板内容为空！")
+        print(MSG_CLIPBOARD_EMPTY)
         return
 
     clipboard_content = clipboard_content.strip()
     pinyin_result = text_to_pinyin(clipboard_content)
 
     # 构建写入内容：词组 \t 拼音 \t 权重
-    output_line = f"{clipboard_content}\t{pinyin_result}\t10\n"
+    output_line = f"{clipboard_content}\t{pinyin_result}\t{DEFAULT_WEIGHT}\n"
 
     try:
         DICT_PATH.parent.mkdir(parents=True, exist_ok=True)
         with DICT_PATH.open("a", encoding="utf-8") as f:
             f.write(output_line)
-        print("成功添加到词典：")
-        print(f"  词组：{clipboard_content}")
-        print(f"  拼音：{pinyin_result}")
-        print(f"  已写入：{DICT_PATH}")
+        print(MSG_WRITE_SUCCESS)
+        print(MSG_WRITE_DETAIL_WORD.format(clipboard_content))
+        print(MSG_WRITE_DETAIL_PINYIN.format(pinyin_result))
+        print(MSG_WRITE_DETAIL_PATH.format(DICT_PATH))
     except OSError as e:
-        print(f"写入文件时出错：{e}")
+        print(MSG_WRITE_FAIL.format(e))
 
 
 def test_pinyin_conversion() -> None:
@@ -125,6 +170,16 @@ def test_pinyin_conversion() -> None:
                     print(f"  '{char}' -> {pinyin}")
 
 
+
+# ==================== 程序入口 ====================
+
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(MSG_INTERRUPTED)
+    except Exception as e:
+        print(MSG_ERROR.format(e))
+    finally:
+        input(MSG_EXIT)

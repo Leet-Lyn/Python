@@ -6,6 +6,7 @@
 # 将大小、hash 写入剪贴板，之间用回车间隔。
 
 # 导入模块
+import signal
 import subprocess
 import sys
 import urllib.parse
@@ -14,6 +15,27 @@ from pathlib import Path
 
 # --- 默认路径 ---
 DEFAULT_SOURCE = Path(r"e:\Documents\Softwares\Codes\Python\Ed2kList.txt")
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+MSG_CLIPBOARD_FAIL = "复制到剪贴板失败：{}"
+MSG_CLIPBOARD_READ_FAIL = "读取剪贴板失败：{}"
+MSG_CLIPBOARD_EMPTY = "剪贴板为空，请先复制 ed2k 链接到剪贴板！"
+MSG_CLIPBOARD_SAVED = "已从剪贴板读取内容并保存到：{}"
+MSG_SRC_MISSING = "源文件不存在，请检查路径或文件名！"
+MSG_NO_CONTENT = "源文件中没有有效内容。"
+MSG_CLIPBOARD_WRITTEN = "大小和 hash 已写入剪贴板"
+MSG_SKIPPED = "⚠ 跳过了 {} 条无效/不完整的链接。"
+MSG_DONE = "处理完成，生成的新文件保存在：{}"
+MSG_PROMPT_FILE = (
+    "请输入源文件位置"
+    "（默认 e:\\Documents\\Softwares\\Codes\\Python\\Ed2kList.txt，"
+    "按回车使用默认，按 C 读取剪贴板）："
+)
 
 
 def copy_to_clipboard(text: str) -> None:
@@ -27,7 +49,7 @@ def copy_to_clipboard(text: str) -> None:
             check=True,
         )
     except Exception as e:
-        print(f"复制到剪贴板失败：{e}")
+        print(MSG_CLIPBOARD_FAIL.format(e))
 
 
 def format_size(size_str: str) -> str:
@@ -43,14 +65,37 @@ def format_size(size_str: str) -> str:
     return f"{size:.4f} TB"
 
 
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
+
+
 def main() -> None:
     """主流程：获取源文件 → 解码 ed2k 链接 → 生成分类文件 → 复制到剪贴板。"""
-    prompt = (
-        r"请输入源文件位置"
-        r"（默认 e:\Documents\Softwares\Codes\Python\Ed2kList.txt，"
-        r"按回车使用默认，按 C 读取剪贴板）："
-    )
-    user_input = input(prompt).strip()
+    _init_quit_handler()
+    user_input = input(MSG_PROMPT_FILE).strip()
 
     if user_input.lower() == "c":
         # 从剪贴板读取内容并写入默认路径
@@ -68,15 +113,15 @@ def main() -> None:
             )
             clipboard_content = result.stdout
         except Exception as e:
-            print(f"读取剪贴板失败：{e}")
+            print(MSG_CLIPBOARD_READ_FAIL.format(e))
             return
 
         if not clipboard_content.strip():
-            print("剪贴板为空，请先复制 ed2k 链接到剪贴板！")
+            print(MSG_CLIPBOARD_EMPTY)
             return
 
         source_file.write_text(clipboard_content, encoding="utf-8")
-        print(f"已从剪贴板读取内容并保存到：{source_file}")
+        print(MSG_CLIPBOARD_SAVED.format(source_file))
     elif not user_input:
         # 使用默认路径
         source_file = DEFAULT_SOURCE
@@ -88,7 +133,7 @@ def main() -> None:
 
     # 检查源文件是否存在
     if not source_file.is_file():
-        print("源文件不存在，请检查路径或文件名！")
+        print(MSG_SRC_MISSING)
         return
 
     # --- 读取并解码所有 ed2k 链接 ---
@@ -96,7 +141,7 @@ def main() -> None:
     decoded_links = [urllib.parse.unquote(line.strip()) for line in raw_lines if line.strip()]
 
     if not decoded_links:
-        print("源文件中没有有效内容。")
+        print(MSG_NO_CONTENT)
         return
 
     # --- 写入解码后的链接文件 ---
@@ -117,7 +162,7 @@ def main() -> None:
     skipped = 0
 
     for link in decoded_links:
-        if not link.startswith("ed2k://|file|"):
+        if not link.lower().startswith("ed2k://|file|"):
             skipped += 1
             continue
         parts = link.split("|")
@@ -142,18 +187,23 @@ def main() -> None:
     # --- 复制大小和哈希到剪贴板 ---
     clipboard_content = "\n".join(sizes) + "\n\n" + "\n".join(hashes)
     copy_to_clipboard(clipboard_content)
-    print("大小和 hash 已写入剪贴板")
+    print(MSG_CLIPBOARD_WRITTEN)
 
     if skipped:
-        print(f"⚠ 跳过了 {skipped} 条无效/不完整的链接。")
+        print(MSG_SKIPPED.format(skipped))
 
-    print(f"处理完成，生成的新文件保存在：{source_folder}")
+    print(MSG_DONE.format(source_folder))
 
 
-# 程序入口
+# ==================== 程序入口 ====================
+
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    main()
-
-# 按下回车键退出程序
-input("按回车键退出...")
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(MSG_INTERRUPTED)
+    except Exception as e:
+        print(MSG_ERROR.format(e))
+    finally:
+        input(MSG_EXIT)

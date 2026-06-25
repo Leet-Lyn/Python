@@ -31,8 +31,8 @@
 # 如果当前 SizeMD4 值不在原来 SizeMD4 数据库文件里存在，则报告我。
 # 完成后，反复循环至最开始。
 
-import shutil
 import signal
+import shutil
 import subprocess
 import sys
 import time
@@ -54,9 +54,9 @@ def copy_to_clipboard(text: str) -> None:
             errors="ignore",
             check=True,
         )
-        print("已复制到剪贴板。")
+        print(MSG_CLIPBOARD_COPIED)
     except Exception as e:
-        print(f"复制到剪贴板失败: {e}")
+        print(MSG_CLIPBOARD_COPY_FAIL.format(e))
 
 
 def get_clipboard_text() -> str:
@@ -70,7 +70,7 @@ def get_clipboard_text() -> str:
         )
         return result.stdout
     except Exception:
-        print("无法读取剪贴板。")
+        print(MSG_CLIPBOARD_READ_FAIL)
         return ""
 
 
@@ -91,6 +91,151 @@ HIDDEN_FILE_PATTERNS = [
     ".DS_Store", "._*",
 ]
 
+# --- 消息常量 ---
+
+# 程序退出相关
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+
+# 剪贴板相关
+MSG_CLIPBOARD_COPIED = "已复制到剪贴板。"
+MSG_CLIPBOARD_COPY_FAIL = "复制到剪贴板失败: {}"
+MSG_CLIPBOARD_READ_FAIL = "无法读取剪贴板。"
+
+# 主菜单
+MSG_MENU_TITLE = "文件处理与SizeMD4数据库管理工具"
+MSG_MENU_CHOICE_PROMPT = "请输入选项 (0-6): "
+MSG_MENU_1 = "1. 文件夹写入Excel并写入数据库"
+MSG_MENU_2 = "2. 多行ed2k链接写入数据库"
+MSG_MENU_3 = "3. 单文件链接写入数据库"
+MSG_MENU_4 = "4. 多行ed2k链接从数据库删除"
+MSG_MENU_5 = "5. 多行SizeMD4值从数据库删除"
+MSG_MENU_6 = "6. 整理数据库（排序去重）"
+MSG_MENU_0 = "0. 退出"
+MSG_MENU_INVALID = "无效选项，请重新输入。"
+MSG_MENU_EXIT = "程序退出。"
+MSG_MENU_CONTINUE = "\n按回车键继续..."
+
+# 输入提示
+MSG_PROMPT_DEFAULT_FMT = "{} (默认: {}): "
+MSG_PROMPT_EXCEL_PATH = "Excel文件位置"
+MSG_PROMPT_SOURCE_DIR = "源文件夹位置"
+MSG_PROMPT_WRITE_DIR = "写入文件夹位置"
+MSG_PROMPT_UPLOAD_DIR = "上传文件夹位置"
+MSG_PROMPT_DELETE_DIR = "删除文件夹位置"
+MSG_PROMPT_SIZE_MD4_DB = "SizeMD4数据库文件位置"
+MSG_PROMPT_REFERENCE_PAGE = "引用页: "
+MSG_PROMPT_BELONGS_TO = "属于: "
+MSG_PROMPT_MAIN_LINK = "主链接: "
+MSG_PROMPT_FILE_PATH = "请输入文件路径"
+MSG_PROMPT_FIELD_VALUES = "\n请输入以下字段值（直接回车则为空）："
+
+# 中断提示
+MSG_QUIT_HINT = "提示：处理中可按 Ctrl+Q 中断。\n"
+MSG_QUIT_KEY = "\n⚠ 用户中断（Ctrl+Q），已处理部分不会丢失。"
+MSG_QUIT_KEY_WAIT = "⚠ 用户中断（Ctrl+Q），停止等待加密文件。"
+
+# 错误消息
+MSG_ERR_EXCEL_NOT_FOUND = "错误: Excel文件不存在 - {}，返回主菜单。"
+MSG_ERR_SOURCE_NOT_FOUND = "错误: 源文件夹不存在 - {}，返回主菜单。"
+MSG_ERR_DIR_CONFLICT = "目录冲突错误: {}"
+MSG_ERR_RETURN_MENU = "已返回主菜单，请重新选择目录。"
+MSG_ERR_FILE_NOT_FOUND = "错误：文件不存在 - {}"
+MSG_ERR_CANNOT_GENERATE_ED2K = "无法生成ED2K链接。"
+MSG_ERR_CANNOT_EXTRACT_SIZE_MD4 = "无法提取SizeMD4。"
+
+# 信息/状态消息
+MSG_INFO_LOADED_DB = "已加载 {} 条 SizeMD4 记录"
+MSG_INFO_NO_HIDDEN_FILES = "源文件夹中没有找到任何非隐藏文件"
+MSG_INFO_CREATED_DIR = "已创建目录: {}"
+MSG_INFO_PROMPT_SELECT = "\n请选择功能："
+
+# 选项 1 相关
+MSG_OPT1_START = "\n=== 开始文件夹处理 ==="
+MSG_OPT1_FILE_HEADER = "\n[{}/{}] {} | {}"
+MSG_OPT1_NO_ED2K = "无法生成ED2K链接，跳过文件: {}"
+MSG_OPT1_NO_SIZEMD4 = "无法提取SizeMD4，跳过文件: {}"
+MSG_OPT1_SIZE_MD4_EXISTS = "SizeMD4 已存在，将文件移动到删除文件夹: {}"
+MSG_OPT1_MOVED_TO = "已移动到: {}"
+MSG_OPT1_MOVE_FAIL_RETAIN = "移动失败，保留在源位置: {}"
+MSG_OPT1_SIZE_MD4_PENDING = "SizeMD4 已记入待写入列表: {}"
+MSG_OPT1_MOVE_WRITE_FAIL = "移动到写入目录失败，跳过: {}"
+MSG_OPT1_COPIED_Z = "已复制到Z盘: {}"
+MSG_OPT1_MOVE_ENC_FAIL = "移动加密文件失败"
+MSG_OPT1_MOVED_ENC_TO_UPLOAD = "已移动加密文件到上传目录: {}"
+MSG_OPT1_PROCESSED = "已处理: {} (Index: {})"
+MSG_OPT1_PROCESS_FAIL = "处理文件失败 {}: {}"
+MSG_OPT1_ADDED_RECORDS = "\n成功添加 {} 条记录到Excel"
+MSG_OPT1_ADDED_SIZE_MD4 = "已将 {} 条 SizeMD4 写入数据库"
+MSG_OPT1_SAVE_EXCEL_FAIL = "保存Excel文件失败: {}"
+MSG_OPT1_SIZE_MD4_NOT_WRITTEN = "注意: {} 条 SizeMD4 未写入数据库"
+MSG_OPT1_NO_NEW_RECORDS = "没有新记录需要写入Excel"
+MSG_OPT1_COMPLETE = "\n文件夹处理完成！"
+MSG_OPT1_ERROR = "\n文件夹处理中出现错误。"
+MSG_OPT1_DUP_LIST_HEADER = "\n===== 以下文件因SizeMD4重复被移至删除文件夹 ====="
+MSG_OPT1_NO_DUP = "没有重复文件。"
+MSG_OPT1_WARN_XYZ_MISSING = "警告: XYZ目录不存在 ({})，等待中..."
+
+# 选项 2 相关
+MSG_OPT2_START = "\n=== 多行ed2k链接写入数据库 ==="
+MSG_OPT2_CLIPBOARD_EMPTY = "剪贴板为空，无法处理。"
+MSG_OPT2_NO_VALID_LINES = "剪贴板中没有有效行。"
+MSG_OPT2_SKIP_NON_ED2K = "跳过非ed2k链接行: {}"
+MSG_OPT2_CANNOT_EXTRACT = "无法提取SizeMD4: {}"
+MSG_OPT2_SIZE_MD4_EXISTS = "SizeMD4已存在: {}"
+MSG_OPT2_ADDED = "已添加新SizeMD4: {}"
+MSG_OPT2_COMPLETE = "\n处理完成：新增 {} 条，已存在 {} 条。"
+MSG_OPT2_EXISTED_HEADER = "\n===== 已存在的ed2k链接列表 ====="
+MSG_OPT2_NO_DUP = "没有重复的链接。"
+
+# 选项 3 相关
+MSG_OPT3_START = "\n=== 处理单个文件: {} ==="
+MSG_OPT3_ED2K_LINK = "生成的ed2k链接: {}"
+MSG_OPT3_ALREADY_EXISTS = "该文件的SizeMD4已存在于数据库中: {}"
+MSG_OPT3_NOT_ADDED = "文件未新增入数据库。"
+MSG_OPT3_ADDED = "该文件的SizeMD4已添加到数据库: {}"
+MSG_OPT3_SIZE_MD4_VALUE = "SizeMD4值: {}"
+
+# 选项 4 相关
+MSG_OPT4_START = "\n=== 整理SizeMD4数据库 ==="
+MSG_OPT4_NOT_FOUND = "数据库文件不存在: {}"
+MSG_OPT4_BACKUP_CREATED = "已创建备份: {}"
+MSG_OPT4_BACKUP_FAIL = "备份失败: {}"
+MSG_OPT4_COMPLETE = "整理完成。原始: {}，去重后: {}。"
+MSG_OPT4_PROCESS_ERROR = "整理过程中出错: {}"
+MSG_OPT4_RESTORED = "已从备份恢复原文件。"
+
+# 选项 5 相关
+MSG_OPT5_START = "\n=== 多行ed2k链接从数据库删除 ==="
+MSG_OPT5_DELETED = "已删除: {}"
+MSG_OPT5_NOT_FOUND = "未找到: {}"
+MSG_OPT5_COMPLETE = "\n处理完成：删除 {} 条，未找到 {} 条。"
+
+# 选项 6 相关
+MSG_OPT6_START = "\n=== 多行SizeMD4值从数据库删除 ==="
+
+# 通用
+MSG_READ_EXCEL_FAIL = "读取Excel文件失败: {}"
+MSG_SAVE_EXCEL_FAIL = "保存Excel文件失败: {}"
+MSG_MOVE_FILE_FAIL = "移动文件失败（不可恢复）: {}"
+MSG_MOVE_FILE_OCCUPIED = "文件被占用，重试 {}/{}: {}"
+MSG_MOVE_FILE_MAX_RETRIES = "移动失败，已达最大重试次数: {}"
+MSG_MOVE_SUCCESS = "移动成功: {} -> {}"
+MSG_TARGET_EXISTS_RENAME = "目标已存在，重命名为: {}"
+MSG_FILE_READY_TIMEOUT = "文件就绪等待超时: {}"
+MSG_ENCRYPT_WAIT_TIMEOUT = "等待加密文件超时 ({}秒)"
+MSG_ED2K_GEN_FAIL = "生成ED2K链接失败 {}: {}"
+MSG_ED2K_PARSE_FAIL = "解析ED2K链接失败: {}"
+MSG_EXTRACT_SIZE_MD4_FAIL = "提取SizeMD4失败: {}"
+MSG_LOAD_DB_FAIL = "读取SizeMD4数据库失败: {}"
+MSG_WRITE_DB_FAIL = "写入SizeMD4数据库失败: {}"
+MSG_COPY_Z_FAIL = "复制到Z盘失败: {}"
+MSG_COPY_Z_ERROR = "复制到Z盘出错 (winerror={})，尝试缩短文件名: {}"
+MSG_COPY_Z_FATAL = "复制到Z盘失败 ({})，无法通过缩短文件名解决，跳过。"
+MSG_CANNOT_SHORTEN = "无法继续缩短文件名: {}，错误: {}"
+MSG_MAX_ATTEMPTS = "达到最大尝试次数 {}: {}"
+
 # Ctrl+Q / Ctrl+\ 中断标志
 _quit_requested = False
 
@@ -106,7 +251,7 @@ def init_quit_handler() -> None:
     if hasattr(signal, "SIGQUIT"):
         signal.signal(signal.SIGQUIT, _on_quit_signal)
     if sys.platform == "win32":
-        print("提示：处理中可按 Ctrl+Q 中断。\n")
+        print(MSG_QUIT_HINT)
 
 
 def check_quit_key() -> bool:
@@ -132,7 +277,7 @@ def check_quit_key() -> bool:
 
 def get_input_with_default(prompt_text: str, default_value: str) -> str:
     """获取带默认值的用户输入。"""
-    user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
+    user_input = input(MSG_PROMPT_DEFAULT_FMT.format(prompt_text, default_value)).strip()
     return user_input if user_input else str(default_value)
 
 
@@ -141,7 +286,7 @@ def ensure_directory_exists(directory_path: str) -> str:
     p = Path(directory_path)
     if not p.is_dir():
         p.mkdir(parents=True, exist_ok=True)
-        print(f"已创建目录: {directory_path}")
+        print(MSG_INFO_CREATED_DIR.format(directory_path))
     return directory_path
 
 
@@ -231,7 +376,7 @@ def generate_ed2k_link(file_path: str) -> str:
                 return result.stdout.strip()
         return ""
     except Exception as e:
-        print(f"生成ED2K链接失败 {file_path}: {e}")
+        print(MSG_ED2K_GEN_FAIL.format(file_path, e))
         return ""
 
 
@@ -253,7 +398,7 @@ def parse_ed2k_link(ed2k_link: str) -> tuple[str, str]:
             return formatted_size, filehash
         return "", ""
     except Exception as e:
-        print(f"解析ED2K链接失败: {e}")
+        print(MSG_ED2K_PARSE_FAIL.format(e))
         return "", ""
 
 
@@ -268,7 +413,7 @@ def extract_size_md4(ed2k_link: str) -> str:
             return f"{parts[3]}|{parts[4].upper()}"
         return ""
     except Exception as e:
-        print(f"提取SizeMD4失败: {e}")
+        print(MSG_EXTRACT_SIZE_MD4_FAIL.format(e))
         return ""
 
 
@@ -281,7 +426,7 @@ def load_size_md4_database(db_path: str) -> set[str]:
         lines = p.read_text(encoding="utf-8").splitlines()
         return {line.strip() for line in lines if line.strip()}
     except Exception as e:
-        print(f"读取SizeMD4数据库失败: {e}")
+        print(MSG_LOAD_DB_FAIL.format(e))
         return set()
 
 
@@ -291,7 +436,7 @@ def add_to_size_md4_database(db_path: str, size_md4: str) -> None:
         with Path(db_path).open("a", encoding="utf-8") as f:
             f.write(size_md4 + "\n")
     except Exception as e:
-        print(f"写入SizeMD4数据库失败: {e}")
+        print(MSG_WRITE_DB_FAIL.format(e))
 
 
 def safe_move_file(src_path: str, dst_path_str: str,
@@ -306,21 +451,21 @@ def safe_move_file(src_path: str, dst_path_str: str,
         while dst.is_file():
             dst = dst.parent / f"{stem}_{counter}{ext}"
             counter += 1
-        print(f"目标已存在，重命名为: {dst.name}")
+        print(MSG_TARGET_EXISTS_RENAME.format(dst.name))
 
     for attempt in range(max_retries):
         try:
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(src), str(dst))
-            print(f"移动成功: {src.name} -> {dst}")
+            print(MSG_MOVE_SUCCESS.format(src.name, dst))
             return True
         except (PermissionError, OSError) as e:
-            print(f"文件被占用，重试 {attempt+1}/{max_retries}: {e}")
+            print(MSG_MOVE_FILE_OCCUPIED.format(attempt+1, max_retries, e))
             time.sleep(retry_delay)
         except Exception as e:
-            print(f"移动文件失败（不可恢复）: {e}")
+            print(MSG_MOVE_FILE_FAIL.format(e))
             return False
-    print(f"移动失败，已达最大重试次数: {src}")
+    print(MSG_MOVE_FILE_MAX_RETRIES.format(src))
     return False
 
 
@@ -339,7 +484,7 @@ def wait_for_file_ready(file_path: str, timeout_seconds: int = 30,
             return True
         except (PermissionError, OSError):
             time.sleep(check_interval)
-    print(f"文件就绪等待超时: {file_path}")
+    print(MSG_FILE_READY_TIMEOUT.format(file_path))
     return False
 
 
@@ -369,20 +514,20 @@ def copy_to_z_drive_with_retry(source_file: str):
         except OSError as e:
             winerr = getattr(e, "winerror", None)
             if winerr in FATAL_ERROR_CODES:
-                print(f"复制到Z盘失败 ({e})，无法通过缩短文件名解决，跳过。")
+                print(MSG_COPY_Z_FATAL.format(e))
                 return None, None
             attempt_count += 1
             if winerr is not None and winerr not in FILENAME_ERROR_CODES:
-                print(f"复制到Z盘出错 (winerror={winerr})，尝试缩短文件名: {e}")
+                print(MSG_COPY_Z_ERROR.format(winerr, e))
             if len(current_stem) > 1:
                 current_stem = current_stem[:-1]
             else:
-                print(f"无法继续缩短文件名: {src.name}，错误: {e}")
+                print(MSG_CANNOT_SHORTEN.format(src.name, e))
                 return None, None
         except Exception as e:
-            print(f"复制到Z盘失败: {e}")
+            print(MSG_COPY_Z_FAIL.format(e))
             return None, None
-    print(f"达到最大尝试次数 {max_attempts}: {src.name}")
+    print(MSG_MAX_ATTEMPTS.format(max_attempts, src.name))
     return None, None
 
 
@@ -404,14 +549,14 @@ def wait_for_encrypted_file(xyz_dir_str: str | None = None,
                     return str(newest)
         else:
             if not warned_missing_dir:
-                print(f"警告: XYZ目录不存在 ({xyz_dir})，等待中...")
+                print(MSG_OPT1_WARN_XYZ_MISSING.format(xyz_dir))
                 warned_missing_dir = True
         # Ctrl+Q 中断检查
         if check_quit_key():
-            print("⚠ 用户中断（Ctrl+Q），停止等待加密文件。")
+            print(MSG_QUIT_KEY_WAIT)
             return None
         time.sleep(check_interval)
-    print(f"等待加密文件超时 ({timeout_seconds}秒)")
+    print(MSG_ENCRYPT_WAIT_TIMEOUT.format(timeout_seconds))
     return None
 
 
@@ -439,7 +584,7 @@ def move_file_with_structure(source_file: str, target_base_dir: str,
             return str(target_file)
         return None
     except Exception as e:
-        print(f"移动文件失败 {source_file}: {e}")
+        print(MSG_MOVE_FILE_FAIL.format(e))
         return None
 
 
@@ -463,20 +608,20 @@ def process_folder_to_excel_and_db(
     reference_page: str, belongs_to: str, main_link: str,
 ) -> tuple[bool, list[str]]:
     """处理文件夹：比对 SizeMD4 → 新文件写入 Excel → 移动 → Z盘 → 加密。"""
-    print("\n=== 开始文件夹处理 ===")
+    print(MSG_OPT1_START)
     try:
         df = pd.read_excel(excel_path, engine="openpyxl")
     except Exception as e:
-        print(f"读取Excel文件失败: {e}")
+        print(MSG_READ_EXCEL_FAIL.format(e))
         return False, []
 
     size_md4_set = load_size_md4_database(size_md4_db_path)
-    print(f"已加载 {len(size_md4_set)} 条 SizeMD4 记录")
+    print(MSG_INFO_LOADED_DB.format(len(size_md4_set)))
 
     last_index = get_last_index_from_excel(df)
     all_files = get_all_files(source_dir)
     if not all_files:
-        print("源文件夹中没有找到任何非隐藏文件")
+        print(MSG_INFO_NO_HIDDEN_FILES)
         return True, []
 
     source_folder_name = Path(source_dir).name
@@ -488,38 +633,38 @@ def process_folder_to_excel_and_db(
     for idx, file_path in enumerate(all_files, 1):
         # Ctrl+Q 中断检查
         if check_quit_key():
-            print("\n⚠ 用户中断（Ctrl+Q），已处理部分不会丢失。")
+            print(MSG_QUIT_KEY)
             break
 
         # 每文件头部信息
         now_str = datetime.now().strftime("%H:%M:%S")
-        print(f"\n[{idx}/{total}] {now_str} | {Path(file_path).name}")
+        print(MSG_OPT1_FILE_HEADER.format(idx, total, now_str, Path(file_path).name))
 
         try:
             ed2k_for_check = generate_ed2k_link(file_path)
             if not ed2k_for_check:
-                print(f"无法生成ED2K链接，跳过文件: {file_path}")
+                print(MSG_OPT1_NO_ED2K.format(file_path))
                 continue
             size_md4 = extract_size_md4(ed2k_for_check)
             if not size_md4:
-                print(f"无法提取SizeMD4，跳过文件: {file_path}")
+                print(MSG_OPT1_NO_SIZEMD4.format(file_path))
                 continue
 
             if size_md4 in size_md4_set:
                 fp_name = Path(file_path).name
-                print(f"SizeMD4 已存在，将文件移动到删除文件夹: {fp_name}")
+                print(MSG_OPT1_SIZE_MD4_EXISTS.format(fp_name))
                 moved = move_file_with_structure(file_path, delete_dir, source_dir)
                 if moved:
                     duplicated_files.append(moved)
-                    print(f"已移动到: {moved}")
+                    print(MSG_OPT1_MOVED_TO.format(moved))
                 else:
-                    print(f"移动失败，保留在源位置: {file_path}")
+                    print(MSG_OPT1_MOVE_FAIL_RETAIN.format(file_path))
                     duplicated_files.append(file_path)
                 continue
 
             pending_size_md4_list.append(size_md4)
             size_md4_set.add(size_md4)
-            print(f"SizeMD4 已记入待写入列表: {size_md4}")
+            print(MSG_OPT1_SIZE_MD4_PENDING.format(size_md4))
 
             new_record: dict = {}
             last_index += 1
@@ -533,12 +678,12 @@ def process_folder_to_excel_and_db(
                 file_path, write_dir, source_dir, source_folder_name
             )
             if not moved_to_write:
-                print(f"移动到写入目录失败，跳过: {fp.name}")
+                print(MSG_OPT1_MOVE_WRITE_FAIL.format(fp.name))
                 continue
 
             z_result = copy_to_z_drive_with_retry(moved_to_write)
             if z_result[0]:
-                print(f"已复制到Z盘: {Path(z_result[0]).name}")
+                print(MSG_OPT1_COPIED_Z.format(Path(z_result[0]).name))
                 new_record["矫正文件名"] = z_result[1] if z_result[1] else ""
 
                 encrypted_file_path = wait_for_encrypted_file()
@@ -550,9 +695,9 @@ def process_folder_to_excel_and_db(
                     upload_target_dir.mkdir(parents=True, exist_ok=True)
                     target_enc = upload_target_dir / enc_fp.name
                     if safe_move_file(encrypted_file_path, str(target_enc)):
-                        print(f"已移动加密文件到上传目录: {enc_fp.name}")
+                        print(MSG_OPT1_MOVED_ENC_TO_UPLOAD.format(enc_fp.name))
                     else:
-                        print("移动加密文件失败")
+                        print(MSG_OPT1_MOVE_ENC_FAIL)
                 else:
                     new_record["加密文件名"] = ""
             else:
@@ -574,9 +719,9 @@ def process_folder_to_excel_and_db(
                 new_record["散列"] = ""
 
             new_records.append(new_record)
-            print(f"已处理: {fp.name} (Index: {last_index})")
+            print(MSG_OPT1_PROCESSED.format(fp.name, last_index))
         except Exception as e:
-            print(f"处理文件失败 {file_path}: {e}")
+            print(MSG_OPT1_PROCESS_FAIL.format(file_path, e))
             continue
 
     if new_records:
@@ -584,17 +729,17 @@ def process_folder_to_excel_and_db(
             new_df = pd.DataFrame(new_records)
             df = pd.concat([df, new_df], ignore_index=True)
             df.to_excel(excel_path, index=False, engine="openpyxl")
-            print(f"\n成功添加 {len(new_records)} 条记录到Excel")
+            print(MSG_OPT1_ADDED_RECORDS.format(len(new_records)))
             if pending_size_md4_list:
                 for smd4 in pending_size_md4_list:
                     add_to_size_md4_database(size_md4_db_path, smd4)
-                print(f"已将 {len(pending_size_md4_list)} 条 SizeMD4 写入数据库")
+                print(MSG_OPT1_ADDED_SIZE_MD4.format(len(pending_size_md4_list)))
         except Exception as e:
-            print(f"保存Excel文件失败: {e}")
-            print(f"注意: {len(pending_size_md4_list)} 条 SizeMD4 未写入数据库")
+            print(MSG_OPT1_SAVE_EXCEL_FAIL.format(e))
+            print(MSG_OPT1_SIZE_MD4_NOT_WRITTEN.format(len(pending_size_md4_list)))
             return False, duplicated_files
     else:
-        print("没有新记录需要写入Excel")
+        print(MSG_OPT1_NO_NEW_RECORDS)
 
     return True, duplicated_files
 
@@ -603,19 +748,19 @@ def process_folder_to_excel_and_db(
 
 def process_ed2k_links_from_clipboard(size_md4_db_path: str) -> None:
     """从剪贴板读取多行 ed2k 链接，提取 SizeMD4 更新数据库。"""
-    print("\n=== 多行ed2k链接写入数据库 ===")
+    print(MSG_OPT2_START)
     clipboard_text = get_clipboard_text()
     if not clipboard_text.strip():
-        print("剪贴板为空，无法处理。")
+        print(MSG_OPT2_CLIPBOARD_EMPTY)
         return
 
     lines = [line.strip() for line in clipboard_text.splitlines() if line.strip()]
     if not lines:
-        print("剪贴板中没有有效行。")
+        print(MSG_OPT2_NO_VALID_LINES)
         return
 
     size_md4_set = load_size_md4_database(size_md4_db_path)
-    print(f"已加载 {len(size_md4_set)} 条 SizeMD4 记录")
+    print(MSG_INFO_LOADED_DB.format(len(size_md4_set)))
 
     existed_links: list[str] = []
     new_count = 0
@@ -623,81 +768,81 @@ def process_ed2k_links_from_clipboard(size_md4_db_path: str) -> None:
     for line in lines:
         ed2k_link = line
         if not ed2k_link.startswith("ed2k://|file|"):
-            print(f"跳过非ed2k链接行: {line}")
+            print(MSG_OPT2_SKIP_NON_ED2K.format(line))
             continue
 
         size_md4 = extract_size_md4(ed2k_link)
         if not size_md4:
-            print(f"无法提取SizeMD4: {line}")
+            print(MSG_OPT2_CANNOT_EXTRACT.format(line))
             continue
 
         if size_md4 in size_md4_set:
             existed_links.append(ed2k_link)
-            print(f"SizeMD4已存在: {size_md4}")
+            print(MSG_OPT2_SIZE_MD4_EXISTS.format(size_md4))
         else:
             add_to_size_md4_database(size_md4_db_path, size_md4)
             size_md4_set.add(size_md4)
             new_count += 1
-            print(f"已添加新SizeMD4: {size_md4}")
+            print(MSG_OPT2_ADDED.format(size_md4))
 
-    print(f"\n处理完成：新增 {new_count} 条，已存在 {len(existed_links)} 条。")
+    print(MSG_OPT2_COMPLETE.format(new_count, len(existed_links)))
 
     if existed_links:
-        print("\n===== 已存在的ed2k链接列表 =====")
+        print(MSG_OPT2_EXISTED_HEADER)
         list_text = "\n".join(existed_links)
         print(list_text)
         copy_to_clipboard(list_text)
     else:
-        print("没有重复的链接。")
+        print(MSG_OPT2_NO_DUP)
 
 
 # ==================== 功能 3：单文件链接入库 ====================
 
 def process_single_file_link(file_path: str, size_md4_db_path: str) -> None:
     """对单个本地文件生成 ed2k，更新数据库并报告。"""
-    print(f"\n=== 处理单个文件: {file_path} ===")
+    print(MSG_OPT3_START.format(file_path))
     if not Path(file_path).is_file():
-        print(f"错误：文件不存在 - {file_path}")
+        print(MSG_ERR_FILE_NOT_FOUND.format(file_path))
         return
 
     ed2k_link = generate_ed2k_link(file_path)
     if not ed2k_link:
-        print("无法生成ed2k链接。")
+        print(MSG_ERR_CANNOT_GENERATE_ED2K)
         return
-    print(f"生成的ed2k链接: {ed2k_link}")
+    print(MSG_OPT3_ED2K_LINK.format(ed2k_link))
 
     size_md4 = extract_size_md4(ed2k_link)
     if not size_md4:
-        print("无法提取SizeMD4。")
+        print(MSG_ERR_CANNOT_EXTRACT_SIZE_MD4)
         return
 
     size_md4_set = load_size_md4_database(size_md4_db_path)
     if size_md4 in size_md4_set:
-        print(f"该文件的SizeMD4已存在于数据库中: {size_md4}")
-        print("文件未新增入数据库。")
+        print(MSG_OPT3_ALREADY_EXISTS.format(size_md4))
+        print(MSG_OPT3_NOT_ADDED)
     else:
         add_to_size_md4_database(size_md4_db_path, size_md4)
-        print(f"该文件的SizeMD4已添加到数据库: {size_md4}")
-    print(f"SizeMD4值: {size_md4}")
+        print(MSG_OPT3_ADDED.format(size_md4))
+    print(MSG_OPT3_SIZE_MD4_VALUE.format(size_md4))
 
 
 # ==================== 功能 4：整理数据库 ====================
 
 def sort_and_dedup_size_md4_db(db_path: str) -> None:
     """对 SizeMD4 数据库排序去重，先备份。"""
-    print(f"\n=== 整理SizeMD4数据库 ===")
+    print(MSG_OPT4_START)
     p = Path(db_path)
     if not p.is_file():
-        print(f"数据库文件不存在: {db_path}")
+        print(MSG_OPT4_NOT_FOUND.format(db_path))
         return
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = Path(str(db_path) + f".bak_{timestamp}")
     try:
         shutil.copy2(str(p), str(backup_path))
-        print(f"已创建备份: {backup_path}")
+        print(MSG_OPT4_BACKUP_CREATED.format(backup_path))
     except Exception as e:
-        print(f"备份失败: {e}")
+        print(MSG_OPT4_BACKUP_FAIL.format(e))
         return
 
     try:
@@ -707,12 +852,12 @@ def sort_and_dedup_size_md4_db(db_path: str) -> None:
         unique_sorted = sorted(set(lines))
         new_count = len(unique_sorted)
         p.write_text("\n".join(unique_sorted) + "\n", encoding="utf-8")
-        print(f"整理完成。原始: {original_count}，去重后: {new_count}。")
+        print(MSG_OPT4_COMPLETE.format(original_count, new_count))
     except Exception as e:
-        print(f"整理过程中出错: {e}")
+        print(MSG_OPT4_PROCESS_ERROR.format(e))
         try:
             shutil.copy2(str(backup_path), str(p))
-            print("已从备份恢复原文件。")
+            print(MSG_OPT4_RESTORED)
         except Exception:
             pass
 
@@ -735,58 +880,58 @@ def delete_from_size_md4_database(db_path: str, size_md4: str) -> bool:
 
 def delete_ed2k_links_from_db(size_md4_db_path: str) -> None:
     """从剪贴板读取多行 ed2k 链接，提取 SizeMD4 并从数据库删除。"""
-    print("\n=== 多行ed2k链接从数据库删除 ===")
+    print(MSG_OPT5_START)
     clipboard_text = get_clipboard_text()
     if not clipboard_text.strip():
-        print("剪贴板为空，无法处理。")
+        print(MSG_OPT2_CLIPBOARD_EMPTY)
         return
 
     lines = [line.strip() for line in clipboard_text.splitlines() if line.strip()]
     if not lines:
-        print("剪贴板中没有有效行。")
+        print(MSG_OPT2_NO_VALID_LINES)
         return
 
-    print(f"已加载 {len(load_size_md4_database(size_md4_db_path))} 条 SizeMD4 记录")
+    print(MSG_INFO_LOADED_DB.format(len(load_size_md4_database(size_md4_db_path))))
 
     deleted_count = 0
     not_found_count = 0
 
     for line in lines:
         if not line.startswith("ed2k://|file|"):
-            print(f"跳过非ed2k链接行: {line}")
+            print(MSG_OPT2_SKIP_NON_ED2K.format(line))
             continue
 
         size_md4 = extract_size_md4(line)
         if not size_md4:
-            print(f"无法提取SizeMD4: {line}")
+            print(MSG_OPT2_CANNOT_EXTRACT.format(line))
             continue
 
         if delete_from_size_md4_database(size_md4_db_path, size_md4):
             deleted_count += 1
-            print(f"已删除: {size_md4}")
+            print(MSG_OPT5_DELETED.format(size_md4))
         else:
             not_found_count += 1
-            print(f"未找到: {size_md4}")
+            print(MSG_OPT5_NOT_FOUND.format(size_md4))
 
-    print(f"\n处理完成：删除 {deleted_count} 条，未找到 {not_found_count} 条。")
+    print(MSG_OPT5_COMPLETE.format(deleted_count, not_found_count))
 
 
 # ==================== 功能 6：多行 SizeMD4 值从数据库删除 ====================
 
 def delete_size_md4_from_db(size_md4_db_path: str) -> None:
     """从剪贴板读取多行 SizeMD4 值并从数据库删除。"""
-    print("\n=== 多行SizeMD4值从数据库删除 ===")
+    print(MSG_OPT6_START)
     clipboard_text = get_clipboard_text()
     if not clipboard_text.strip():
-        print("剪贴板为空，无法处理。")
+        print(MSG_OPT2_CLIPBOARD_EMPTY)
         return
 
     lines = [line.strip() for line in clipboard_text.splitlines() if line.strip()]
     if not lines:
-        print("剪贴板中没有有效行。")
+        print(MSG_OPT2_NO_VALID_LINES)
         return
 
-    print(f"已加载 {len(load_size_md4_database(size_md4_db_path))} 条 SizeMD4 记录")
+    print(MSG_INFO_LOADED_DB.format(len(load_size_md4_database(size_md4_db_path))))
 
     deleted_count = 0
     not_found_count = 0
@@ -798,40 +943,41 @@ def delete_size_md4_from_db(size_md4_db_path: str) -> None:
 
         if delete_from_size_md4_database(size_md4_db_path, size_md4):
             deleted_count += 1
-            print(f"已删除: {size_md4}")
+            print(MSG_OPT5_DELETED.format(size_md4))
         else:
             not_found_count += 1
-            print(f"未找到: {size_md4}")
+            print(MSG_OPT5_NOT_FOUND.format(size_md4))
 
-    print(f"\n处理完成：删除 {deleted_count} 条，未找到 {not_found_count} 条。")
+    print(MSG_OPT5_COMPLETE.format(deleted_count, not_found_count))
 
 
 # ==================== 主菜单 ====================
 
 def main() -> None:
+    init_quit_handler()
     print("=" * 60)
-    print("文件处理与SizeMD4数据库管理工具")
+    print(MSG_MENU_TITLE)
     print("=" * 60)
 
     while True:
-        print("\n请选择功能：")
-        print("1. 文件夹写入Excel并写入数据库")
-        print("2. 多行ed2k链接写入数据库")
-        print("3. 单文件链接写入数据库")
-        print("4. 多行ed2k链接从数据库删除")
-        print("5. 多行SizeMD4值从数据库删除")
-        print("6. 整理数据库（排序去重）")
-        print("0. 退出")
-        choice = input("请输入选项 (0-6): ").strip()
+        print(MSG_INFO_PROMPT_SELECT)
+        print(MSG_MENU_1)
+        print(MSG_MENU_2)
+        print(MSG_MENU_3)
+        print(MSG_MENU_4)
+        print(MSG_MENU_5)
+        print(MSG_MENU_6)
+        print(MSG_MENU_0)
+        choice = input(MSG_MENU_CHOICE_PROMPT).strip()
 
         if choice == "1":
-            excel_path = get_input_with_default("Excel文件位置", str(DEFAULT_EXCEL_PATH))
-            source_dir = get_input_with_default("源文件夹位置", str(DEFAULT_SOURCE_DIR))
-            write_dir = get_input_with_default("写入文件夹位置", str(DEFAULT_WRITE_DIR))
-            upload_dir = get_input_with_default("上传文件夹位置", str(DEFAULT_UPLOAD_DIR))
-            delete_dir = get_input_with_default("删除文件夹位置", str(DEFAULT_DELETE_DIR))
+            excel_path = get_input_with_default(MSG_PROMPT_EXCEL_PATH, str(DEFAULT_EXCEL_PATH))
+            source_dir = get_input_with_default(MSG_PROMPT_SOURCE_DIR, str(DEFAULT_SOURCE_DIR))
+            write_dir = get_input_with_default(MSG_PROMPT_WRITE_DIR, str(DEFAULT_WRITE_DIR))
+            upload_dir = get_input_with_default(MSG_PROMPT_UPLOAD_DIR, str(DEFAULT_UPLOAD_DIR))
+            delete_dir = get_input_with_default(MSG_PROMPT_DELETE_DIR, str(DEFAULT_DELETE_DIR))
             size_md4_db_path = get_input_with_default(
-                "SizeMD4数据库文件位置", str(DEFAULT_SIZE_MD4_DB)
+                MSG_PROMPT_SIZE_MD4_DB, str(DEFAULT_SIZE_MD4_DB)
             )
 
             ensure_directory_exists(write_dir)
@@ -840,94 +986,96 @@ def main() -> None:
             ensure_directory_exists(str(Path(size_md4_db_path).parent))
 
             if not Path(excel_path).is_file():
-                print(f"错误: Excel文件不存在 - {excel_path}，返回主菜单。")
+                print(MSG_ERR_EXCEL_NOT_FOUND.format(excel_path))
                 continue
             if not Path(source_dir).is_dir():
-                print(f"错误: 源文件夹不存在 - {source_dir}，返回主菜单。")
+                print(MSG_ERR_SOURCE_NOT_FOUND.format(source_dir))
                 continue
 
             is_valid, err_msg = validate_directory_independence(
                 source_dir, write_dir, upload_dir, delete_dir
             )
             if not is_valid:
-                print(f"目录冲突错误: {err_msg}")
-                print("已返回主菜单，请重新选择目录。")
+                print(MSG_ERR_DIR_CONFLICT.format(err_msg))
+                print(MSG_ERR_RETURN_MENU)
                 continue
 
-            print("\n请输入以下字段值（直接回车则为空）：")
-            reference_page = input("引用页: ").strip()
-            belongs_to = input("属于: ").strip()
-            main_link = input("主链接: ").strip()
+            print(MSG_PROMPT_FIELD_VALUES)
+            reference_page = input(MSG_PROMPT_REFERENCE_PAGE).strip()
+            belongs_to = input(MSG_PROMPT_BELONGS_TO).strip()
+            main_link = input(MSG_PROMPT_MAIN_LINK).strip()
 
-            init_quit_handler()
             success, duplicated_files = process_folder_to_excel_and_db(
                 excel_path, source_dir, write_dir, upload_dir, delete_dir,
                 size_md4_db_path, reference_page, belongs_to, main_link,
             )
 
-            print("\n文件夹处理完成！" if success else "\n文件夹处理中出现错误。")
+            print(MSG_OPT1_COMPLETE if success else MSG_OPT1_ERROR)
 
             if duplicated_files:
-                print("\n===== 以下文件因SizeMD4重复被移至删除文件夹 =====")
+                print(MSG_OPT1_DUP_LIST_HEADER)
                 dup_list = "\n".join(duplicated_files)
                 print(dup_list)
                 copy_to_clipboard(dup_list)
             else:
-                print("没有重复文件。")
+                print(MSG_OPT1_NO_DUP)
 
         elif choice == "2":
             size_md4_db_path = get_input_with_default(
-                "SizeMD4数据库文件位置", str(DEFAULT_SIZE_MD4_DB)
+                MSG_PROMPT_SIZE_MD4_DB, str(DEFAULT_SIZE_MD4_DB)
             )
             ensure_directory_exists(str(Path(size_md4_db_path).parent))
             process_ed2k_links_from_clipboard(size_md4_db_path)
 
         elif choice == "3":
             file_path = get_input_with_default(
-                "请输入文件路径", str(Path(r"d:\Studios\Attachments\标准.zip"))
+                MSG_PROMPT_FILE_PATH, str(Path(r"d:\Studios\Attachments\标准.zip"))
             )
             size_md4_db_path = get_input_with_default(
-                "SizeMD4数据库文件位置", str(DEFAULT_SIZE_MD4_DB)
+                MSG_PROMPT_SIZE_MD4_DB, str(DEFAULT_SIZE_MD4_DB)
             )
             ensure_directory_exists(str(Path(size_md4_db_path).parent))
             process_single_file_link(file_path, size_md4_db_path)
 
         elif choice == "4":
             size_md4_db_path = get_input_with_default(
-                "SizeMD4数据库文件位置", str(DEFAULT_SIZE_MD4_DB)
+                MSG_PROMPT_SIZE_MD4_DB, str(DEFAULT_SIZE_MD4_DB)
             )
             ensure_directory_exists(str(Path(size_md4_db_path).parent))
             delete_ed2k_links_from_db(size_md4_db_path)
 
         elif choice == "5":
             size_md4_db_path = get_input_with_default(
-                "SizeMD4数据库文件位置", str(DEFAULT_SIZE_MD4_DB)
+                MSG_PROMPT_SIZE_MD4_DB, str(DEFAULT_SIZE_MD4_DB)
             )
             ensure_directory_exists(str(Path(size_md4_db_path).parent))
             delete_size_md4_from_db(size_md4_db_path)
 
         elif choice == "6":
             size_md4_db_path = get_input_with_default(
-                "SizeMD4数据库文件位置", str(DEFAULT_SIZE_MD4_DB)
+                MSG_PROMPT_SIZE_MD4_DB, str(DEFAULT_SIZE_MD4_DB)
             )
             sort_and_dedup_size_md4_db(size_md4_db_path)
 
         elif choice == "0":
-            print("程序退出。")
+            print(MSG_MENU_EXIT)
             break
         else:
-            print("无效选项，请重新输入。")
+            print(MSG_MENU_INVALID)
 
-        input("\n按回车键继续...")
+        input(MSG_MENU_CONTINUE)
 
+
+
+# ==================== 程序入口 ====================
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)

@@ -3,8 +3,8 @@
 # 遍历源文件夹内所有子文件夹中的视频文件，使用 mkvmerge.exe 转换成 mkv 格式。
 # 生成的文件放到目标文件夹中保持子目录结构。
 
-import shutil
 import signal
+import shutil
 import subprocess
 import sys
 import time
@@ -32,6 +32,32 @@ MKVMERGE_CANDIDATES = [
 # 中断标志：Ctrl+Q（Windows msvcrt）或 Ctrl+\（Unix SIGQUIT）设置
 _quit_requested = False
 
+# --- 消息常量 ---
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+MSG_QUIT_HINT = "提示：封装中可按 Ctrl+Q 中断。\n"
+MSG_WRAPPING = "  \U0001F4E6 封装中…"
+MSG_WRAPPING_PROGRESS = "  \U0001F4E6 封装 {}"
+MSG_MKVMERGE_NOT_FOUND = "  ❌ 未找到 mkvmerge：{}"
+MSG_USER_INTERRUPT_CQ = "\n  ⚠ 用户中断（Ctrl+Q），保留源文件及不完整输出。"
+MSG_WRAP_FAILED = "  ❌ 封装失败：{}"
+MSG_WRAP_DONE = "  ✅ 完成 → {}"
+MSG_DELETE_SOURCE_FAILED = "  ⚠ 输出成功但无法删除源文件：{}"
+MSG_OUTPUT_ABNORMAL = "  ⚠ 输出文件异常（缺失或为空），保留源文件：{}"
+MSG_PROMPT_SOURCE = "请输入源文件夹位置："
+MSG_PROMPT_TARGET = "请输入目标文件夹位置："
+MSG_SOURCE_NOT_EXIST = "错误：源文件夹不存在 —— {}"
+MSG_MKVMERGE_MISSING = "错误：未找到 mkvmerge.exe"
+MSG_INSTALL_HINT = "请确保已安装 MKVToolNix 或提供正确的路径"
+MSG_USING_MKVMERGE = "使用 mkvmerge: {}"
+MSG_NO_VIDEO_FOUND = "未找到任何视频文件。"
+MSG_FOUND_VIDEOS = "\n找到 {} 个视频文件。"
+MSG_USER_INTERRUPT_MAIN = "\n⚠ 用户中断（Ctrl+Q），已处理部分不会丢失。"
+MSG_USER_INTERRUPT_KB = "\n⚠ 用户中断，已处理部分不会丢失。"
+MSG_DONE = "\n处理完成：成功 {} 个，失败 {} 个，已删源 {} 个，共 {} 个。"
+MSG_PROMPT_FORMAT = "{} (默认: {}): "
+
 # ============================================================
 # 辅助函数
 # ============================================================
@@ -39,7 +65,7 @@ _quit_requested = False
 
 def get_input_with_default(prompt_text: str, default_value: str) -> str:
     """获取带默认值的用户输入。"""
-    user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
+    user_input = input(MSG_PROMPT_FORMAT.format(prompt_text, default_value)).strip()
     return user_input if user_input else str(default_value)
 
 
@@ -99,7 +125,7 @@ def init_quit_handler() -> None:
     if hasattr(signal, "SIGQUIT"):
         signal.signal(signal.SIGQUIT, _on_quit_signal)
     if sys.platform == "win32":
-        print("提示：封装中可按 Ctrl+Q 中断。\n")
+        print(MSG_QUIT_HINT)
 
 
 def check_quit_key() -> bool:
@@ -140,7 +166,7 @@ def convert_video(
     # 打印文件头部信息
     now_str = datetime.now().strftime("%H:%M:%S")
     print(f"\n[{file_index}/{total_files}] {now_str} | {source}")
-    print(f"  📦 封装中…")
+    print(MSG_WRAPPING)
 
     cmd = [str(mkvmerge), "-o", str(target), str(source)]
 
@@ -154,7 +180,7 @@ def convert_video(
             errors="replace",
         )
     except FileNotFoundError:
-        print(f"  ❌ 未找到 mkvmerge：{mkvmerge}")
+        print(MSG_MKVMERGE_NOT_FOUND.format(mkvmerge))
         return False
 
     # 逐行读取 mkvmerge 进度输出（stdout: "Progress: XX%"）
@@ -170,13 +196,13 @@ def convert_video(
             # 限制刷新频率
             if abs(pct - last_pct) >= 1.0:
                 bar = format_progress_bar(pct)
-                print_progress(f"  📦 封装 {bar}")
+                print_progress(MSG_WRAPPING_PROGRESS.format(bar))
                 last_pct = pct
 
             # 检测 Ctrl+Q 中断
             if check_quit_key():
                 proc.terminate()
-                print(f"\n  ⚠ 用户中断（Ctrl+Q），保留源文件及不完整输出。")
+                print(MSG_USER_INTERRUPT_CQ)
                 return False
 
     proc.wait()
@@ -186,7 +212,7 @@ def convert_video(
 
     if proc.returncode != 0:
         stderr_output = proc.stderr.read().strip()
-        print(f"  ❌ 封装失败：{source.name}")
+        print(MSG_WRAP_FAILED.format(source.name))
         if stderr_output:
             print(f"      {stderr_output}")
         return False
@@ -195,12 +221,12 @@ def convert_video(
     if target.is_file() and target.stat().st_size > 0:
         try:
             source.unlink()
-            print(f"  ✅ 完成 → {target}")
+            print(MSG_WRAP_DONE.format(target))
         except OSError as e:
-            print(f"  ⚠ 输出成功但无法删除源文件：{e}")
+            print(MSG_DELETE_SOURCE_FAILED.format(e))
         return True
     else:
-        print(f"  ⚠ 输出文件异常（缺失或为空），保留源文件：{source}")
+        print(MSG_OUTPUT_ABNORMAL.format(source))
         return False
 
 
@@ -213,23 +239,23 @@ def main() -> None:
     """主流程：获取源/目标文件夹 → 遍历视频 → mkvmerge 转换 → 统计。"""
 
     source_str = get_input_with_default(
-        "请输入源文件夹位置：", str(DEFAULT_SOURCE_DIR))
+        MSG_PROMPT_SOURCE, str(DEFAULT_SOURCE_DIR))
     target_str = get_input_with_default(
-        "请输入目标文件夹位置：", str(DEFAULT_TARGET_DIR))
+        MSG_PROMPT_TARGET, str(DEFAULT_TARGET_DIR))
 
     src_root = Path(source_str)
     dst_root = Path(target_str)
 
     if not src_root.is_dir():
-        print(f"错误：源文件夹不存在 —— {src_root}")
+        print(MSG_SOURCE_NOT_EXIST.format(src_root))
         return
 
     mkvmerge = find_mkvmerge()
     if mkvmerge is None:
-        print("错误：未找到 mkvmerge.exe")
-        print("请确保已安装 MKVToolNix 或提供正确的路径")
+        print(MSG_MKVMERGE_MISSING)
+        print(MSG_INSTALL_HINT)
         return
-    print(f"使用 mkvmerge: {mkvmerge}")
+    print(MSG_USING_MKVMERGE.format(mkvmerge))
 
     # 收集所有视频文件
     video_files = sorted(
@@ -239,10 +265,10 @@ def main() -> None:
     total = len(video_files)
 
     if not total:
-        print("未找到任何视频文件。")
+        print(MSG_NO_VIDEO_FOUND)
         return
 
-    print(f"\n找到 {total} 个视频文件。")
+    print(MSG_FOUND_VIDEOS.format(total))
     init_quit_handler()
 
     ok = 0
@@ -253,7 +279,7 @@ def main() -> None:
         for idx, src in enumerate(video_files, 1):
             # 检查中断标志
             if check_quit_key():
-                print("\n⚠ 用户中断（Ctrl+Q），已处理部分不会丢失。")
+                print(MSG_USER_INTERRUPT_MAIN)
                 break
 
             try:
@@ -272,21 +298,24 @@ def main() -> None:
             else:
                 fail += 1
     except KeyboardInterrupt:
-        print("\n⚠ 用户中断，已处理部分不会丢失。")
+        print(MSG_USER_INTERRUPT_KB)
 
-    print(f"\n处理完成：成功 {ok} 个，失败 {fail} 个，已删源 {deleted} 个，共 {total} 个。")
+    print(MSG_DONE.format(ok, fail, deleted, total))
 
 
 # ============================================================
 # 入口
 # ============================================================
+
+# ==================== 程序入口 ====================
+
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)

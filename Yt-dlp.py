@@ -6,6 +6,7 @@
 # 每下载一个媒体，生成 Ed2K 链接，解析大小/散列，追加写入 Excel 一行。
 # 反复循环，输入 Q 退出。
 
+import signal
 import os
 import re
 import subprocess
@@ -34,6 +35,28 @@ VIDEO_EXTS = {
     ".mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg",
     ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4",
 }
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+MSG_DOWNLOAD_MODE = "下载"
+MSG_PROXY_MODE = "代理"
+MSG_DIRECT_MODE = "直连"
+MSG_ASK_URL = "请输入下载链接（可粘贴多行，回车用默认列表，Q 退出）：\n"
+MSG_PROGRAM_EXIT = "程序已退出。"
+MSG_NO_VALID_URL = "未识别到有效链接。"
+MSG_ASK_DOWNLOAD_DIR = "请输入下载目录（回车默认 {}）："
+MSG_PROCESSING_URL = "\n处理链接：{}"
+MSG_PROXY_WHITELIST_HIT = "命中代理白名单，直接使用代理下载。"
+MSG_DIRECT_FAILED_RETRY_PROXY = "直连失败，切换代理重试。"
+MSG_DOWNLOAD_FAILED = "下载失败，跳过该链接。"
+MSG_NO_MEDIA_FOUND = "未找到媒体文件。"
+MSG_EXCEL_WRITTEN = "已写入 Excel。"
+MSG_ROUND_COMPLETE = "本轮完成。"
+MSG_ASK_EXCEL_PATH = "请输入Excel记录文件位置（回车默认 {}）："
 
 # =========================
 # 代理白名单（命中则直接用代理）
@@ -101,7 +124,8 @@ def run_ytdlp(url: str, output_dir: Path, use_proxy: bool) -> bool:
     if use_proxy:
         cmd.extend(["--proxy", PROXY_URL])
 
-    print(f"{'=' * 10} 下载 {'代理' if use_proxy else '直连'}: {url} {'=' * 10}")
+    mode = MSG_PROXY_MODE if use_proxy else MSG_DIRECT_MODE
+    print(f"{'=' * 10} {MSG_DOWNLOAD_MODE} {mode}: {url} {'=' * 10}")
     result = subprocess.run(cmd)
     return result.returncode == 0
 
@@ -162,52 +186,81 @@ def get_next_index(df: pd.DataFrame) -> int:
 # =========================
 # 主程序
 # =========================
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
+
 
 def main() -> None:
     """主循环：输入链接 → 下载 → Ed2K → 写入 Excel。"""
-    df = load_or_create_excel(DEFAULT_EXCEL_PATH)
-
     while True:
         print("\n" + "=" * 30)
-        user_input = input(
-            "请输入下载链接（可粘贴多行，回车用默认列表，Q 退出）：\n"
-        ).strip()
+        user_input = input(MSG_ASK_URL).strip()
 
         if user_input.lower() == "q":
-            print("程序已退出。")
+            print(MSG_PROGRAM_EXIT)
             break
 
         urls = read_url_input(user_input)
         if not urls:
-            print("未识别到有效链接。")
+            print(MSG_NO_VALID_URL)
             continue
 
         raw_dir = input(
-            f"请输入下载目录（回车默认 {DEFAULT_OUTPUT_DIR}）："
+            MSG_ASK_DOWNLOAD_DIR.format(DEFAULT_OUTPUT_DIR)
         ).strip()
         output_dir = Path(raw_dir) if raw_dir else DEFAULT_OUTPUT_DIR
         output_dir.mkdir(parents=True, exist_ok=True)
 
+        raw_excel = input(
+            MSG_ASK_EXCEL_PATH.format(DEFAULT_EXCEL_PATH)
+        ).strip()
+        excel_path = Path(raw_excel) if raw_excel else DEFAULT_EXCEL_PATH
+
+        df = load_or_create_excel(excel_path)
+
         for url in urls:
-            print(f"\n处理链接：{url}")
+            print(MSG_PROCESSING_URL.format(url))
 
             # 下载（白名单直接代理，否则先直连再代理重试）
             if need_proxy_first(url):
-                print("命中代理白名单，直接使用代理下载。")
+                print(MSG_PROXY_WHITELIST_HIT)
                 success = run_ytdlp(url, output_dir, True)
             else:
                 success = run_ytdlp(url, output_dir, False)
                 if not success:
-                    print("直连失败，切换代理重试。")
+                    print(MSG_DIRECT_FAILED_RETRY_PROXY)
                     success = run_ytdlp(url, output_dir, True)
 
             if not success:
-                print("下载失败，跳过该链接。")
+                print(MSG_DOWNLOAD_FAILED)
                 continue
 
             video_path = find_latest_video(output_dir)
             if video_path is None:
-                print("未找到媒体文件。")
+                print(MSG_NO_MEDIA_FOUND)
                 continue
 
             ed2k = generate_ed2k(video_path)
@@ -224,12 +277,23 @@ def main() -> None:
             }
 
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-            df.to_excel(DEFAULT_EXCEL_PATH, index=False, engine="openpyxl")
-            print("已写入 Excel。")
+            df.to_excel(excel_path, index=False, engine="openpyxl")
+            print(MSG_EXCEL_WRITTEN)
 
-        print("本轮完成。")
+        print(MSG_ROUND_COMPLETE)
 
+
+# =========================
+# 程序入口
+# =========================
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(MSG_INTERRUPTED)
+    except Exception as e:
+        print(MSG_ERROR.format(e))
+    finally:
+        input(MSG_EXIT)

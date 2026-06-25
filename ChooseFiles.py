@@ -53,13 +53,88 @@ IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp', '.avif'}
 # 支持的视频扩展名
 VIDEO_EXTENSIONS = {'.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.m4v', '.mpg', '.mpeg'}
 
+# --- 消息常量 ---
+
+# 程序退出相关
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+
+# 窗口
+MSG_WINDOW_TITLE = "文件筛选工具"
+
+# 占位符文本
+MSG_PLACEHOLDER_SRC = "选择源文件夹..."
+MSG_PLACEHOLDER_DISCARD = "选择剔除文件夹..."
+MSG_PLACEHOLDER_KEEP = "选择保留文件夹..."
+MSG_PLACEHOLDER_FILTER = "输入文件名过滤..."
+
+# 按钮文本
+MSG_BTN_BROWSE = "浏览..."
+MSG_BTN_REFRESH = "刷新"
+MSG_BTN_DISCARD = "剔除 (D)"
+MSG_BTN_HOLD = "待定 (H)"
+MSG_BTN_KEEP = "保留 (Q)"
+MSG_BTN_RANDOM = "随机 (Space)"
+MSG_BTN_UNDO = "撤销 (U)"
+MSG_BTN_PLAY = "播放"
+MSG_BTN_PAUSE = "暂停"
+
+# 标签文本
+MSG_LABEL_SRC = "源文件夹:"
+MSG_LABEL_FILTER = "筛选:"
+MSG_LABEL_DISCARD = "剔除文件夹:"
+MSG_LABEL_KEEP = "保留文件夹:"
+
+# 复选框文本
+MSG_CHECK_RECYCLE = "不移动到剔除文件夹，直接移动到回收站"
+
+# 预览区域文本
+MSG_PREVIEW_DEFAULT = "选择一个文件以预览"
+MSG_PREVIEW_NO_MATCH = "无匹配文件"
+MSG_PREVIEW_CANNOT_PREVIEW = "无法预览此类型文件\n{}"
+MSG_PREVIEW_GIF_FAIL = "无法加载GIF"
+MSG_PREVIEW_NEED_PIL = "需要安装pillow才能预览{}"
+MSG_PREVIEW_LOAD_FAIL = "{}加载失败: {}"
+MSG_PREVIEW_IMG_FAIL = "无法加载图片"
+MSG_PREVIEW_GENERIC = "无法加载{}"
+
+# QMessageBox 标题
+MSG_MBOX_INFO = "提示"
+MSG_MBOX_WARNING = "警告"
+MSG_MBOX_ERROR = "错误"
+MSG_MBOX_MOVE_FAIL = "移动失败"
+MSG_MBOX_UNDO = "撤销"
+
+# QMessageBox 消息
+MSG_MBOX_DEFAULT_SRC_MISSING = "默认源文件夹不存在：{}\n请选择有效的源文件夹。"
+MSG_MBOX_SELECT_VALID_SRC = "请先选择有效的源文件夹"
+MSG_MBOX_CANNOT_READ_FOLDER = "无法读取文件夹：{}"
+MSG_MBOX_NO_SEND2TRASH = "未安装 send2trash 库，无法移动到回收站。请运行 pip install send2trash 或选择剔除文件夹。"
+MSG_MBOX_TRASH_FAIL = "移动到回收站失败：{}"
+MSG_MBOX_SPECIFY_DISCARD = "请先指定剔除文件夹或勾选回收站选项。"
+MSG_MBOX_CANNOT_CREATE_DISCARD = "无法创建剔除文件夹：{}"
+MSG_MBOX_SPECIFY_KEEP = "请先指定保留文件夹。"
+MSG_MBOX_CANNOT_CREATE_KEEP = "无法创建保留文件夹：{}"
+MSG_MBOX_MOVE_FAIL_MSG = "移动文件失败（已尝试切换文件重试）: {}\n\n是否重试？"
+MSG_MBOX_RETRY_HINT = "请重试操作。"
+MSG_MBOX_NO_FILES = "没有可用的文件。"
+MSG_MBOX_NO_UNDO = "没有可撤销的操作"
+MSG_MBOX_UNDO_RECYCLE = "无法从回收站恢复文件，请手动处理。"
+MSG_MBOX_UNDO_FAIL = "撤销失败：{}"
+MSG_UNKNOWN_ERROR = "未知错误"
+
+# QFileDialog 标题
+MSG_DLG_SELECT_SRC = "选择源文件夹"
+MSG_DLG_SELECT_FOLDER = "选择文件夹"
+
 # ==================== 主窗口 ====================
 
 
 class FileSorterApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("文件筛选工具")
+        self.setWindowTitle(MSG_WINDOW_TITLE)
         self.resize(1200, 700)
 
         central = QWidget()
@@ -69,12 +144,12 @@ class FileSorterApp(QMainWindow):
         # 顶部：源文件夹路径选择 + 刷新按钮
         top_layout = QHBoxLayout()
         self.src_path_edit = QLineEdit()
-        self.src_path_edit.setPlaceholderText("选择源文件夹...")
-        self.src_browse_btn = QPushButton("浏览...")
+        self.src_path_edit.setPlaceholderText(MSG_PLACEHOLDER_SRC)
+        self.src_browse_btn = QPushButton(MSG_BTN_BROWSE)
         self.src_browse_btn.clicked.connect(self.browse_src_folder)
-        self.refresh_btn = QPushButton("刷新")
+        self.refresh_btn = QPushButton(MSG_BTN_REFRESH)
         self.refresh_btn.clicked.connect(self.refresh_folder)
-        top_layout.addWidget(QLabel("源文件夹:"))
+        top_layout.addWidget(QLabel(MSG_LABEL_SRC))
         top_layout.addWidget(self.src_path_edit)
         top_layout.addWidget(self.src_browse_btn)
         top_layout.addWidget(self.refresh_btn)
@@ -94,9 +169,9 @@ class FileSorterApp(QMainWindow):
         left_layout.addWidget(self.file_list)
 
         filter_layout = QHBoxLayout()
-        filter_layout.addWidget(QLabel("筛选:"))
+        filter_layout.addWidget(QLabel(MSG_LABEL_FILTER))
         self.filter_edit = QLineEdit()
-        self.filter_edit.setPlaceholderText("输入文件名过滤...")
+        self.filter_edit.setPlaceholderText(MSG_PLACEHOLDER_FILTER)
         self.filter_edit.textChanged.connect(self.apply_filter)
         filter_layout.addWidget(self.filter_edit)
         left_layout.addLayout(filter_layout)
@@ -111,7 +186,7 @@ class FileSorterApp(QMainWindow):
         self.preview_stack.setMinimumSize(400, 300)
         self.preview_stack.setStyleSheet("border: 1px solid gray; background-color: #f0f0f0;")
 
-        self.preview_label = QLabel("选择一个文件以预览")
+        self.preview_label = QLabel(MSG_PREVIEW_DEFAULT)
         self.preview_label.setAlignment(Qt.AlignCenter)
         self.preview_label.setScaledContents(False)
         self.preview_stack.addWidget(self.preview_label)
@@ -126,7 +201,7 @@ class FileSorterApp(QMainWindow):
 
         # 视频控制栏
         control_layout = QHBoxLayout()
-        self.play_pause_btn = QPushButton("播放")
+        self.play_pause_btn = QPushButton(MSG_BTN_PLAY)
         self.play_pause_btn.setEnabled(False)
         self.play_pause_btn.clicked.connect(self.toggle_video_play)
 
@@ -149,11 +224,11 @@ class FileSorterApp(QMainWindow):
         # 操作按钮区域（剔除、待定、保留、随机、撤销）
         btn_layout = QHBoxLayout()
 
-        self.discard_btn = QPushButton("剔除 (D)")
-        self.hold_btn = QPushButton("待定 (H)")
-        self.keep_btn = QPushButton("保留 (Q)")
-        self.random_btn = QPushButton("随机 (Space)")
-        self.undo_btn = QPushButton("撤销 (U)")
+        self.discard_btn = QPushButton(MSG_BTN_DISCARD)
+        self.hold_btn = QPushButton(MSG_BTN_HOLD)
+        self.keep_btn = QPushButton(MSG_BTN_KEEP)
+        self.random_btn = QPushButton(MSG_BTN_RANDOM)
+        self.undo_btn = QPushButton(MSG_BTN_UNDO)
 
         btn_layout.addWidget(self.discard_btn)
         btn_layout.addWidget(self.hold_btn)
@@ -168,22 +243,22 @@ class FileSorterApp(QMainWindow):
         bottom_layout = QHBoxLayout()
 
         self.discard_path_edit = QLineEdit()
-        self.discard_path_edit.setPlaceholderText("选择剔除文件夹...")
-        self.discard_browse_btn = QPushButton("浏览...")
+        self.discard_path_edit.setPlaceholderText(MSG_PLACEHOLDER_DISCARD)
+        self.discard_browse_btn = QPushButton(MSG_BTN_BROWSE)
         self.discard_browse_btn.clicked.connect(lambda: self.browse_folder(self.discard_path_edit))
 
         self.keep_path_edit = QLineEdit()
-        self.keep_path_edit.setPlaceholderText("选择保留文件夹...")
-        self.keep_browse_btn = QPushButton("浏览...")
+        self.keep_path_edit.setPlaceholderText(MSG_PLACEHOLDER_KEEP)
+        self.keep_browse_btn = QPushButton(MSG_BTN_BROWSE)
         self.keep_browse_btn.clicked.connect(lambda: self.browse_folder(self.keep_path_edit))
 
-        self.recycle_check = QCheckBox("不移动到剔除文件夹，直接移动到回收站")
+        self.recycle_check = QCheckBox(MSG_CHECK_RECYCLE)
 
-        bottom_layout.addWidget(QLabel("剔除文件夹:"))
+        bottom_layout.addWidget(QLabel(MSG_LABEL_DISCARD))
         bottom_layout.addWidget(self.discard_path_edit)
         bottom_layout.addWidget(self.discard_browse_btn)
         bottom_layout.addSpacing(20)
-        bottom_layout.addWidget(QLabel("保留文件夹:"))
+        bottom_layout.addWidget(QLabel(MSG_LABEL_KEEP))
         bottom_layout.addWidget(self.keep_path_edit)
         bottom_layout.addWidget(self.keep_browse_btn)
         bottom_layout.addSpacing(20)
@@ -201,7 +276,7 @@ class FileSorterApp(QMainWindow):
 
         # 可选：提示用户源文件夹是否存在（不自动创建，由用户决定）
         if not DEFAULT_SOURCE_DIR.is_dir():
-            QMessageBox.information(self, "提示", f"默认源文件夹不存在：{DEFAULT_SOURCE_DIR}\n请选择有效的源文件夹。")
+            QMessageBox.information(self, MSG_MBOX_INFO, MSG_MBOX_DEFAULT_SRC_MISSING.format(DEFAULT_SOURCE_DIR))
 
         # 数据
         self.src_folder = ""
@@ -233,7 +308,7 @@ class FileSorterApp(QMainWindow):
 
     # ---------- 辅助函数 ----------
     def browse_src_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "选择源文件夹")
+        folder = QFileDialog.getExistingDirectory(self, MSG_DLG_SELECT_SRC)
         if folder:
             self.src_path_edit.setText(folder)
             self.load_folder(folder)
@@ -243,10 +318,10 @@ class FileSorterApp(QMainWindow):
         if folder and Path(folder).is_dir():
             self.load_folder(folder)
         else:
-            QMessageBox.warning(self, "警告", "请先选择有效的源文件夹")
+            QMessageBox.warning(self, MSG_MBOX_WARNING, MSG_MBOX_SELECT_VALID_SRC)
 
     def browse_folder(self, line_edit):
-        folder = QFileDialog.getExistingDirectory(self, "选择文件夹")
+        folder = QFileDialog.getExistingDirectory(self, MSG_DLG_SELECT_FOLDER)
         if folder:
             line_edit.setText(folder)
 
@@ -259,7 +334,7 @@ class FileSorterApp(QMainWindow):
                 if p.is_file():
                     self.all_files.append(str(p))
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"无法读取文件夹：{e}")
+            QMessageBox.critical(self, MSG_MBOX_ERROR, MSG_MBOX_CANNOT_READ_FOLDER.format(e))
             return
 
         self.all_files.sort(key=lambda p: Path(p).name.lower())
@@ -284,7 +359,7 @@ class FileSorterApp(QMainWindow):
         if self.filtered_files:
             self.file_list.setCurrentRow(0)
         else:
-            self.preview_label.setText("无匹配文件")
+            self.preview_label.setText(MSG_PREVIEW_NO_MATCH)
             self.current_file = None
             self.update_buttons_state()
 
@@ -362,7 +437,7 @@ class FileSorterApp(QMainWindow):
                 self.current_movie = movie
                 self.preview_label.setText("")
             else:
-                self.preview_label.setText("无法加载GIF")
+                self.preview_label.setText(MSG_PREVIEW_GIF_FAIL)
 
         elif ext in VIDEO_EXTENSIONS:
             url = QUrl.fromLocalFile(file_path)
@@ -370,14 +445,14 @@ class FileSorterApp(QMainWindow):
             self.video_player.play()
             self.preview_stack.setCurrentIndex(1)
             self.play_pause_btn.setEnabled(True)
-            self.play_pause_btn.setText("暂停")
+            self.play_pause_btn.setText(MSG_BTN_PAUSE)
             self.video_slider.setEnabled(True)
 
         elif ext in IMAGE_EXTENSIONS:
             # WebP 和 AVIF 需检测是否为动图
             if ext in ('.webp', '.avif'):
                 if not HAS_PIL:
-                    self.preview_label.setText(f"需要安装pillow才能预览{ext}")
+                    self.preview_label.setText(MSG_PREVIEW_NEED_PIL.format(ext))
                     return
                 try:
                     pil_img = Image.open(file_path)
@@ -420,9 +495,9 @@ class FileSorterApp(QMainWindow):
                             self.preview_label.setPixmap(scaled)
                             self.preview_label.setText("")
                         else:
-                            self.preview_label.setText(f"无法加载{ext}")
+                            self.preview_label.setText(MSG_PREVIEW_GENERIC.format(ext))
                 except Exception as e:
-                    self.preview_label.setText(f"{ext}加载失败: {str(e)}")
+                    self.preview_label.setText(MSG_PREVIEW_LOAD_FAIL.format(ext, str(e)))
             else:
                 pixmap = QPixmap(file_path)
                 if not pixmap.isNull():
@@ -433,7 +508,7 @@ class FileSorterApp(QMainWindow):
                     self.preview_label.setText("")
                 else:
                     self.preview_label.setPixmap(QPixmap())
-                    self.preview_label.setText("无法加载图片")
+                    self.preview_label.setText(MSG_PREVIEW_IMG_FAIL)
 
         else:
             self.preview_stack.setCurrentIndex(0)
@@ -443,15 +518,15 @@ class FileSorterApp(QMainWindow):
                 self.preview_label.setPixmap(pixmap)
                 self.preview_label.setText("")
             else:
-                self.preview_label.setText(f"无法预览此类型文件\n{Path(file_path).name}")
+                self.preview_label.setText(MSG_PREVIEW_CANNOT_PREVIEW.format(Path(file_path).name))
 
     def toggle_video_play(self):
         if self.video_player.playbackState() == QMediaPlayer.PlayingState:
             self.video_player.pause()
-            self.play_pause_btn.setText("播放")
+            self.play_pause_btn.setText(MSG_BTN_PLAY)
         else:
             self.video_player.play()
-            self.play_pause_btn.setText("暂停")
+            self.play_pause_btn.setText(MSG_BTN_PAUSE)
 
     def update_buttons_state(self):
         has_file = self.current_file is not None and Path(self.current_file).is_file()
@@ -477,7 +552,7 @@ class FileSorterApp(QMainWindow):
                     return False, str(e)
             except Exception as e:
                 return False, str(e)
-        return False, "未知错误"
+        return False, MSG_UNKNOWN_ERROR
 
     def discard_current(self):
         if not self.current_file:
@@ -490,33 +565,33 @@ class FileSorterApp(QMainWindow):
 
         if use_recycle:
             if not HAS_SEND2TRASH:
-                QMessageBox.critical(self, "错误", "未安装 send2trash 库，无法移动到回收站。请运行 pip install send2trash 或选择剔除文件夹。")
+                QMessageBox.critical(self, MSG_MBOX_ERROR, MSG_MBOX_NO_SEND2TRASH)
                 return
             try:
                 send2trash(src_path)
             except Exception as e:
-                QMessageBox.critical(self, "错误", f"移动到回收站失败：{e}")
+                QMessageBox.critical(self, MSG_MBOX_ERROR, MSG_MBOX_TRASH_FAIL.format(e))
                 return
             dest_info = ("回收站", None)
         else:
             if not discard_folder:
-                QMessageBox.warning(self, "警告", "请先指定剔除文件夹或勾选回收站选项。")
+                QMessageBox.warning(self, MSG_MBOX_WARNING, MSG_MBOX_SPECIFY_DISCARD)
                 return
             discard_path = Path(discard_folder)
             if not discard_path.is_dir():
                 try:
                     discard_path.mkdir(parents=True, exist_ok=True)
                 except Exception as e:
-                    QMessageBox.critical(self, "错误", f"无法创建剔除文件夹：{e}")
+                    QMessageBox.critical(self, MSG_MBOX_ERROR, MSG_MBOX_CANNOT_CREATE_DISCARD.format(e))
                     return
             dest_path = str(discard_path / Path(src_path).name)
             success, error_msg = self.move_file_with_retry(src_path, dest_path)
             if not success:
-                reply = QMessageBox.question(self, "移动失败",
-                                             f"移动文件失败（已尝试切换文件重试）: {error_msg}\n\n是否重试？",
+                reply = QMessageBox.question(self, MSG_MBOX_MOVE_FAIL,
+                                             MSG_MBOX_MOVE_FAIL_MSG.format(error_msg),
                                              QMessageBox.Retry | QMessageBox.Cancel)
                 if reply == QMessageBox.Retry:
-                    QMessageBox.information(self, "提示", "请重试操作。")
+                    QMessageBox.information(self, MSG_MBOX_INFO, MSG_MBOX_RETRY_HINT)
                 return
             dest_info = (discard_folder, dest_path)
 
@@ -536,23 +611,23 @@ class FileSorterApp(QMainWindow):
 
         keep_folder = self.keep_path_edit.text().strip()
         if not keep_folder:
-            QMessageBox.warning(self, "警告", "请先指定保留文件夹。")
+            QMessageBox.warning(self, MSG_MBOX_WARNING, MSG_MBOX_SPECIFY_KEEP)
             return
         keep_path = Path(keep_folder)
         if not keep_path.is_dir():
             try:
                 keep_path.mkdir(parents=True, exist_ok=True)
             except Exception as e:
-                QMessageBox.critical(self, "错误", f"无法创建保留文件夹：{e}")
+                QMessageBox.critical(self, MSG_MBOX_ERROR, MSG_MBOX_CANNOT_CREATE_KEEP.format(e))
                 return
         dest_path = str(keep_path / Path(src_path).name)
         success, error_msg = self.move_file_with_retry(src_path, dest_path)
         if not success:
-            reply = QMessageBox.question(self, "移动失败",
-                                         f"移动文件失败（已尝试切换文件重试）: {error_msg}\n\n是否重试？",
+            reply = QMessageBox.question(self, MSG_MBOX_MOVE_FAIL,
+                                         MSG_MBOX_MOVE_FAIL_MSG.format(error_msg),
                                          QMessageBox.Retry | QMessageBox.Cancel)
             if reply == QMessageBox.Retry:
-                QMessageBox.information(self, "提示", "请重试操作。")
+                QMessageBox.information(self, MSG_MBOX_INFO, MSG_MBOX_RETRY_HINT)
             return
 
         self.history.append({
@@ -572,7 +647,7 @@ class FileSorterApp(QMainWindow):
     def random_select(self):
         """随机选择一个文件进行预览"""
         if not self.filtered_files:
-            QMessageBox.information(self, "提示", "没有可用的文件。")
+            QMessageBox.information(self, MSG_MBOX_INFO, MSG_MBOX_NO_FILES)
             return
         # 随机选择索引
         random_index = random.randint(0, len(self.filtered_files) - 1)
@@ -580,12 +655,12 @@ class FileSorterApp(QMainWindow):
 
     def undo(self):
         if not self.history:
-            QMessageBox.information(self, "撤销", "没有可撤销的操作")
+            QMessageBox.information(self, MSG_MBOX_UNDO, MSG_MBOX_NO_UNDO)
             return
 
         last = self.history[-1]
         if last['action'] == 'discard' and last['dest_info'][0] == "回收站":
-            QMessageBox.information(self, "撤销", "无法从回收站恢复文件，请手动处理。")
+            QMessageBox.information(self, MSG_MBOX_UNDO, MSG_MBOX_UNDO_RECYCLE)
             return
 
         last = self.history.pop()
@@ -599,14 +674,14 @@ class FileSorterApp(QMainWindow):
             try:
                 shutil.move(dest_path, src)
             except Exception as e:
-                QMessageBox.critical(self, "错误", f"撤销失败：{e}")
+                QMessageBox.critical(self, MSG_MBOX_ERROR, MSG_MBOX_UNDO_FAIL.format(e))
                 return
         elif action == 'keep':
             dest_path = last['dest']
             try:
                 shutil.move(dest_path, src)
             except Exception as e:
-                QMessageBox.critical(self, "错误", f"撤销失败：{e}")
+                QMessageBox.critical(self, MSG_MBOX_ERROR, MSG_MBOX_UNDO_FAIL.format(e))
                 return
 
         self.all_files.append(src)
@@ -669,8 +744,8 @@ if __name__ == "__main__":
     try:
         sys.exit(app.exec())
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)

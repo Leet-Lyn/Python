@@ -1,10 +1,11 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文，但是变量参数不要是中文：
 # 在脚本开始前询问我 excel 文件位置（默认为：d:\Workstations\Attachments\标准.xlsx），源文件夹位置（默认为：d:\Workstations\Downloads\）。
 # 读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。
-# 依据 excel 文件中的“原文件名”字段，匹配源文件夹下的文件，将 excel ，“名字”、“专辑”、“盘号”、“音轨”、“年份”、“类型”、“封面”、“发行公司”、“演唱”、“作词”、“作曲”、“编曲”，作为元数据写入文件。
+# 依据 excel 文件中的“现文件名”字段，匹配源文件夹下的文件，将 excel ，“名字”、“专辑”、“盘号”、“音轨”、“年份”、“类型”、“封面”、“发行公司”、“演唱”、“作词”、“作曲”、“编曲”，作为元数据写入文件。
 # “封面”链接下载后转为640*640 大小 jpg 格式嵌入。
 
 # 导入模块
+import signal
 import os
 import sys
 import base64
@@ -21,47 +22,91 @@ from mutagen.id3 import ID3, TIT2, TPE1, TALB, TRCK, TPOS, TDRC, TCON, TCOP, TCO
 from PIL import Image
 from io import BytesIO
 
-# ------------------- 支持的文件扩展名 -------------------
+# ==================== 全局配置 ====================
+
+# --- 文件类型 ---
 SUPPORTED_EXT = ('.mp3', '.m4a', '.flac', '.ogg', '.wav')
+
+# --- 默认路径 ---
 DEFAULT_SOURCE_DIR = Path(r"d:\Workstations\Downloads")
 DEFAULT_EXCEL_PATH = Path(r"d:\Workstations\Attachments\标准.xlsx")
 
+# --- 代理配置（直连失败时回退使用）---
+PROXY_URL = "http://127.0.0.1:10808"
+PROXY_DICT = {"http": PROXY_URL, "https": PROXY_URL}
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_PROMPT_SOURCE = "请输入源文件夹路径"
+MSG_PROMPT_EXCEL = "请输入 Excel 文件路径"
+MSG_ERR_FOLDER_NOT_FOUND = "错误：文件夹不存在 - {}"
+MSG_ERR_FILE_NOT_FOUND = "错误：文件不存在 - {}"
+MSG_READING_EXCEL = "\n读取 Excel: {}"
+MSG_MISSING_COLUMN = '错误：缺少"现文件名"列'
+MSG_FILE_NOT_FOUND = "[{}] 找不到文件: {}"
+MSG_DOWNLOAD_COVER = "[{}] 下载封面: {}"
+MSG_COVER_SUCCESS = "    封面下载并压缩成功"
+MSG_COVER_FAIL = "    封面处理失败，将不嵌入"
+MSG_UNKNOWN_FORMAT = "[{}] 无法识别音频格式: {}"
+MSG_WRITE_SUCCESS = "[{}] ✅ 写入成功: {}"
+MSG_WRITE_FAIL = "[{}] ❌ 写入失败: {}"
+MSG_DONE_SUMMARY = "\n本次处理完成，成功 {}/{}"
+MSG_TOOL_TITLE = "音乐元数据反向写入工具（Excel → 音频文件）"
+MSG_CONTINUE_PROMPT = "\n是否继续？(y/n，默认 n): "
+MSG_PROGRAM_END = "程序结束。"
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+
 def find_file_in_folder(folder_path, filename):
-    """在文件夹（包括子文件夹）中查找文件"""
+    """在文件夹（包括子文件夹）中查找文件（仅匹配支持的音乐格式）"""
     folder = Path(folder_path)
     if os.path.sep in filename or '/' in filename:
         full = folder / filename
-        if full.is_file():
+        if full.is_file() and full.suffix.lower() in SUPPORTED_EXT:
             return str(full)
         alt = folder / filename.replace('\\', '/').replace('/', os.path.sep)
-        if alt.is_file():
+        if alt.is_file() and alt.suffix.lower() in SUPPORTED_EXT:
             return str(alt)
     for p in folder.rglob("*"):
-        if p.is_file() and p.name == filename:
+        if p.is_file() and p.name == filename and p.suffix.lower() in SUPPORTED_EXT:
             return str(p)
     return None
 
 def download_and_resize_image(url, target_size=(640, 640)):
-    """下载图片，缩放为指定尺寸的 JPEG，返回二进制数据"""
+    """下载图片，缩放为指定尺寸的 JPEG，返回二进制数据。
+    先尝试直连，超时失败后自动回退到代理。"""
     if not url or not isinstance(url, str):
         return None
-    try:
-        # 添加浏览器头，避免 403 错误
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        resp = requests.get(url, timeout=15, headers=headers)
-        resp.raise_for_status()
-        img = Image.open(BytesIO(resp.content))
-        if img.mode in ('RGBA', 'LA', 'P'):
-            img = img.convert('RGB')
-        img = img.resize(target_size, Image.LANCZOS)
-        output = BytesIO()
-        img.save(output, format='JPEG', quality=85)
-        return output.getvalue()
-    except Exception as e:
-        print(f"    封面处理失败 ({url}): {e}")
-        return None
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    # 尝试 1：直连
+    for attempt, (label, proxies, timeout) in enumerate([
+        ("直连", None, 15),
+        ("代理", PROXY_DICT, 30),
+    ], 1):
+        try:
+            resp = requests.get(url, timeout=timeout, headers=headers, proxies=proxies)
+            resp.raise_for_status()
+            if attempt == 2:
+                print(f"    直连失败后通过代理下载成功")
+            img = Image.open(BytesIO(resp.content))
+            if img.mode in ('RGBA', 'LA', 'P'):
+                img = img.convert('RGB')
+            img = img.resize(target_size, Image.LANCZOS)
+            output = BytesIO()
+            img.save(output, format='JPEG', quality=85)
+            return output.getvalue()
+        except Exception:
+            if attempt == 2:
+                # 代理也失败，报错
+                print(f"    封面处理失败 ({url}): 直连和代理均无法访问")
+                return None
+            # 直连失败，静默尝试代理
+            continue
+    return None
 
 def clear_old_cover(audio):
     """清除音频文件中已有的封面图片"""
@@ -316,24 +361,31 @@ def set_common_tags(audio, metadata, cover_data):
         print(f"    不支持的文件格式: {ext}")
         return False
 
+# ==================== 辅助函数 ====================
+
+def get_input_with_default(prompt_text: str, default_value: str) -> str:
+    """获取带默认值的用户输入。"""
+    user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
+    return user_input if user_input else str(default_value)
+
 # ------------------- 单次运行 -------------------
 def run_once():
-    raw = input(f"请输入源文件夹路径（默认 {DEFAULT_SOURCE_DIR}）: ").strip()
+    raw = get_input_with_default(MSG_PROMPT_SOURCE, str(DEFAULT_SOURCE_DIR))
     source_folder = Path(raw) if raw else DEFAULT_SOURCE_DIR
     if not source_folder.is_dir():
-        print(f"错误：文件夹不存在 - {source_folder}")
+        print(MSG_ERR_FOLDER_NOT_FOUND.format(source_folder))
         return
 
-    raw = input(f"请输入 Excel 文件路径（默认 {DEFAULT_EXCEL_PATH}）: ").strip()
+    raw = get_input_with_default(MSG_PROMPT_EXCEL, str(DEFAULT_EXCEL_PATH))
     excel_path = Path(raw) if raw else DEFAULT_EXCEL_PATH
     if not excel_path.is_file():
-        print(f"错误：文件不存在 - {excel_path}")
+        print(MSG_ERR_FILE_NOT_FOUND.format(excel_path))
         return
 
-    print(f"\n读取 Excel: {excel_path}")
+    print(MSG_READING_EXCEL.format(excel_path))
     df = pd.read_excel(excel_path, dtype=str)
-    if '原文件名' not in df.columns:
-        print("错误：缺少“原文件名”列")
+    if '现文件名' not in df.columns:
+        print(MSG_MISSING_COLUMN)
         return
 
     field_mapping = {
@@ -344,13 +396,13 @@ def run_once():
 
     success = 0
     for idx, row in df.iterrows():
-        filename = str(row['原文件名']) if pd.notna(row['原文件名']) else ''
+        filename = str(row['现文件名']) if pd.notna(row['现文件名']) else ''
         if not filename or filename == 'nan':
             continue
 
         file_path = find_file_in_folder(source_folder, filename)
         if not file_path:
-            print(f"[{idx+1}] 找不到文件: {filename}")
+            print(MSG_FILE_NOT_FOUND.format(idx+1, filename))
             continue
 
         # 提取元数据
@@ -368,17 +420,17 @@ def run_once():
         # 下载并处理封面
         cover_data = None
         if cover_url:
-            print(f"[{idx+1}] 下载封面: {cover_url}")
+            print(MSG_DOWNLOAD_COVER.format(idx+1, cover_url))
             cover_data = download_and_resize_image(cover_url, (640, 640))
             if cover_data:
-                print("    封面下载并压缩成功")
+                print(MSG_COVER_SUCCESS)
             else:
-                print("    封面处理失败，将不嵌入")
+                print(MSG_COVER_FAIL)
 
         # 打开音频文件
         audio = MutagenFile(file_path)
         if audio is None:
-            print(f"[{idx+1}] 无法识别音频格式: {filename}")
+            print(MSG_UNKNOWN_FORMAT.format(idx+1, filename))
             continue
 
         # 清除旧封面
@@ -387,30 +439,33 @@ def run_once():
         # 写入新标签
         if set_common_tags(audio, metadata, cover_data):
             success += 1
-            print(f"[{idx+1}] ✅ 写入成功: {filename}")
+            print(MSG_WRITE_SUCCESS.format(idx+1, filename))
         else:
-            print(f"[{idx+1}] ❌ 写入失败: {filename}")
+            print(MSG_WRITE_FAIL.format(idx+1, filename))
 
-    print(f"\n本次处理完成，成功 {success}/{len(df)}")
+    print(MSG_DONE_SUMMARY.format(success, len(df)))
 
 # ------------------- 主循环 -------------------
 def main():
     while True:
         print("\n" + "="*60)
-        print("音乐元数据反向写入工具（Excel → 音频文件）")
+        print(MSG_TOOL_TITLE)
         print("="*60)
         run_once()
-        if input("\n是否继续？(y/n，默认 n): ").strip().lower() != 'y':
+        if input(MSG_CONTINUE_PROMPT).strip().lower() != 'y':
             break
-    print("程序结束。")
+    print(MSG_PROGRAM_END)
+
+
+# ==================== 程序入口 ====================
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)

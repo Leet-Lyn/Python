@@ -5,6 +5,7 @@
 # ".txt" 里的链接不转为 Percent-encoding，".percent-encoding.txt" 里的链接转为 Percent-encoding。二者链接数量相同。
 # 同时将不转为 Percent-encoding 的 ed2k 链接写入剪贴板。
 
+import signal
 import binascii
 import subprocess
 import sys
@@ -12,6 +13,21 @@ from pathlib import Path
 from urllib.parse import quote
 
 import bencodepy
+
+# --- 常量 ---
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+MSG_CLIPBOARD_FAIL = "复制到剪贴板失败：{}"
+MSG_PROMPT_FOLDER = (
+    "请输入 torrent 文件所在文件夹（默认 d:\\Studios\\Folders\\Downloads\\）："
+)
+MSG_DONE = "已完成：共生成并复制 {} 条 ed2k 链接到剪贴板。"
+MSG_NO_ED2K = "未在任何 torrent 中找到 ed2k hash。"
 
 
 def bytes_to_hex_upper(data: bytes) -> str:
@@ -45,7 +61,7 @@ def copy_to_clipboard(text: str) -> None:
             check=True,
         )
     except Exception as e:
-        print(f"复制到剪贴板失败：{e}")
+        print(MSG_CLIPBOARD_FAIL.format(e))
 
 
 def extract_ed2k_from_torrent(torrent_path: Path) -> tuple[list[str], list[str]]:
@@ -84,13 +100,36 @@ def extract_ed2k_from_torrent(torrent_path: Path) -> tuple[list[str], list[str]]
                 break
 
     return links_raw, links_encoded
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
 
 
 def main() -> None:
     """主流程：输入文件夹 → 遍历 torrent → 生成 txt → 写入剪贴板。"""
-    raw = input(
-        r"请输入 torrent 文件所在文件夹（默认 d:\Studios\Folders\Downloads\）："
-    ).strip()
+    raw = input(MSG_PROMPT_FOLDER).strip()
     base_path = Path(raw) if raw else Path(r"d:\Studios\Folders\Downloads")
 
     all_clipboard_links: list[str] = []
@@ -111,13 +150,21 @@ def main() -> None:
 
     if all_clipboard_links:
         copy_to_clipboard("\n".join(all_clipboard_links))
-        print(
-            f"已完成：共生成并复制 {len(all_clipboard_links)} 条 ed2k 链接到剪贴板。"
-        )
+        print(MSG_DONE.format(len(all_clipboard_links)))
     else:
-        print("未在任何 torrent 中找到 ed2k hash。")
+        print(MSG_NO_ED2K)
 
+
+
+# ==================== 程序入口 ====================
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(MSG_INTERRUPTED)
+    except Exception as e:
+        print(MSG_ERROR.format(e))
+    finally:
+        input(MSG_EXIT)

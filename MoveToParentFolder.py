@@ -2,6 +2,7 @@
 # 在脚本开始前询问我源文件位置，默认为"d:\Studios\Folders\Downloads\"。
 # 将文件夹下的所有文件夹内（包括子文件夹）的文件上移到文件的父文件夹中。
 
+import signal
 import shutil
 import sys
 from pathlib import Path
@@ -10,12 +11,27 @@ from pathlib import Path
 
 DEFAULT_SOURCE_DIR = Path(r"d:\Studios\Folders\Downloads")
 
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_PROMPT_SOURCE_DIR = "请输入源文件夹位置："
+MSG_ERR_INVALID_PATH = "提供的路径不是有效的文件夹路径，请检查后重试。"
+MSG_FILE_MOVED = "文件已移动: {} -> {}"
+MSG_FILE_MOVE_ERROR = "无法移动文件: {} -> {}. 错误: {}"
+MSG_DELETED_EMPTY_FOLDER = "已删除空文件夹: {}"
+MSG_DELETE_FOLDER_ERROR = "无法删除文件夹: {}. 错误: {}"
+MSG_MOVE_COMPLETE = "所有文件已移动完成，共移动 {} 个文件。"
+MSG_INPUT_DEFAULT_HINT = " (默认: {}): "
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+
 # ==================== 辅助函数 ====================
 
 
 def get_input_with_default(prompt_text: str, default_value: str) -> str:
     """获取带默认值的用户输入。"""
-    user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
+    user_input = input(f"{prompt_text}{MSG_INPUT_DEFAULT_HINT.format(default_value)}").strip()
     return user_input if user_input else str(default_value)
 
 
@@ -50,39 +66,64 @@ def move_files_to_parent_directory(source_dir: Path) -> int:
 
             try:
                 shutil.move(str(entry), str(new_path))
-                print(f"文件已移动: {entry} -> {new_path}")
+                print(MSG_FILE_MOVED.format(entry, new_path))
                 moved_count += 1
             except OSError as e:
-                print(f"无法移动文件: {entry} -> {new_path}. 错误: {e}")
+                print(MSG_FILE_MOVE_ERROR.format(entry, new_path, e))
 
         # 如果当前文件夹已空，删除
         try:
             remaining = list(dir_path.iterdir())
             if not remaining:
                 dir_path.rmdir()
-                print(f"已删除空文件夹: {dir_path}")
+                print(MSG_DELETED_EMPTY_FOLDER.format(dir_path))
         except OSError as e:
-            print(f"无法删除文件夹: {dir_path}. 错误: {e}")
+            print(MSG_DELETE_FOLDER_ERROR.format(dir_path, e))
 
     return moved_count
 
 
 # ==================== 主程序 ====================
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
 
 
 def main() -> None:
     """主函数：处理用户输入并调用文件移动函数。"""
 
     source_str = get_input_with_default(
-        "请输入源文件夹位置：", str(DEFAULT_SOURCE_DIR))
+        MSG_PROMPT_SOURCE_DIR, str(DEFAULT_SOURCE_DIR))
     source_dir = Path(source_str)
 
     if not source_dir.is_dir():
-        print("提供的路径不是有效的文件夹路径，请检查后重试。")
+        print(MSG_ERR_INVALID_PATH)
         return
 
     count = move_files_to_parent_directory(source_dir)
-    print(f"所有文件已移动完成，共移动 {count} 个文件。")
+    print(MSG_MOVE_COMPLETE.format(count))
 
 
 # ==================== 程序入口 ====================
@@ -92,8 +133,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)

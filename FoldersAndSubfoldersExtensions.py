@@ -4,6 +4,7 @@
 # 2. 检索该文件夹下（包括子文件夹）所有文件的扩展名。请全部列出来。
 # 完成后，跳到开始询问我源文件夹位置。反复循环。
 
+import signal
 import sys
 from pathlib import Path
 
@@ -11,7 +12,35 @@ from pathlib import Path
 
 DEFAULT_SOURCE_DIR = Path(r"d:\Studios\Folders\Downloads")
 
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+
+MSG_INPUT_SOURCE_DIR = "请输入源文件夹路径（输入 q 退出）"
+MSG_PATH_INVALID = "输入错误：路径不存在或不是文件夹 —— {}，请重新输入。\n"
+MSG_USER_EXIT = "用户退出。"
+MSG_SCANNING = "\n正在扫描：{}\n"
+MSG_SUBFOLDER_STATUS = "=== 子文件夹状态 ==="
+MSG_NO_SUBFOLDERS = "源文件夹下没有子文件夹。"
+MSG_HAS_CHILDREN = "包含子文件夹"
+MSG_NO_CHILDREN = "无子文件夹"
+MSG_SUBFOLDER_LINE = "  {} -> {}"
+MSG_EXTENSIONS_TITLE = "\n=== 所有文件扩展名（去重） ==="
+MSG_NO_FILES = "  未找到任何文件。"
+MSG_EXT_WITH_DOT = "  .{}"
+MSG_EXT_NO_DOT = "  {}"
+MSG_SEPARATOR = "\n==================================================\n"
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+
 # ==================== 辅助函数 ====================
+
+
+def get_input_with_default(prompt_text: str, default_value: str) -> str:
+    """获取带默认值的用户输入。"""
+    user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
+    return user_input if user_input else str(default_value)
 
 
 def get_user_folder() -> Path | None:
@@ -21,17 +50,15 @@ def get_user_folder() -> Path | None:
     """
     default_str = str(DEFAULT_SOURCE_DIR)
     while True:
-        user_input = input(
-            f"请输入源文件夹路径（默认：{default_str}，输入 q 退出）："
-        ).strip()
+        user_input = get_input_with_default(MSG_INPUT_SOURCE_DIR, default_str)
 
         if user_input.lower() in ("q", "quit", "exit"):
             return None
 
-        folder = Path(user_input) if user_input else DEFAULT_SOURCE_DIR
+        folder = Path(user_input)
         if folder.is_dir():
             return folder
-        print(f"输入错误：路径不存在或不是文件夹 —— {folder}，请重新输入。\n")
+        print(MSG_PATH_INVALID.format(folder))
 
 
 # ==================== 处理函数 ====================
@@ -68,6 +95,31 @@ def collect_extensions(root: Path) -> set[str]:
 
 
 # ==================== 主程序 ====================
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
 
 
 def main() -> None:
@@ -76,33 +128,33 @@ def main() -> None:
     while True:
         source = get_user_folder()
         if source is None:
-            print("用户退出。")
+            print(MSG_USER_EXIT)
             break
 
-        print(f"\n正在扫描：{source}\n")
+        print(MSG_SCANNING.format(source))
 
         # 1. 查找所有子文件夹及其是否含有更深子文件夹
         subfolders_status = find_subfolders_with_children(source)
-        print("=== 子文件夹状态 ===")
+        print(MSG_SUBFOLDER_STATUS)
         if not subfolders_status:
-            print("源文件夹下没有子文件夹。")
+            print(MSG_NO_SUBFOLDERS)
         else:
             for sub in sorted(subfolders_status, key=lambda p: str(p).lower()):
-                status = "包含子文件夹" if subfolders_status[sub] else "无子文件夹"
-                print(f"  {sub} -> {status}")
+                status = MSG_HAS_CHILDREN if subfolders_status[sub] else MSG_NO_CHILDREN
+                print(MSG_SUBFOLDER_LINE.format(sub, status))
 
         # 2. 收集所有文件的扩展名
         exts = collect_extensions(source)
-        print("\n=== 所有文件扩展名（去重） ===")
+        print(MSG_EXTENSIONS_TITLE)
         if not exts:
-            print("  未找到任何文件。")
+            print(MSG_NO_FILES)
         else:
             # "(无扩展名)" 排最前，其余字母序
             sorted_exts = sorted(exts, key=lambda x: (x != "(无扩展名)", x))
             for ext in sorted_exts:
-                print(f"  .{ext}" if ext != "(无扩展名)" else f"  {ext}")
+                print(MSG_EXT_WITH_DOT.format(ext) if ext != "(无扩展名)" else MSG_EXT_NO_DOT.format(ext))
 
-        print("\n" + "=" * 50 + "\n")
+        print(MSG_SEPARATOR)
 
 
 # ==================== 程序入口 ====================
@@ -112,8 +164,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)

@@ -6,6 +6,7 @@
 # 反复循环。
 
 # 导入模块
+import signal
 import os
 import re
 import sys
@@ -26,24 +27,54 @@ from mutagen.id3 import ID3
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# ---------------- 全局代理设置 ----------------
+# ==================== 全局配置 ====================
+
+# --- 代理设置 ---
 PROXY = "http://127.0.0.1:10808"
-os.environ['http_proxy'] = PROXY
-os.environ['https_proxy'] = PROXY
-print(f"✅ 已为 MusicBrainz 设置代理：{PROXY}")
 
-# ---------------- 初始化 ----------------
-mb.set_useragent("MusicMetadataFiller", "1.0", "your-email@example.com")
-
-LASTFM_KEY_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\LastfmAPIKey.txt")
+# --- 默认路径 ---
 DEFAULT_EXCEL_PATH = Path(r"d:\Studios\Attachments\标准.xlsx")
 DEFAULT_SOURCE_DIR = Path(r"d:\Studios\Folders\Downloads")
+
+# --- API 配置 ---
+LASTFM_KEY_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\LastfmAPIKey.txt")
 NETEASE_API_BASE = "https://music.163.com/api"
 
 SPOTIFY_CREDENTIALS = {
     "client_id": os.getenv("SPOTIPY_CLIENT_ID", ""),
     "client_secret": os.getenv("SPOTIPY_CLIENT_SECRET", "")
 }
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_PROXY_SET = "✅ 已为 MusicBrainz 设置代理：{}"
+MSG_PROMPT_EXCEL = "请输入 Excel 文件路径"
+MSG_PROMPT_SOURCE = "请输入音频文件夹路径"
+MSG_ERR_FILE_NOT_FOUND = "错误：文件不存在 - {}"
+MSG_ERR_FOLDER_NOT_FOUND = "错误：文件夹不存在 - {}"
+MSG_READING_EXCEL = "\n读取 Excel: {}"
+MSG_ROW_COUNT = "共 {} 条记录，字段：{}"
+MSG_MISSING_COLUMN = '缺少"原文件名"列，退出。'
+MSG_NEW_COLUMN = "新增列：{}"
+MSG_STEP_READ_AUDIO = "\n--- 第一步：读取音频元数据 ---"
+MSG_SKIP_EMPTY = "[{}/{}] 空文件名，跳过"
+MSG_FILE_NOT_FOUND = "[{}/{}] 找不到 {}"
+MSG_FILE_MATCHED = "[{}/{}] {} → {}"
+MSG_WRITTEN_META = "  已写: 名字={}, 演唱={}, 专辑={}"
+MSG_STEP_NETWORK = "\n--- 第二步：查询网络元数据 ---"
+MSG_PROCESSING_ROW = "\n[{}/{}] {} - {} ({})"
+MSG_UPDATED = "  ✅ 已更新"
+MSG_ERROR_ROW = "  ❌ 出错: {}"
+MSG_DONE_SUMMARY = "\n===== 完成 =====\n共 {} 条，成功补充 {} 条\n保存至: {}"
+MSG_TOOL_TITLE = "音乐元数据批量处理工具"
+MSG_CONTINUE = "\n继续处理其他文件？(y/n): "
+MSG_PROGRAM_END = "程序结束。"
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+
+# MusicBrainz 初始化将在 main() 中执行
 
 # ---------------- 网络 Session ----------------
 def create_retry_session(retries=3, backoff_factor=1.0, connect_timeout=10, read_timeout=25, use_proxy=False):
@@ -72,7 +103,12 @@ def create_retry_session(retries=3, backoff_factor=1.0, connect_timeout=10, read
 session = create_retry_session()                  # 直连
 session_proxy = create_retry_session(use_proxy=True)   # 带代理
 
-# ---------------- 工具函数 ----------------
+# ==================== 辅助函数 ====================
+
+def get_input_with_default(prompt_text: str, default_value: str) -> str:
+    """获取带默认值的用户输入。"""
+    user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
+    return user_input if user_input else str(default_value)
 def get_audio_metadata(file_path):
     result = {'title': '', 'artist': '', 'album': ''}
     try:
@@ -453,92 +489,104 @@ def fetch_all_metadata(song_title, artist_name, album_name, lastfm_key):
 
 # ---------------- 运行流程 ----------------
 def run_once():
-    raw = input(f"请输入 Excel 文件路径（直接回车使用默认：{DEFAULT_EXCEL_PATH}）: ").strip()
+    raw = get_input_with_default(MSG_PROMPT_EXCEL, str(DEFAULT_EXCEL_PATH))
     excel_path = Path(raw) if raw else DEFAULT_EXCEL_PATH
     if not excel_path.is_file():
-        print(f"错误：文件不存在 - {excel_path}")
+        print(MSG_ERR_FILE_NOT_FOUND.format(excel_path))
         return
 
-    raw = input(f"请输入音频文件夹路径（默认：{DEFAULT_SOURCE_DIR}）: ").strip()
+    raw = get_input_with_default(MSG_PROMPT_SOURCE, str(DEFAULT_SOURCE_DIR))
     source_folder = Path(raw) if raw else DEFAULT_SOURCE_DIR
     if not source_folder.is_dir():
-        print(f"错误：文件夹不存在 - {source_folder}")
+        print(MSG_ERR_FOLDER_NOT_FOUND.format(source_folder))
         return
 
-    print(f"\n读取 Excel: {excel_path}")
+    print(MSG_READING_EXCEL.format(excel_path))
     df = pd.read_excel(excel_path, dtype=str)
-    print(f"共 {len(df)} 条记录，字段：{list(df.columns)}")
+    print(MSG_ROW_COUNT.format(len(df), list(df.columns)))
 
     if '原文件名' not in df.columns:
-        print("缺少“原文件名”列，退出。")
+        print(MSG_MISSING_COLUMN)
         return
 
     required = ['名字', '演唱', '专辑', '盘号', '音轨', '年份', '类型', '封面', '发行公司', '作词', '作曲', '编曲']
     for col in required:
         if col not in df.columns:
             df[col] = ''
-            print(f"新增列：{col}")
+            print(MSG_NEW_COLUMN.format(col))
 
     # 第一步：读取音频元数据
-    print("\n--- 第一步：读取音频元数据 ---")
+    print(MSG_STEP_READ_AUDIO)
     for idx, row in df.iterrows():
         orig = str(row['原文件名'])
         if not orig or orig == 'nan':
-            print(f"[{idx+1}/{len(df)}] 空文件名，跳过")
+            print(MSG_SKIP_EMPTY.format(idx+1, len(df)))
             continue
         file_path = find_file_in_folder(source_folder, orig)
         if not file_path:
-            print(f"[{idx+1}/{len(df)}] 找不到 {orig}")
+            print(MSG_FILE_NOT_FOUND.format(idx+1, len(df), orig))
             continue
-        print(f"[{idx+1}/{len(df)}] {orig} → {file_path}")
+        print(MSG_FILE_MATCHED.format(idx+1, len(df), orig, file_path))
         audio = get_audio_metadata(file_path)
         df.at[idx, '名字'] = audio['title']
         df.at[idx, '演唱'] = audio['artist']
         df.at[idx, '专辑'] = audio['album']
-        df.to_excel(excel_path, index=False)
-        print(f"  已写: 名字={audio['title']}, 演唱={audio['artist']}, 专辑={audio['album']}")
+        print(MSG_WRITTEN_META.format(audio['title'], audio['artist'], audio['album']))
 
     # 第二步：补充其他元数据
     lastfm_key = read_lastfm_api_key()
-    print("\n--- 第二步：查询网络元数据 ---")
+    print(MSG_STEP_NETWORK)
     success = 0
     for idx, row in df.iterrows():
         name = str(row['名字']) if pd.notna(row['名字']) else ''
         artist = str(row['演唱']) if pd.notna(row['演唱']) else ''
         album = str(row['专辑']) if pd.notna(row['专辑']) else ''
         if not name: continue
-        print(f"\n[{idx+1}/{len(df)}] {name} - {artist} ({album})")
+        print(MSG_PROCESSING_ROW.format(idx+1, len(df), name, artist, album))
         try:
             meta = fetch_all_metadata(name, artist, album, lastfm_key)
-            for key in ['盘号', '音轨', '年份', '封面', '发行公司', '类型', '作词', '作曲', '编曲']:
-                df.at[idx, key] = meta.get(key, '')
+            column_map = {
+                'disc_number': '盘号', 'track_number': '音轨', 'year': '年份',
+                'cover_url': '封面', 'label': '发行公司', 'genre': '类型',
+                'lyricist': '作词', 'composer': '作曲', 'arranger': '编曲',
+            }
+            for eng_key, cn_col in column_map.items():
+                df.at[idx, cn_col] = meta.get(eng_key, '')
             success += 1
-            df.to_excel(excel_path, index=False)
-            print("  ✅ 已更新")
+            print(MSG_UPDATED)
             time.sleep(0.6)
         except Exception as e:
-            print(f"  ❌ 出错: {e}")
+            print(MSG_ERROR_ROW.format(e))
 
     df.to_excel(excel_path, index=False)
-    print(f"\n===== 完成 =====\n共 {len(df)} 条，成功补充 {success} 条\n保存至: {excel_path}")
+    print(MSG_DONE_SUMMARY.format(len(df), success, excel_path))
 
 def main():
+    # 应用代理并初始化 MusicBrainz
+    os.environ['http_proxy'] = PROXY
+    os.environ['https_proxy'] = PROXY
+    print(MSG_PROXY_SET.format(PROXY))
+    mb.set_useragent("MusicMetadataFiller", "1.0", "your-email@example.com")
+
     while True:
         print("\n" + "="*60)
-        print("音乐元数据批量处理工具（多源封面+代理，已移除SACAD）")
+        print(MSG_TOOL_TITLE)
         print("="*60)
         run_once()
-        if input("\n继续处理其他文件？(y/n): ").strip().lower() != 'y':
+        if input(MSG_CONTINUE).strip().lower() != 'y':
             break
-    print("程序结束。")
+    print(MSG_PROGRAM_END)
+
+
+# ==================== 程序入口 ====================
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)

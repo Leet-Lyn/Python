@@ -3,6 +3,7 @@
 # 遍历源文件夹位置中所有文件，对文件名（不包括后缀名）进行重命名，要求如下：
 # 使中文、英文、数字之间用空格隔开。将 "-" 替换为 " "；将连续三个空格替换为 " - "。
 
+import signal
 import re
 import sys
 from pathlib import Path
@@ -10,6 +11,19 @@ from pathlib import Path
 # ==================== 全局配置 ====================
 
 DEFAULT_SOURCE_DIR = Path(r"d:\Studios\Folders\Downloads")
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_PROMPT_SOURCE_DIR = "请输入源文件夹位置："
+MSG_ERROR_DIR_NOT_FOUND = "错误：目录 '{}' 不存在"
+MSG_WARN_FILE_EXISTS = "警告：文件 '{}' 已存在，跳过重命名 '{}'"
+MSG_RENAME_OK = "重命名: '{}' -> '{}'"
+MSG_RENAME_FAIL = "重命名文件 '{}' 时出错: {}"
+MSG_DONE = "完成！共重命名了 {} 个文件"
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
 
 # ==================== 辅助函数 ====================
 
@@ -60,7 +74,7 @@ def rename_files_in_directory(source_dir: Path) -> int:
     返回重命名的文件数量。
     """
     if not source_dir.is_dir():
-        print(f"错误：目录 '{source_dir}' 不存在")
+        print(MSG_ERROR_DIR_NOT_FOUND.format(source_dir))
         return 0
 
     rename_count = 0
@@ -75,29 +89,54 @@ def rename_files_in_directory(source_dir: Path) -> int:
 
         new_path = file_path.parent / new_name
         if new_path.exists():
-            print(f"警告：文件 '{new_name}' 已存在，跳过重命名 '{file_path.name}'")
+            print(MSG_WARN_FILE_EXISTS.format(new_name, file_path.name))
             continue
 
         try:
             file_path.rename(new_path)
-            print(f"重命名: '{file_path.name}' -> '{new_name}'")
+            print(MSG_RENAME_OK.format(file_path.name, new_name))
             rename_count += 1
         except OSError as e:
-            print(f"重命名文件 '{file_path.name}' 时出错: {e}")
+            print(MSG_RENAME_FAIL.format(file_path.name, e))
 
     return rename_count
 
 
 # ==================== 主程序 ====================
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
 
 
 def main() -> None:
     """主函数：获取用户输入并执行重命名操作。"""
-    source_str = get_input_with_default("请输入源文件夹位置：", str(DEFAULT_SOURCE_DIR))
+    source_str = get_input_with_default(MSG_PROMPT_SOURCE_DIR, str(DEFAULT_SOURCE_DIR))
     source_dir = Path(source_str)
 
     count = rename_files_in_directory(source_dir)
-    print(f"\n完成！共重命名了 {count} 个文件")
+    print(MSG_DONE.format(count))
 
 
 # ==================== 程序入口 ====================
@@ -107,8 +146,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)

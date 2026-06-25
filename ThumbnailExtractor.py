@@ -4,6 +4,7 @@
 # 使用 ffmpeg 压缩，类似命令：ffmpeg -i input.mp4 -ss 00:00:01 -vframes 1 output.jpg。
 # 分别截取第 1 秒、第 10 秒以及一半时间的视频的图片，后缀名为-s01.jpg、-s10.jpg、-ss.jpg。
 
+import signal
 import shutil
 import subprocess
 import sys
@@ -11,18 +12,37 @@ from pathlib import Path
 
 # ==================== 全局配置 ====================
 
-DEFAULT_SOURCE_DIR = Path(r"d:\Works\Out")
-DEFAULT_TARGET_DIR = Path(r"d:\Works\Out")
+DEFAULT_SOURCE_DIR = Path(r"d:\Studios\Folders\Outs")
+DEFAULT_TARGET_DIR = Path(r"d:\Studios\Folders\Outs")
 
 VIDEO_EXTENSIONS = {".mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg",
                     ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4"}
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
+MSG_DURATION_FAILED = "    获取视频时长失败：{}，{}"
+MSG_SKIP_TIMESTAMP = "    跳过 {}{}.jpg（{:.1f}s >= 时长 {:.1f}s）"
+MSG_SCREENSHOT_OK = "    截图成功：{}"
+MSG_SCREENSHOT_FAIL = "    截图失败：{}，{}"
+MSG_FFMPEG_MISSING = "错误：找不到 ffmpeg，请安装后重试。"
+MSG_PROMPT_SOURCE = "请输入源文件夹路径："
+MSG_PROMPT_TARGET = "请输入目标文件夹路径："
+MSG_SOURCE_NOT_EXIST = "错误：源文件夹不存在 —— {}"
+MSG_NO_VIDEO_FOUND = "未找到任何视频文件。"
+MSG_FOUND_VIDEOS = "\n找到 {} 个视频文件，开始处理…\n"
+MSG_ALL_DONE = "\n所有视频处理完成！共处理 {} 个视频，成功截图 {} 张。"
+MSG_PROMPT_FORMAT = "{} (默认: {}): "
 
 # ==================== 辅助函数 ====================
 
 
 def get_input_with_default(prompt_text: str, default_value: str) -> str:
     """获取带默认值的用户输入。"""
-    user_input = input(f"{prompt_text} (默认: {default_value}): ").strip()
+    user_input = input(MSG_PROMPT_FORMAT.format(prompt_text, default_value)).strip()
     return user_input if user_input else str(default_value)
 
 
@@ -46,7 +66,7 @@ def get_video_duration(video_path: Path) -> float | None:
         output = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL).strip()
         return float(output)
     except Exception as e:
-        print(f"    获取视频时长失败：{video_path.name}，{e}")
+        print(MSG_DURATION_FAILED.format(video_path.name, e))
         return None
 
 
@@ -75,8 +95,8 @@ def extract_thumbnails(video_path: Path, output_dir: Path) -> int:
     success_count = 0
     for timestamp, suffix in timestamps:
         # 跳过超出视频时长的时间点
-        if timestamp >= duration:
-            print(f"    跳过 {video_name}{suffix}.jpg（{timestamp:.1f}s >= 时长 {duration:.1f}s）")
+        if timestamp > duration:
+            print(MSG_SKIP_TIMESTAMP.format(video_name, suffix, timestamp, duration))
             continue
 
         output_file = output_dir / f"{video_name}{suffix}.jpg"
@@ -92,15 +112,40 @@ def extract_thumbnails(video_path: Path, output_dir: Path) -> int:
             subprocess.run(cmd, check=True,
                            stdout=subprocess.DEVNULL,
                            stderr=subprocess.DEVNULL)
-            print(f"    截图成功：{output_file.name}")
+            print(MSG_SCREENSHOT_OK.format(output_file.name))
             success_count += 1
         except subprocess.CalledProcessError as e:
-            print(f"    截图失败：{output_file.name}，{e}")
+            print(MSG_SCREENSHOT_FAIL.format(output_file.name, e))
 
     return success_count
 
 
 # ==================== 主程序 ====================
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
 
 
 def main() -> None:
@@ -108,18 +153,18 @@ def main() -> None:
 
     # 检查 ffmpeg 是否可用
     if shutil.which("ffmpeg") is None:
-        print("错误：找不到 ffmpeg，请安装后重试。")
+        print(MSG_FFMPEG_MISSING)
         return
 
     # 获取源文件夹和目标文件夹路径
-    source_str = get_input_with_default("请输入源文件夹路径：", str(DEFAULT_SOURCE_DIR))
-    target_str = get_input_with_default("请输入目标文件夹路径：", str(DEFAULT_TARGET_DIR))
+    source_str = get_input_with_default(MSG_PROMPT_SOURCE, str(DEFAULT_SOURCE_DIR))
+    target_str = get_input_with_default(MSG_PROMPT_TARGET, str(DEFAULT_TARGET_DIR))
 
     source_root = Path(source_str)
     target_root = Path(target_str)
 
     if not source_root.is_dir():
-        print(f"错误：源文件夹不存在 —— {source_root}")
+        print(MSG_SOURCE_NOT_EXIST.format(source_root))
         return
 
     # 确保目标文件夹存在
@@ -129,10 +174,10 @@ def main() -> None:
     video_files = [p for p in source_root.rglob("*") if p.is_file() and is_video_file(p)]
 
     if not video_files:
-        print("未找到任何视频文件。")
+        print(MSG_NO_VIDEO_FOUND)
         return
 
-    print(f"\n找到 {len(video_files)} 个视频文件，开始处理…\n")
+    print(MSG_FOUND_VIDEOS.format(len(video_files)))
 
     total_screenshots = 0
     for idx, video_path in enumerate(video_files, 1):
@@ -145,7 +190,7 @@ def main() -> None:
         count = extract_thumbnails(video_path, output_dir)
         total_screenshots += count
 
-    print(f"\n所有视频处理完成！共处理 {len(video_files)} 个视频，成功截图 {total_screenshots} 张。")
+    print(MSG_ALL_DONE.format(len(video_files), total_screenshots))
 
 
 if __name__ == "__main__":
@@ -153,8 +198,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)

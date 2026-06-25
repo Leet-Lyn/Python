@@ -3,6 +3,7 @@
 # 重命名源文件夹下所有文件及子文件夹下文件。
 # 将文件名（不包括扩展名）中分隔符两端交换。如果有多个相同的分隔符，则只交换一次。
 
+import signal
 import sys
 from pathlib import Path
 
@@ -10,6 +11,25 @@ from pathlib import Path
 
 DEFAULT_SOURCE_DIR = Path(r"d:\Studios\Folders\Downloads")
 DEFAULT_SEPARATOR = " - "
+
+_quit_requested = False  # Ctrl+Q 中断标志
+
+# --- 消息常量 ---
+MSG_PROMPT_SOURCE_DIR = "请输入源文件夹位置："
+MSG_PROMPT_SEPARATOR = "请输入分隔符："
+MSG_ERROR_DIR_NOT_FOUND = "错误：文件夹 '{}' 不存在！"
+MSG_START_PROCESS = "开始处理文件夹: {}"
+MSG_USING_SEPARATOR = "使用分隔符: '{}'"
+MSG_SEPARATOR_LINE = "=" * 50
+MSG_RENAME_OK = "✓ 重命名: {} -> {}"
+MSG_RENAME_FAIL = "✗ 处理文件失败 {}: {}"
+MSG_DONE = "处理完成！"
+MSG_STATS_RENAMED = "已重命名: {} 个文件"
+MSG_STATS_SKIPPED = "跳过: {} 个文件"
+MSG_STATS_ERRORS = "错误: {} 个文件"
+MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
+MSG_ERROR = "\n程序运行出错: {}"
+MSG_EXIT = "\n按回车键退出..."
 
 # ==================== 辅助函数 ====================
 
@@ -66,41 +86,66 @@ def traverse_and_rename(source_dir: Path, separator: str) -> tuple[int, int, int
 
         try:
             file_path.rename(new_path)
-            print(f"✓ 重命名: {file_path.name} -> {new_path.name}")
+            print(MSG_RENAME_OK.format(file_path.name, new_path.name))
             renamed += 1
         except OSError as e:
             errors += 1
-            print(f"✗ 处理文件失败 {file_path.name}: {e}")
+            print(MSG_RENAME_FAIL.format(file_path.name, e))
 
     return renamed, skipped, errors
 
 
 # ==================== 主程序 ====================
+# ==================== 中断处理 ====================
+
+
+def _on_quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+    raise KeyboardInterrupt()
+
+
+def _init_quit_handler():
+    if hasattr(signal, "SIGQUIT"):
+        signal.signal(signal.SIGQUIT, _on_quit_signal)
+
+
+def _check_quit() -> bool:
+    global _quit_requested
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            while msvcrt.kbhit():
+                if msvcrt.getch() == b"\x11":
+                    _quit_requested = True
+        except Exception:
+            pass
+    return _quit_requested
 
 
 def main() -> None:
     """主函数：获取用户输入并执行重命名操作。"""
 
-    source_str = get_input_with_default("请输入源文件夹位置：", str(DEFAULT_SOURCE_DIR))
+    source_str = get_input_with_default(MSG_PROMPT_SOURCE_DIR, str(DEFAULT_SOURCE_DIR))
     source_dir = Path(source_str)
 
     if not source_dir.is_dir():
-        print(f"错误：文件夹 '{source_dir}' 不存在！")
+        print(MSG_ERROR_DIR_NOT_FOUND.format(source_dir))
         return
 
-    separator = get_input_with_default("请输入分隔符：", DEFAULT_SEPARATOR)
+    separator = get_input_with_default(MSG_PROMPT_SEPARATOR, DEFAULT_SEPARATOR)
 
-    print(f"\n开始处理文件夹: {source_dir}")
-    print(f"使用分隔符: '{separator}'")
-    print("=" * 50)
+    print(MSG_START_PROCESS.format(source_dir))
+    print(MSG_USING_SEPARATOR.format(separator))
+    print(MSG_SEPARATOR_LINE)
 
     renamed, skipped, errors = traverse_and_rename(source_dir, separator)
 
-    print("=" * 50)
-    print("处理完成！")
-    print(f"已重命名: {renamed} 个文件")
-    print(f"跳过: {skipped} 个文件")
-    print(f"错误: {errors} 个文件")
+    print(MSG_SEPARATOR_LINE)
+    print(MSG_DONE)
+    print(MSG_STATS_RENAMED.format(renamed))
+    print(MSG_STATS_SKIPPED.format(skipped))
+    print(MSG_STATS_ERRORS.format(errors))
 
 
 # ==================== 程序入口 ====================
@@ -110,8 +155,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n用户中断程序，已退出。")
+        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(f"\n程序运行出错: {e}")
+        print(MSG_ERROR.format(e))
     finally:
-        input("\n按回车键退出...")
+        input(MSG_EXIT)
