@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文，但是变量参数不要是中文：
-# 在脚本开始前让我选择：1. 文件夹写入 excel 并写入数据库；2. 多行 ed2k 链接写入数据库；3. 单文件链接写入数据库；4. 多行ed2k链接从数据库删除；多行SizeMD4值从数据库删除；6. 整理数据库；0. 退出。
+# 在脚本开始前让我选择：1. 文件夹写入 excel 并写入数据库；2. 多行 ed2k 链接写入数据库；3. 单文件链接写入数据库；4. 多行 ed2k 链接从数据库删除；5. 多行 SizeMD4 值从数据库删除；6. 整理数据库；0. 退出。
 # 1. 文件夹写入 excel 并写入数据库：
 # 询问我 excel 文件位置（默认为：d:\Studios\Attachments\标准.xlsx）、源文件夹位置（默认为：d:\Studios\Folders\Downloads\），写入文件夹位置（默认为：d:\Studios\Folders\Ins\），上传文件夹位置（默认为：d:\Studios\Folders\Uploads\）, 删除文件夹位置（默认为：d:\Studios\Folders\Deletes\）。SizeMD4 数据库文件位置（默认为：e:\Documents\Softwares\Codes\Attachments\Databases\SizeMD4\SizeMD4.txt）。
 # 读取 excel 文件，第一行为表头（字段名）。此后每一行为一条记录。分别询问我"引用页"、"属于"、"主链接"的值（按回车则为空）。
@@ -19,18 +19,19 @@
 # 如果当前文件 SizeMD4 值在原来 SizeMD4 数据库文件里存在，报告我。
 # 如果当前文件 SizeMD4 值不在原来 SizeMD4 数据库文件里存在，则添加该 SizeMD4 值到 SizeMD4 数据库文件末尾（另起一行），保存SizeMD4 数据库文件。
 # 最后告诉我该文件 ed2k 链接的 SizeMD4 值原数据库是否存在。
-# 4. 整理数据库：
-# 询问我 SizeMD4 数据库文件位置（默认为：e:\Documents\Softwares\Codes\Attachments\Databases\SizeMD4\SizeMD4.txt）。对 SizeMD4 数据库，先备份，再对文件里的 SizeMD4 值（字符串）从小到大排序。
-# 5. 多行 ed2k 链接从数据库删除：
+# 4. 多行 ed2k 链接从数据库删除：
 # 询问我 SizeMD4 数据库文件位置（默认为：e:\Documents\Softwares\Codes\Attachments\Databases\SizeMD4\SizeMD4.txt）。读取剪贴板数据，其为多行 ed2k 链接（每行一个 ed2k 链接），顺序读取每一行 ed2k 链接，转换成 SizeMD4 值（格式：文件大小|MD4哈希，不需要文件名及其他）。比对 SizeMD4 数据库文件（SizeMD4 数据库文件，每一行为一个文件的 SizeMD4 值（文件大小|MD4哈希））。
 # 如果当前 SizeMD4 值在原来 SizeMD4 数据库文件里存在，则将该 SizeMD4 值从原来 SizeMD4 数据库文件里删除。
 # 如果当前 SizeMD4 值不在原来 SizeMD4 数据库文件里存在，则报告我。
-# 6. 多行 SizeMD4 值从数据库删除：
+# 5. 多行 SizeMD4 值从数据库删除：
 # 询问我 SizeMD4 数据库文件位置（默认为：e:\Documents\Softwares\Codes\Attachments\Databases\SizeMD4\SizeMD4.txt）。读取剪贴板数据，其为多行 SizeMD4 值（每行一个 多行 SizeMD4 值），顺序读取每一行 多行 SizeMD4 值。比对 SizeMD4 数据库文件（SizeMD4 数据库文件，每一行为一个文件的 SizeMD4 值（文件大小|MD4哈希））。
 # 如果当前 SizeMD4 值在原来 SizeMD4 数据库文件里存在，则将该 SizeMD4 值从原来 SizeMD4 数据库文件里删除。
 # 如果当前 SizeMD4 值不在原来 SizeMD4 数据库文件里存在，则报告我。
+# 6. 整理数据库：
+# 询问我 SizeMD4 数据库文件位置（默认为：e:\Documents\Softwares\Codes\Attachments\Databases\SizeMD4\SizeMD4.txt）。对 SizeMD4 数据库，先备份，再对文件里的 SizeMD4 值（字符串）从小到大排序。
 # 完成后，反复循环至最开始。
 
+# 导入模块
 import signal
 import shutil
 import subprocess

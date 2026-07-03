@@ -25,7 +25,7 @@ VIDEO_EXTS = {
 }
 
 MKVMERGE_CANDIDATES = [
-    Path(r"D:\ProApps\MKVToolNix\mkvmerge.exe"),
+    Path(r"d:\ProApps\mkvtoolnix\current\mkvmerge.exe"),
     Path(r"C:\Program Files\MKVToolNix\mkvmerge.exe"),
 ]
 
@@ -302,10 +302,6 @@ def main() -> None:
 
     print(MSG_DONE.format(ok, fail, deleted, total))
 
-
-# ============================================================
-# 入口
-# ============================================================
 
 # ==================== 程序入口 ====================
 
