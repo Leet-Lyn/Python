@@ -11,6 +11,7 @@
 # 5. ffmpeg -i input -c:a libvorbis -q:a 4 -map 0:a -y output。音频参数为：ogg 格式，遍历每个音轨，质量模式。q=4。
 # 生成的文件重新用 mkvmerge 再生成同名文件到目标文件夹位置，文件夹结构保持一致。
 
+import json
 import shutil
 import signal
 import subprocess
@@ -18,449 +19,1014 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-
 # ============================================================
 # 全局配置
 # ============================================================
-
-DEFAULT_SOURCE_DIR = Path(r"d:\Studios\Folders\Ins")
-DEFAULT_TARGET_DIR = Path(r"d:\Studios\Folders\Outs")
-
-# 中断标志：Ctrl+Q（Windows msvcrt）或 Ctrl+\（Unix SIGQUIT）设置
-_quit_requested = False
-
-VIDEO_EXTS = (
-    ".mkv", ".avi", ".f4v", ".flv", ".ts", ".mpeg", ".mpg",
-    ".rm", ".rmvb", ".asf", ".wmv", ".mov", ".webm", ".mp4",
-    ".ogv", ".ogm", ".ogg", ".vob",
+# 默认源文件夹
+DEFAULT_SOURCE_DIR = Path(
+    r"d:\Studios\Folders\Ins"
 )
-AUDIO_EXTS = (".mp3", ".m4a", ".wma", ".ogg", ".aac", ".ac3", ".rm", ".wav")
-
-# --- 消息常量 ---
-MSG_INTERRUPTED = "\n\n用户中断程序，已退出。"
-MSG_ERROR = "\n程序运行出错: {}"
-MSG_EXIT = "\n按回车键退出..."
-MSG_ASK_FOLDER_SUFFIX = "（回车使用默认 {default}）："
-MSG_FOLDER_NOT_EXIST = "文件夹不存在，请重新输入。"
-MSG_TOOL_NOT_FOUND = "未找到 {description}，请确认已安装并添加到 PATH。"
-MSG_QUIT_HINT = "提示：转码中可按 Ctrl+Q 中断。\n"
-MSG_TOOL_TITLE = "FFmpeg 批量转码工具"
-MSG_PRESET_LIST = "可选预设："
-MSG_SELECT_PRESET = "请选择预设（默认 1 — AV1）："
-MSG_INVALID_PRESET = "无效选择：{choice}，使用默认预设 AV1。"
-MSG_CURRENT_PRESET = "\n当前预设：{name}\n"
-MSG_ASK_SOURCE_DIR = "请输入源文件夹位置"
-MSG_ASK_TARGET_DIR = "请输入目标文件夹位置"
-MSG_NO_MATCH = "未找到匹配的文件。"
-MSG_FOUND_FILES = "找到 {total} 个文件，开始转码…"
-MSG_USER_INTERRUPT = "\n⚠ 用户中断（Ctrl+Q），已处理部分不会丢失。"
-MSG_USER_INTERRUPT_KI = "\n⚠ 用户中断，已处理部分不会丢失。"
-MSG_COMPLETE = "\n处理完成：成功 {ok} 个，失败 {fail} 个，共 {total} 个。"
-MSG_DURATION = "  时长: {:.1f}s"
-MSG_FFMPEG_FAILED = "\n  ❌ ffmpeg 失败：{}\n      {}"
-MSG_REMUXING = "  📦 重封装中…"
-MSG_MKVMERGE_FAILED = "  ❌ mkvmerge 失败：{}\n      {}"
-MSG_DONE_OUTPUT = "  ✅ 完成 → {}"
-MSG_OUTPUT_OK_CANT_DELETE = "  ⚠ 输出成功但无法删除源文件：{}\n      {}"
-MSG_OUTPUT_ABNORMAL = "  ⚠ 输出文件异常（缺失或为空），保留源文件：{}"
-MSG_FFMPEG_NOT_FOUND = "未找到 ffmpeg，请确认已安装并添加到 PATH。"
-MSG_USER_INTERRUPT_FFMPEG = "用户中断（Ctrl+Q）"
-MSG_TRANSCODING_PROGRESS = "  🎬 转码 {}  已耗时 {:.0f}s"
-
+# 默认输出文件夹
+DEFAULT_TARGET_DIR = Path(
+    r"d:\Studios\Folders\Outs"
+)
+# 用户中断标记
+_quit_requested = False
+# 跳过已存在的输出文件（批量跑几天时不覆盖）
+SKIP_EXISTING = True
 # ============================================================
-# 预设定义
+# 支持格式
 # ============================================================
-# 每个预设包含：
-#   name:       显示名称
-#   extensions: 要扫描的扩展名元组
-#   output_ext: 输出文件扩展名
-#   ffmpeg:     转码参数（不含 -i input 和 output）
-#   mkvmerge:   True = ffmpeg 后用 mkvmerge 再封装；False = 直接输出最终文件
-
+VIDEO_EXTS = (
+    ".mkv",
+    ".avi",
+    ".f4v",
+    ".flv",
+    ".ts",
+    ".mpeg",
+    ".mpg",
+    ".rm",
+    ".rmvb",
+    ".asf",
+    ".wmv",
+    ".mov",
+    ".webm",
+    ".mp4",
+    ".ogv",
+    ".ogm",
+    ".ogg",
+    ".vob",
+)
+AUDIO_EXTS = (
+    ".mp3",
+    ".m4a",
+    ".wma",
+    ".ogg",
+    ".aac",
+    ".ac3",
+    ".rm",
+    ".wav",
+)
+# ============================================================
+# 转码预设
+# ============================================================
 PRESETS = {
-    "1": {
-        "name": "AV1 + AAC → MKV（视频）",
-        "extensions": VIDEO_EXTS,
-        "output_ext": ".mkv",
-        # ffmpeg -i input -c:v libsvtav1 -preset 5 -crf 32 -c:a aac -q:a 0.64 -c:s copy -map 0 -y output
-        "ffmpeg": ["-c:v", "libsvtav1", "-preset", "5", "-crf", "32",
-                    "-c:a", "aac", "-q:a", "0.64",
-                    "-c:s", "copy", "-map", "0", "-y"],
-        "mkvmerge": True,
+    # --------------------------------------------------------
+    # AV1 + AAC
+    # --------------------------------------------------------
+    "1":
+    {
+        "name":
+        "AV1 + AAC → MKV",
+        "extensions":
+        VIDEO_EXTS,
+        "output_ext":
+        ".mkv",
+        "ffmpeg":
+        [
+            # 保留全部 stream
+            "-map",
+            "0",
+            # 排除 data stream
+            "-map",
+            "-0:d",
+            # 视频
+            "-c:v",
+            "libsvtav1",
+            "-preset",
+            "5",
+            "-crf",
+            "32",
+            # 音频
+            "-c:a",
+            "aac",
+            "-q:a",
+            "0.64",
+            # 字幕
+            "-c:s",
+            "copy",
+            "-y",
+        ],
+        # 转码后 mkvmerge
+        "mkvmerge":
+        True,
     },
-    "2": {
-        "name": "x264 → MP4（视频）",
-        "extensions": VIDEO_EXTS,
-        "output_ext": ".mp4",
-        # ffmpeg -i input -c:v libx264 -preset veryslow -crf 18 -c:a copy -c:s copy -map 0 -y output
-        "ffmpeg": ["-c:v", "libx264", "-preset", "veryslow", "-crf", "18",
-                    "-c:a", "copy",
-                    "-c:s", "copy", "-map", "0", "-y"],
-        "mkvmerge": False,
+    # --------------------------------------------------------
+    # x264
+    # --------------------------------------------------------
+    "2":
+    {
+        "name":
+        "H.264 x264 → MKV",
+        "extensions":
+        VIDEO_EXTS,
+        "output_ext":
+        ".mkv",
+        "ffmpeg":
+        [
+            "-map",
+            "0",
+            "-map",
+            "-0:d",
+            "-c:v",
+            "libx264",
+            "-crf",
+            "18",
+            "-preset",
+            "veryslow",
+            "-c:a",
+            "copy",
+            "-c:s",
+            "copy",
+            "-y",
+        ],
+        "mkvmerge":
+        True,
     },
-    "3": {
-        "name": "Xvid → AVI（视频）",
-        "extensions": VIDEO_EXTS,
-        "output_ext": ".avi",
-        # ffmpeg -i input -c:v mpeg4 -vtag xvid -qscale:v 1 -c:a copy -c:s copy -map 0 -y output
-        "ffmpeg": ["-c:v", "mpeg4", "-vtag", "xvid", "-qscale:v", "1",
-                    "-c:a", "copy",
-                    "-c:s", "copy", "-map", "0", "-y"],
-        "mkvmerge": False,
+    # --------------------------------------------------------
+    # Xvid
+    # --------------------------------------------------------
+    "3":
+    {
+        "name":
+        "Xvid MPEG4 → AVI",
+        "extensions":
+        VIDEO_EXTS,
+        "output_ext":
+        ".avi",
+        "ffmpeg":
+        [
+            "-map",
+            "0:v",
+            "-map",
+            "0:a?",
+            "-c:v",
+            "mpeg4",
+            "-vtag",
+            "xvid",
+            "-qscale:v",
+            "1",
+            "-c:a",
+            "copy",
+            "-y",
+        ],
+        "mkvmerge":
+        False,
     },
-    "4": {
-        "name": "AAC（音频）",
-        "extensions": AUDIO_EXTS,
-        "output_ext": ".aac",
-        # ffmpeg -i input -c:a aac -q:a 0.36 -map 0:a -y output
-        "ffmpeg": ["-c:a", "aac", "-q:a", "0.36",
-                    "-map", "0:a", "-y"],
-        "mkvmerge": False,
+    # --------------------------------------------------------
+    # AAC
+    # --------------------------------------------------------
+    "4":
+    {
+        "name":
+        "AAC 音频",
+        "extensions":
+        AUDIO_EXTS,
+        "output_ext":
+        ".aac",
+        "ffmpeg":
+        [
+            "-map",
+            "0:a",
+            "-c:a",
+            "aac",
+            "-q:a",
+            "0.36",
+            "-y",
+        ],
+        "mkvmerge":
+        False,
     },
-    "5": {
-        "name": "OGG（音频）",
-        "extensions": AUDIO_EXTS,
-        "output_ext": ".ogg",
-        # ffmpeg -i input -c:a libvorbis -q:a 4 -map 0:a -y output
-        "ffmpeg": ["-c:a", "libvorbis", "-q:a", "4",
-                    "-map", "0:a", "-y"],
-        "mkvmerge": False,
+    # --------------------------------------------------------
+    # OGG Vorbis
+    # --------------------------------------------------------
+    "5":
+    {
+        "name":
+        "OGG Vorbis 音频",
+        "extensions":
+        AUDIO_EXTS,
+        "output_ext":
+        ".ogg",
+        "ffmpeg":
+        [
+            "-map",
+            "0:a",
+            "-c:a",
+            "libvorbis",
+            "-q:a",
+            "4",
+            "-y",
+        ],
+        "mkvmerge":
+        False,
     },
 }
-
 # ============================================================
-# 辅助函数
+# 输入文件夹
 # ============================================================
-
-
-def ask_folder(prompt: str, default: Path) -> Path:
-    """询问文件夹路径，回车使用默认值；输入无效则循环重试。"""
+def ask_folder(prompt, default):
     while True:
-        raw = input(f"{prompt}{MSG_ASK_FOLDER_SUFFIX.format(default=default)}").strip()
-        folder = Path(raw) if raw else default
-        if folder.is_dir():
+        value = input(
+            f"{prompt}"
+            f"（回车使用默认 {default}）："
+        ).strip()
+        folder = (
+            Path(value)
+            if value
+            else default
+        )
+        if folder.exists() and folder.is_dir():
             return folder
-        print(MSG_FOLDER_NOT_EXIST)
-
-
-def get_duration(file_path: Path) -> float | None:
-    """使用 ffprobe 获取媒体文件时长（秒），失败返回 None。"""
+        print(
+            "文件夹不存在，请重新输入。"
+        )
+# ============================================================
+# ffprobe
+# ============================================================
+def probe_streams(file_path):
+    """
+    获取媒体流信息
+    返回:
+        ffprobe JSON
+    """
     cmd = [
-        "ffprobe", "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
+        "ffprobe",
+        "-v",
+        "quiet",
+        "-print_format",
+        "json",
+        "-show_streams",
+        "-show_format",
         str(file_path),
     ]
     try:
-        output = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL).strip()
-        return float(output)
+        result = subprocess.check_output(
+            cmd,
+            text=True,
+            stderr=subprocess.DEVNULL
+        )
+        return json.loads(result)
     except Exception:
         return None
-
-
-def parse_ffmpeg_time(time_str: str) -> float:
-    """解析 ffmpeg 时间字符串（HH:MM:SS.microseconds）为秒数。"""
+def get_duration(file_path):
+    """
+    获取媒体时长
+    """
+    cmd = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        str(file_path),
+    ]
     try:
-        parts = time_str.strip().split(":")
-        if len(parts) == 3:
-            h, m, s = parts
-            return int(h) * 3600 + int(m) * 60 + float(s)
-    except (ValueError, AttributeError):
-        pass
-    return -1.0
-
-
-def format_progress_bar(current: float, total: float, width: int = 36) -> str:
-    """生成文本进度条：[████░░░░] 百分比。"""
-    if total <= 0:
-        return " " * (width + 10)
-    pct = min(current / total, 1.0)
-    filled = int(width * pct)
-    bar = "█" * filled + "░" * (width - filled)
-    return f"[{bar}] {pct:5.1%}"
-
-
-def run_tool(cmd: list[str], description: str) -> str | None:
+        out = subprocess.check_output(
+            cmd,
+            text=True,
+            stderr=subprocess.DEVNULL
+        )
+        return float(
+            out.strip()
+        )
+    except Exception:
+        return None
+# ============================================================
+# 异常 FPS 检测
+# ============================================================
+def detect_bad_fps(probe):
     """
-    运行外部工具，抑制正常输出；失败时返回 stderr 内容供打印。
+    检测老视频错误时间基
+    例如：
+        r_frame_rate=90000/1
+    SVT-AV1 最大支持:
+        240 fps
+    返回:
+        None
+            正常
+        "30000/1001"
+            需要修复
     """
+    if not probe:
+        return None
+    for stream in probe.get(
+        "streams",
+        []
+    ):
+        if stream.get(
+            "codec_type"
+        ) != "video":
+            continue
+        for key in (
+            "avg_frame_rate",
+            "r_frame_rate",
+        ):
+            value = stream.get(key)
+            if not value:
+                continue
+            try:
+                n, d = value.split("/")
+                fps = (
+                    float(n)
+                    /
+                    float(d)
+                )
+                if fps > 240:
+                    return "30000/1001"
+            except Exception:
+                pass
+    return None
+# ============================================================
+# Part 1 结束
+# ============================================================
+# ============================================================
+# Part 2:
+# ffmpeg 调用、进度显示、mkvmerge、单文件处理
+# ============================================================
+# ============================================================
+# 中断处理
+# ============================================================
+def quit_signal(signum, frame):
+    global _quit_requested
+    _quit_requested = True
+def init_quit_handler():
+    """
+    初始化 Ctrl+C
+    """
+    signal.signal(
+        signal.SIGINT,
+        quit_signal
+    )
+def check_quit():
+    return _quit_requested
+# ============================================================
+# 时间转换
+# ============================================================
+def parse_ffmpeg_time(value):
+    """
+    ffmpeg:
+        00:01:20.123
+    转换为秒
+    """
+    try:
+        h, m, s = value.split(":")
+        return (
+            int(h) * 3600
+            +
+            int(m) * 60
+            +
+            float(s)
+        )
+    except Exception:
+        return -1
+# ============================================================
+# 进度条
+# ============================================================
+def progress_bar(
+        current,
+        total,
+        width=40
+):
+    if not total:
+        return ""
+    ratio = min(
+        current / total,
+        1
+    )
+    done = int(
+        ratio * width
+    )
+    return (
+        "["
+        +
+        "█" * done
+        +
+        "░" * (width - done)
+        +
+        "] "
+        +
+        f"{ratio:6.2%}"
+    )
+# ============================================================
+# ffmpeg 实时运行
+# ============================================================
+def run_ffmpeg_progress(
+        cmd,
+        duration
+):
+    """
+    使用 ffmpeg -progress pipe:2
+    Windows 下进度从 stderr 读取更稳定。
+    返回:
+        None
+            成功
+        错误文本
+    """
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+        )
+    except FileNotFoundError:
+        return (
+            "未找到 ffmpeg，请检查 PATH。"
+        )
+    start_time = time.time()
+    last_time = 0
+    while True:
+        line = process.stderr.readline()
+        if not line:
+            if process.poll() is not None:
+                break
+            continue
+        line = line.strip()
+        # ffmpeg progress:
+        if line.startswith(
+            "out_time="
+        ):
+            value = line.split(
+                "=",
+                1
+            )[1]
+            seconds = parse_ffmpeg_time(
+                value
+            )
+            if seconds >= 0:
+                last_time = seconds
+                text = (
+                    "\r  🎬 转码 "
+                    +
+                    progress_bar(
+                        seconds,
+                        duration
+                    )
+                    +
+                    f"  已运行 {time.time()-start_time:.0f}s"
+                )
+                print(
+                    text,
+                    end="",
+                    flush=True
+                )
+        if check_quit():
+            process.terminate()
+            return (
+                "用户中断"
+            )
+    process.wait()
+    print()
+    if process.returncode != 0:
+        return (
+            "ffmpeg 执行失败"
+        )
+    return None
+# ============================================================
+# mkvmerge
+# ============================================================
+def run_mkvmerge(
+        source,
+        target
+):
+    """
+    mkvmerge 二次封装
+    """
+    cmd = [
+        "mkvmerge",
+        "--disable-track-statistics-tags",
+        "-o",
+        str(target),
+        str(source),
+    ]
     try:
         subprocess.run(
             cmd,
             check=True,
-            capture_output=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        return None  # 成功，无错误信息
-    except FileNotFoundError:
-        return MSG_TOOL_NOT_FOUND.format(description=description)
-    except subprocess.CalledProcessError as e:
-        return e.stderr.strip() or str(e)
-
-
-def print_progress(msg: str) -> None:
-    """输出进度信息（\r 覆盖当前行），末尾不带换行。"""
-    # 先清空行尾残留字符
-    print(f"\r{msg}", end="", flush=True)
-
-
-# ============================================================
-# Ctrl+Q / Ctrl+\ 中断支持
-# ============================================================
-
-def _on_quit_signal(signum, frame):
-    """Unix SIGQUIT 信号处理器（Ctrl+\）。"""
-    global _quit_requested
-    _quit_requested = True
-
-
-def init_quit_handler() -> None:
-    """注册中断处理：Windows 用 msvcrt，Unix 用 SIGQUIT（Ctrl+\）。"""
-    # Unix：注册 SIGQUIT 处理器（Ctrl+\）
-    if hasattr(signal, "SIGQUIT"):
-        signal.signal(signal.SIGQUIT, _on_quit_signal)
-    # Windows：提示可用快捷键
-    if sys.platform == "win32":
-        print(MSG_QUIT_HINT)
-
-
-def check_quit_key() -> bool:
-    """
-    非阻塞检测中断快捷键。
-    Windows：检测 Ctrl+Q（msvcrt kbhit）。
-    Unix：返回 _quit_requested 标志（由 SIGQUIT 设置）。
-    """
-    global _quit_requested
-    if sys.platform == "win32":
-        try:
-            import msvcrt
-            while msvcrt.kbhit():
-                ch = msvcrt.getch()
-                if ch == b"\x11":   # Ctrl+Q = ASCII 17
-                    _quit_requested = True
-        except Exception:
-            pass
-    return _quit_requested
-
-
-# ============================================================
-# 处理函数
-# ============================================================
-
-
-def process_file(
-    source: Path,
-    target_base: Path,
-    relative_dir: Path,
-    preset: dict,
-    file_index: int,
-    total_files: int,
-) -> bool:
-    """
-    转码单个文件（带实时进度条）。成功删除源文件返回 True，失败返回 False。
-    """
-    stem = source.stem
-    ext = preset["output_ext"]
-
-    # 目标子目录，保持源文件夹结构
-    target_dir = target_base / relative_dir
-    target_dir.mkdir(parents=True, exist_ok=True)
-
-    temp_output = target_dir / f"{stem}_temp{ext}"
-    final_output = target_dir / f"{stem}{ext}"
-
-    # 获取时长（供进度条计算百分比）
-    duration = get_duration(source)
-
-    # 打印文件头部信息
-    now_str = datetime.now().strftime("%H:%M:%S")
-    print(f"\n[{file_index}/{total_files}] {now_str} | {relative_dir / source.name}")
-    if duration:
-        print(MSG_DURATION.format(duration))
-
-    # --- 步骤 1：ffmpeg 转码（带实时进度） ---
-    ffmpeg_cmd = [
-        "ffmpeg",
-        "-progress", "pipe:1",     # 结构化进度写入 stdout
-        "-loglevel", "error",       # 只输出错误到 stderr
-        "-i", str(source),
-        *preset["ffmpeg"],
-        str(temp_output),
-    ]
-
-    err_msg = run_ffmpeg_with_progress(ffmpeg_cmd, duration)
-    if err_msg:
-        print(MSG_FFMPEG_FAILED.format(source.name, err_msg))
-        if "Ctrl+Q" not in err_msg:
-            temp_output.unlink(missing_ok=True)  # 非用户中断才清理临时文件
-        return False
-    # 进度条完成后换行
-    print()
-
-    # --- 步骤 2（可选）：mkvmerge 重封装 ---
-    if preset["mkvmerge"]:
-        print(MSG_REMUXING)
-        mkvmerge_cmd = ["mkvmerge", "-o", str(final_output), str(temp_output)]
-
-        err = run_tool(mkvmerge_cmd, "mkvmerge")
-        if err:
-            print(MSG_MKVMERGE_FAILED.format(temp_output, err))
-            temp_output.unlink(missing_ok=True)
-            return False
-
-        temp_output.unlink(missing_ok=True)  # 删除临时文件
-    else:
-        # 无需 mkvmerge，临时文件即为最终文件
-        if final_output.exists():
-            final_output.unlink()
-        shutil.move(str(temp_output), str(final_output))
-
-    # --- 步骤 3：验证 & 清理 ---
-    if final_output.is_file() and final_output.stat().st_size > 0:
-        try:
-            source.unlink()
-            print(MSG_DONE_OUTPUT.format(final_output))
-            return True
-        except OSError as e:
-            print(MSG_OUTPUT_OK_CANT_DELETE.format(source, e))
-            return True  # 输出成功，算通过
-    else:
-        print(MSG_OUTPUT_ABNORMAL.format(source))
-        return False
-
-
-def run_ffmpeg_with_progress(cmd: list[str], duration: float | None) -> str | None:
-    """
-    运行 ffmpeg 并解析 -progress pipe:1 输出，实时显示进度条。
-    返回 None 表示成功，否则返回错误信息字符串。
-    """
-    try:
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             text=True,
             encoding="utf-8",
             errors="replace",
         )
+        return None
     except FileNotFoundError:
-        return MSG_FFMPEG_NOT_FOUND
-
-    # 逐行读取 ffmpeg 进度输出
-    start_time = time.time()
-    last_update = 0.0
-    for line in proc.stdout:
-        if line.startswith("out_time="):
-            time_str = line.split("=", 1)[1].strip()
-            seconds = parse_ffmpeg_time(time_str)
-            if seconds >= 0 and duration and duration > 0:
-                # 限制刷新频率：最多每秒更新 5 次
-                now = time.time()
-                if now - last_update >= 0.2:
-                    bar = format_progress_bar(seconds, duration)
-                    elapsed = now - start_time
-                    print_progress(MSG_TRANSCODING_PROGRESS.format(bar, elapsed))
-                    last_update = now
-                    # 检测 Ctrl+Q 中断
-                    if check_quit_key():
-                        proc.terminate()
-                        return MSG_USER_INTERRUPT_FFMPEG
-
-    # 等待进程结束并读取 stderr
-    proc.wait()
-    if proc.returncode != 0:
-        stderr_output = proc.stderr.read().strip()
-        return stderr_output or f"ffmpeg 返回码 {proc.returncode}"
-
-    # 最终显示 100%
-    if duration and duration > 0:
-        elapsed = time.time() - start_time
-        print_progress(f"  🎬 转码 {format_progress_bar(duration, duration)}  已耗时 {elapsed:.0f}s")
-
-    return None
-
-
+        return (
+            "未找到 mkvmerge，请确认已安装。"
+        )
+    except subprocess.CalledProcessError as e:
+        return e.stderr
 # ============================================================
-# 主流程
+# 输出文件验证
 # ============================================================
+def validate_output(
+        file_path,
+        label="输出文件",
+        require_video=True
+):
+    """
+    使用 ffprobe 验证输出文件完整性。
+    检查:
+        - duration > 0
+        - 至少有一个 stream
+        - 视频流存在（require_video=True 时）
+    返回:
+        (True, None)      成功
+        (False, 错误信息)  失败
+    """
+    probe = probe_streams(
+        file_path
+    )
+    if not probe:
+        return (
+            False,
+            "ffprobe 无法读取文件"
+        )
+    # 检查 streams
+    streams = probe.get(
+        "streams",
+        []
+    )
+    if not streams:
+        return (
+            False,
+            "ffprobe 报告无流"
+        )
+    # 检查 duration
+    fmt = probe.get(
+        "format",
+        {}
+    )
+    dur_str = fmt.get(
+        "duration"
+    )
+    if dur_str is None:
+        return (
+            False,
+            "ffprobe 未返回时长"
+        )
+    try:
+        dur = float(dur_str)
+    except (ValueError, TypeError):
+        return (
+            False,
+            f"无效的时长值: {dur_str}"
+        )
+    if dur <= 0:
+        return (
+            False,
+            f"时长为 0: {dur_str}"
+        )
+    # 统计流类型
+    stream_types = {}
+    has_video = False
+    for s in streams:
+        ct = s.get(
+            "codec_type",
+            "unknown"
+        )
+        stream_types[ct] = (
+            stream_types.get(ct, 0)
+            + 1
+        )
+        if ct == "video":
+            has_video = True
+    type_summary = (
+        ", ".join(
+            f"{k}:{v}"
+            for k, v
+            in stream_types.items()
+        )
+    )
+    # 视频流检查
+    if require_video and not has_video:
+        return (
+            False,
+            "输出文件没有视频流"
+        )
+    print(
+        f"  🔍 {label}: "
+        f"时长={dur:.1f}s, "
+        f"流({type_summary}) → 验证通过"
+    )
+    return (True, None)
+# ============================================================
+# 单文件处理
+# ============================================================
+def process_file(
+        source,
+        target_base,
+        relative_dir,
+        preset,
+        index,
+        total
+):
+    """
+    处理单个文件。
 
-
-def main() -> None:
-    print("=" * 50)
-    print(MSG_TOOL_TITLE)
-    print("=" * 50)
-    print("\n" + MSG_PRESET_LIST)
-    # 视频预设在前，音频在后
-    for key in ("1", "2", "3", "4", "5"):
-        print(f"  {key}. {PRESETS[key]['name']}")
+    三层验证流程:
+        ffmpeg → ffprobe temp → mkvmerge → ffprobe final → 删除源文件
+    任一步失败即保留源文件。
+    """
+    target_dir = (
+        target_base
+        /
+        relative_dir
+    )
+    target_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+    output_file = (
+        target_dir
+        /
+        f"{source.stem}{preset['output_ext']}"
+    )
+    temp_file = (
+        target_dir
+        /
+        f"{source.stem}_temp{preset['output_ext']}"
+    )
+    print(
+        f"\n[{index}/{total}] "
+        f"{datetime.now().strftime('%H:%M:%S')} | "
+        f"{relative_dir / source.name}"
+    )
+    duration = get_duration(
+        source
+    )
+    if duration:
+        print(
+            f"  时长: {duration:.1f}s"
+        )
+    # --------------------------------------------------------
+    # 跳过已存在文件
+    # --------------------------------------------------------
+    if SKIP_EXISTING and output_file.exists():
+        print(
+            "  ⏭ 输出文件已存在，跳过"
+        )
+        return True
+    # --------------------------------------------------------
+    # ffprobe 源文件
+    # --------------------------------------------------------
+    probe = probe_streams(
+        source
+    )
+    # --------------------------------------------------------
+    # 判断是否纯音频预设（跳过视频流检查）
+    # --------------------------------------------------------
+    is_audio = (
+        preset["extensions"] == AUDIO_EXTS
+    )
+    # --------------------------------------------------------
+    # ffmpeg 参数
+    # --------------------------------------------------------
+    ffmpeg_args = list(
+        preset["ffmpeg"]
+    )
+    # --------------------------------------------------------
+    # 异常 FPS 修复
+    # --------------------------------------------------------
+    fix_fps = detect_bad_fps(
+        probe
+    )
+    if fix_fps:
+        print(
+            "  ⚠ 检测到异常帧率，修正:"
+            f" {fix_fps}"
+        )
+        # 输出端修复
+        ffmpeg_args.extend(
+            [
+                "-r",
+                fix_fps
+            ]
+        )
+    # ====================================================
+    # 第 1 层：ffmpeg 转码
+    # ====================================================
+    cmd = [
+        "ffmpeg",
+        "-stats_period",
+        "1",
+        "-progress",
+        "pipe:2",
+        "-loglevel",
+        "error",
+        "-i",
+        str(source),
+    ]
+    cmd.extend(
+        ffmpeg_args
+    )
+    cmd.append(
+        str(temp_file)
+    )
+    print(
+        subprocess.list2cmdline(cmd)
+    )
+    error = run_ffmpeg_progress(
+        cmd,
+        duration
+    )
+    if error:
+        print(
+            f"  ❌ ffmpeg 失败: {error}"
+        )
+        temp_file.unlink(
+            missing_ok=True
+        )
+        return False
+    # ====================================================
+    # 第 2 层：ffprobe 验证临时文件
+    # ====================================================
+    ok, err = validate_output(
+        temp_file,
+        "temp",
+        require_video=not is_audio
+    )
+    if not ok:
+        print(
+            f"  ❌ temp 验证失败: {err}"
+        )
+        temp_file.unlink(
+            missing_ok=True
+        )
+        return False
+    # ====================================================
+    # 第 3 层：mkvmerge（如需要）
+    # ====================================================
+    if preset["mkvmerge"]:
+        print(
+            "  📦 mkvmerge 重封装..."
+        )
+        error = run_mkvmerge(
+            temp_file,
+            output_file
+        )
+        if error:
+            print(
+                f"  ❌ mkvmerge 失败: {error}"
+            )
+            temp_file.unlink(
+                missing_ok=True
+            )
+            return False
+        temp_file.unlink(
+            missing_ok=True
+        )
+        # ================================================
+        # 第 4 层：ffprobe 验证最终文件
+        # ================================================
+        ok, err = validate_output(
+            output_file,
+            "final",
+            require_video=not is_audio
+        )
+        if not ok:
+            print(
+                f"  ❌ final 验证失败: {err}"
+            )
+            # mkvmerge 失败但 ffmpeg 成功，保留 temp 也无意义
+            return False
+    else:
+        # 无需 mkvmerge，temp 重命名为 final
+        if output_file.exists():
+            output_file.unlink()
+        shutil.move(
+            str(temp_file),
+            str(output_file)
+        )
+        # ================================================
+        # 第 4 层：ffprobe 验证最终文件
+        # ================================================
+        ok, err = validate_output(
+            output_file,
+            "final",
+            require_video=not is_audio
+        )
+        if not ok:
+            print(
+                f"  ❌ final 验证失败: {err}"
+            )
+            return False
+    # ====================================================
+    # 全部验证通过 → 删除源文件
+    # ====================================================
+    try:
+        # Windows 文件句柄释放有延迟
+        time.sleep(1)
+        source.unlink()
+        print(
+            f"  ✅ 完成 → {output_file}"
+        )
+        return True
+    except OSError as e:
+        print(
+            "  ⚠ 输出成功但无法删除源文件:"
+            f" {source.name} — {e}"
+        )
+        return True  # 输出成功，仍算通过
+# ============================================================
+# Part 2 结束
+# ============================================================
+# ============================================================
+# Part 3:
+# 主程序、扫描、运行入口
+# ============================================================
+# ============================================================
+# 主程序
+# ============================================================
+def main():
+    print(
+        "=" * 60
+    )
+    print(
+        "FFmpeg 批量转码工具"
+    )
+    print(
+        "=" * 60
+    )
+    # --------------------------------------------------------
+    # 选择模式
+    # --------------------------------------------------------
     print()
-
-    choice = input(MSG_SELECT_PRESET).strip() or "1"
-    preset = PRESETS.get(choice)
-    if preset is None:
-        print(MSG_INVALID_PRESET.format(choice=choice))
-        preset = PRESETS["1"]
-
-    print(MSG_CURRENT_PRESET.format(name=preset['name']))
-
-    source_folder = ask_folder(MSG_ASK_SOURCE_DIR, DEFAULT_SOURCE_DIR)
-    target_folder = ask_folder(MSG_ASK_TARGET_DIR, DEFAULT_TARGET_DIR)
-
-    target_folder.mkdir(parents=True, exist_ok=True)
-    exts = preset["extensions"]
-
-    # 预先收集所有匹配文件（用于全局进度计数）
-    all_files: list[tuple[Path, Path]] = []
-    for src_path in source_folder.rglob("*"):
-        if not src_path.is_file():
+    print(
+        "请选择转码模式:"
+    )
+    for key, value in PRESETS.items():
+        print(
+            f"{key}. {value['name']}"
+        )
+    choice = input(
+        "\n请输入编号（默认 1）: "
+    ).strip()
+    if choice not in PRESETS:
+        choice = "1"
+    preset = PRESETS[choice]
+    print()
+    print(
+        "当前模式:"
+        ,
+        preset["name"]
+    )
+    # --------------------------------------------------------
+    # 输入目录
+    # --------------------------------------------------------
+    source_folder = ask_folder(
+        "请输入源文件夹",
+        DEFAULT_SOURCE_DIR
+    )
+    target_folder = ask_folder(
+        "请输入目标文件夹",
+        DEFAULT_TARGET_DIR
+    )
+    print()
+    print(
+        "源目录:"
+        ,
+        source_folder
+    )
+    print(
+        "目标目录:"
+        ,
+        target_folder
+    )
+    # --------------------------------------------------------
+    # 扫描文件
+    # --------------------------------------------------------
+    files = []
+    print()
+    print(
+        "正在扫描文件..."
+    )
+    for file in source_folder.rglob("*"):
+        if not file.is_file():
             continue
-        if src_path.suffix.lower() not in exts:
-            continue
-        relative_dir = src_path.parent.relative_to(source_folder)
-        all_files.append((src_path, relative_dir))
-
-    total = len(all_files)
-    if total == 0:
-        print(MSG_NO_MATCH)
+        if (
+            file.suffix.lower()
+            in
+            preset["extensions"]
+        ):
+            relative = file.parent.relative_to(
+                source_folder
+            )
+            files.append(
+                (
+                    file,
+                    relative
+                )
+            )
+    if not files:
+        print(
+            "没有找到符合条件的文件。"
+        )
         return
-
-    print(MSG_FOUND_FILES.format(total=total))
+    print(
+        f"找到 {len(files)} 个文件。"
+    )
+    # --------------------------------------------------------
+    # 创建目标目录
+    # --------------------------------------------------------
+    target_folder.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+    # --------------------------------------------------------
+    # 初始化 Ctrl+C
+    # --------------------------------------------------------
     init_quit_handler()
-
-    ok = 0
-    fail = 0
-
+    success = 0
+    failed = 0
+    start_time = time.time()
+    # --------------------------------------------------------
+    # 执行
+    # --------------------------------------------------------
     try:
-        for idx, (src_path, relative_dir) in enumerate(all_files, 1):
-            # 检查中断标志
-            if check_quit_key():
-                print(MSG_USER_INTERRUPT)
+        for index, item in enumerate(
+            files,
+            1
+        ):
+            if check_quit():
+                print(
+                    "\n用户中断。"
+                )
                 break
-
-            if process_file(src_path, target_folder, relative_dir, preset, idx, total):
-                ok += 1
+            file, relative = item
+            result = process_file(
+                file,
+                target_folder,
+                relative,
+                preset,
+                index,
+                len(files)
+            )
+            if result:
+                success += 1
             else:
-                fail += 1
+                failed += 1
     except KeyboardInterrupt:
-        print(MSG_USER_INTERRUPT_KI)
-
-    print(MSG_COMPLETE.format(ok=ok, fail=fail, total=total))
-
-
+        print(
+            "\n用户中断。"
+        )
+    # --------------------------------------------------------
+    # 统计
+    # --------------------------------------------------------
+    elapsed = time.time() - start_time
+    print()
+    print(
+        "=" * 60
+    )
+    print(
+        "处理完成"
+    )
+    print(
+        f"成功: {success}"
+    )
+    print(
+        f"失败: {failed}"
+    )
+    print(
+        f"总计: {len(files)}"
+    )
+    print(
+        f"耗时: {elapsed/3600:.2f} 小时"
+    )
+    print(
+        "=" * 60
+    )
 # ============================================================
-# 入口
+# 程序入口
 # ============================================================
-
-# ==================== 程序入口 ====================
-
 if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     try:
+        # Windows 中文输出
+        if hasattr(
+            sys.stdout,
+            "reconfigure"
+        ):
+            sys.stdout.reconfigure(
+                encoding="utf-8",
+                errors="replace"
+            )
         main()
-    except KeyboardInterrupt:
-        print(MSG_INTERRUPTED)
     except Exception as e:
-        print(MSG_ERROR.format(e))
+        print()
+        print(
+            "程序发生错误:"
+        )
+        print(e)
     finally:
-        input(MSG_EXIT)
+        input(
+            "\n按回车键退出..."
+        )
+# ============================================================
+# 完成
+# ============================================================

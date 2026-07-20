@@ -37,12 +37,19 @@ MSG_EXIT = "\n按回车键退出..."
 
 
 def read_clipboard() -> str | None:
-    """从 Windows 剪贴板读取文本，失败返回 None。"""
+    """从 Windows 剪贴板读取文本（强制 UTF-8 输出），失败返回 None。"""
     try:
+        # 设置 PowerShell 输出编码为 UTF-8，避免中文字符乱码
+        ps_command = (
+            '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; '
+            '$OutputEncoding = [System.Text.Encoding]::UTF8; '
+            'Get-Clipboard -Raw'
+        )
         result = subprocess.run(
-            ["powershell", "-NonInteractive", "-Command", "Get-Clipboard -Raw"],
+            ["powershell", "-NonInteractive", "-Command", ps_command],
             capture_output=True,
             encoding="utf-8",
+            errors="replace",
             check=True,
         )
         return result.stdout

@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
-# 在脚本开始前询问我源文件位置，默认为“e:\Documents\Softwares\Codes\Python\Ed2kList.txt”（按回车表示默认，按"c"读取剪贴板，并写入默认路径）。
+# 在脚本开始前询问我源文件位置，默认为“d:\Studios\Attachments\Ed2kList.txt”（按回车表示默认，按"c"读取剪贴板，并写入默认路径）。
 # 该文件（或剪贴板）内包含许多 ed2k 链接，每行一个，顺序读取每个 ed2k 链接。
 # 每个链接都是百分号编码(Percent-encoding)，请将其转回原来链接。在源文件位置下生成新的文件（读取剪贴板则在默认文件夹下），文件名为"Ed2kList.new.txt"。
 # 根据"Ed2kList.new.txt"文件，在源文件位置下生成新的文件，文件名分别为"Ed2kList.name.txt"、"Ed2kList.suffix.txt"、"Ed2kList.size.txt"、"Ed2kList.hash.txt"。分别存放链接的文件名、后缀名、大小、hash。"Ed2kList.size.txt"文件中存放的文件大小请转成 B、KB、MB、GB 形式，并精确到小数点后 4 位，hash 转全部大写。
@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 # --- 默认路径 ---
-DEFAULT_SOURCE = Path(r"e:\Documents\Softwares\Codes\Python\Ed2kList.txt")
+DEFAULT_SOURCE = Path(r"d:\Studios\Attachments\Ed2kList.txt")
 
 _quit_requested = False  # Ctrl+Q 中断标志
 
@@ -33,7 +33,7 @@ MSG_SKIPPED = "⚠ 跳过了 {} 条无效/不完整的链接。"
 MSG_DONE = "处理完成，生成的新文件保存在：{}"
 MSG_PROMPT_FILE = (
     "请输入源文件位置"
-    "（默认 e:\\Documents\\Softwares\\Codes\\Python\\Ed2kList.txt，"
+    "（默认 d:\\Studios\\Attachments\\Ed2kList.txt，"
     "按回车使用默认，按 C 读取剪贴板）："
 )
 

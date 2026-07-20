@@ -1,7 +1,7 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文：
 # 在脚本开始前询问我是否采用正则表达式？默认不选择。
 # 不选择正则表达式，则询问我源文件夹位置（默认为：d:\Studios\Folders\Downloads\）。依次在屏幕中询问我查找内容及替换内容。遍历源文件夹位置中所有的文件及子文件夹内文件（多种格式：txt、md、py、ahk等），读取每一文件，找到存放查找内容，用替换内容进行替换。
-# 选择正则表达式，则询问我源文件夹位置（默认为：d:\Studios\Folders\Downloads\）。询问我存放查找内容的正则表达式文本位置（默认为：e:\Documents\Softwares\Codes\Python\RegexFind.txt）与存放替换内容的文本位置（默认为：e:\Documents\Softwares\Codes\Python\RegexReplace.txt）。遍历源文件夹位置中所有的文件及子文件夹内文件（多种格式：txt、md、py、ahk等），读取每一文件，找到存放查找内容，用替换内容进行替换。
+# 选择正则表达式，则询问我源文件夹位置（默认为：d:\Studios\Folders\Downloads\）。询问我存放查找内容的正则表达式文本位置（默认为：e:\Documents\Softwares\Codes\Python\RegexFind.txt）与存放替换内容的文本位置（默认为：e:\Documents\Softwares\Codes\Python\RegexReplace.txt）。遍历源文件夹位置中所有的文件及子文件夹内文件（多种格式：txt、md、nfo、py、ahk等），读取每一文件，找到存放查找内容，用替换内容进行替换。
 
 import signal
 import re
@@ -19,7 +19,7 @@ _quit_requested = False  # Ctrl+Q 中断标志
 TEXT_EXTS = {
     ".txt", ".md", ".py", ".ahk", ".csv", ".json", ".xml", ".html", ".htm",
     ".css", ".js", ".ts", ".yaml", ".yml", ".ini", ".cfg", ".log", ".bat",
-    ".cmd", ".ps1", ".sh", ".rb", ".lua", ".sql", ".tex", ".rst",
+    ".cmd", ".ps1", ".sh", ".rb", ".lua", ".sql", ".tex", ".rst", ".nfo",
 }
 
 # --- 消息常量 ---
