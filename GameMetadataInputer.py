@@ -5,8 +5,6 @@
 # 反复循环。
 
 # 导入模块
-import signal
-import os
 import re
 import sys
 import time
@@ -25,6 +23,9 @@ PROXY = {
 
 # --- 默认路径 ---
 DEFAULT_EXCEL_PATH = Path(r"d:\Studios\Attachments\标准.xlsx")
+
+# --- 保存间隔：每 N 行保存一次（全量保存较慢，避免每行都写） ---
+SAVE_INTERVAL = 200
 
 # --- API 配置 ---
 SGDB_API_KEY_FILE = Path(r"e:\Documents\Softwares\Codes\Attachments\APIKEY\SteamGridDBAPIKey.txt")
@@ -75,7 +76,7 @@ PLATFORM_MAPPING_IGDB = {
     "xbox one": 49, "xbox360": 12, "xbox 360": 12,
     "switch": 130, "nintendo switch": 130,
     "nes": 13, "nintendo entertainment system": 13, "nintendo": 13,
-    "snes": 14, "super nintendo": 14,
+    "snes": 19, "super nintendo": 19,
     "n64": 15, "nintendo 64": 15,
     "gameboy": 16, "gb": 16, "game boy": 16,
     "3ds": 37, "nintendo 3ds": 37,
@@ -165,7 +166,13 @@ def search_sgdb_cover(game_name, api_key):
         return ""
 
 # 2. IGDB 查询（返回封面、类型、发行商）
+# OAuth token 有效期很长，模块级缓存避免每次查询都重新获取
+_igdb_token_cache: str | None = None
+
 def get_igdb_access_token(client_id, client_secret):
+    global _igdb_token_cache
+    if _igdb_token_cache:
+        return _igdb_token_cache
     url = "https://id.twitch.tv/oauth2/token"
     params = {
         "client_id": client_id,
@@ -175,7 +182,8 @@ def get_igdb_access_token(client_id, client_secret):
     try:
         resp = requests.post(url, params=params, timeout=15, proxies=get_proxies())
         resp.raise_for_status()
-        return resp.json().get("access_token")
+        _igdb_token_cache = resp.json().get("access_token")
+        return _igdb_token_cache
     except Exception as e:
         print(f"    [IGDB] 获取令牌失败: {e}")
         return None
@@ -306,10 +314,12 @@ def search_steam_all(game_name):
 
 # ------------------- 安全保存 Excel -------------------
 def safe_save_excel(df, path):
-    """每次保存都尝试，若失败则提示用户"""
+    """每次保存都尝试，若失败则提示用户。
+    用 openpyxl 引擎：URL 按纯文本写入，不受 Excel 65,530 超链接限制，
+    避免 xlsxwriter 自动把 URL 写成超链接导致数据被丢弃。"""
     while True:
         try:
-            df.to_excel(path, index=False)
+            df.to_excel(path, index=False, engine="openpyxl")
             return True
         except PermissionError:
             print(f"❌ 文件被占用：{path}")
@@ -321,7 +331,7 @@ def safe_save_excel(df, path):
                     new_path = "封面结果.xlsx"
                 new_path = str(Path(path).parent / new_path)
                 try:
-                    df.to_excel(new_path, index=False)
+                    df.to_excel(new_path, index=False, engine="openpyxl")
                     print(f"✅ 已保存到 {new_path}")
                     return True
                 except Exception as e:
@@ -373,68 +383,91 @@ def run_once():
 
     print(MSG_QUERY_START)
     success = 0
-    for idx, row in df.iterrows():
-        name = str(row["名字"]).strip() if pd.notna(row["名字"]) else ""
-        platform = str(row["平台"]).strip() if pd.notna(row["平台"]) else ""
+    processed_count = 0
+    try:
+        for idx, row in df.iterrows():
+            name = str(row["名字"]).strip() if pd.notna(row["名字"]) else ""
+            platform = str(row["平台"]).strip() if pd.notna(row["平台"]) else ""
 
-        if not name:
-            print(MSG_SKIP_EMPTY_NAME.format(idx+1, len(df)))
-            continue
+            if not name:
+                print(MSG_SKIP_EMPTY_NAME.format(idx+1, len(df)))
+                continue
 
-        clean_name = clean_game_name(name)
-        print(MSG_PROCESSING_ROW.format(idx+1, len(df), name, platform or MSG_PLATFORM_EMPTY))
-        if clean_name != name:
-            print(MSG_CLEANED_NAME.format(clean_name))
+            # 跳过已处理行（封面/类型/发行公司均已填写，续跑友好）
+            has_cover = pd.notna(row["封面"]) and str(row["封面"]).strip()
+            has_genre = pd.notna(row["类型"]) and str(row["类型"]).strip()
+            has_pub = pd.notna(row["发行公司"]) and str(row["发行公司"]).strip()
+            if has_cover and has_genre and has_pub:
+                print(f"[{idx+1}/{len(df)}] 已有完整信息，跳过：{name}")
+                continue
 
-        cover_url = ""
-        genre = ""
-        publisher = ""
+            clean_name = clean_game_name(name)
+            print(MSG_PROCESSING_ROW.format(idx+1, len(df), name, platform or MSG_PLATFORM_EMPTY))
+            if clean_name != name:
+                print(MSG_CLEANED_NAME.format(clean_name))
 
-        # 1. 封面优先用 SteamGridDB
-        if sgdb_api_key:
-            print("    [SteamGridDB] 尝试获取封面...")
-            cover_url = search_sgdb_cover(clean_name, sgdb_api_key)
+            cover_url = ""
+            genre = ""
+            publisher = ""
 
-        # 2. 从 IGDB 补全类型、发行公司（如果有凭证，无论前面是否有封面都查）
-        if igdb_id and igdb_secret:
-            igdb_cover, igdb_genre, igdb_pub = search_igdb_all(clean_name, platform, igdb_id, igdb_secret)
-            if not cover_url:
-                cover_url = igdb_cover   # SGDB 没封面时，采纳 IGDB 的封面
-            if not genre:
-                genre = igdb_genre
-            if not publisher:
-                publisher = igdb_pub
+            # 1. 封面优先用 SteamGridDB
+            if sgdb_api_key:
+                print("    [SteamGridDB] 尝试获取封面...")
+                cover_url = search_sgdb_cover(clean_name, sgdb_api_key)
 
-        # 3. 若信息仍有缺失，再用 Steam 商店补全
-        if not cover_url or not genre or not publisher:
-            steam_cover, steam_genre, steam_pub = search_steam_all(clean_name)
-            if not cover_url:
-                cover_url = steam_cover
-            if not genre:
-                genre = steam_genre
-            if not publisher:
-                publisher = steam_pub
+            # 2. 从 IGDB 补全类型、发行公司（如果有凭证，无论前面是否有封面都查）
+            if igdb_id and igdb_secret:
+                igdb_cover, igdb_genre, igdb_pub = search_igdb_all(clean_name, platform, igdb_id, igdb_secret)
+                if not cover_url:
+                    cover_url = igdb_cover   # SGDB 没封面时，采纳 IGDB 的封面
+                if not genre:
+                    genre = igdb_genre
+                if not publisher:
+                    publisher = igdb_pub
 
-        # 写入结果
-        if cover_url:
-            df.at[idx, "封面"] = cover_url
-            success += 1
-        if genre:
-            df.at[idx, "类型"] = genre
-        if publisher:
-            df.at[idx, "发行公司"] = publisher
+            # 3. 若信息仍有缺失，再用 Steam 商店补全
+            if not cover_url or not genre or not publisher:
+                steam_cover, steam_genre, steam_pub = search_steam_all(clean_name)
+                if not cover_url:
+                    cover_url = steam_cover
+                if not genre:
+                    genre = steam_genre
+                if not publisher:
+                    publisher = steam_pub
 
-        # 立即保存
-        if cover_url or genre or publisher:
-            print(MSG_FINAL_RESULT.format(
-                MSG_COVER_HAS if cover_url else MSG_COVER_NONE,
-                genre or MSG_COVER_NONE,
-                publisher or MSG_COVER_NONE))
-        else:
-            print(MSG_NO_INFO)
+            # 写入结果
+            if cover_url:
+                df.at[idx, "封面"] = cover_url
+                success += 1
+            if genre:
+                df.at[idx, "类型"] = genre
+            if publisher:
+                df.at[idx, "发行公司"] = publisher
 
+            processed_count += 1
+
+            # 每 SAVE_INTERVAL 行保存一次（全量保存较慢，避免每行都写）
+            if processed_count % SAVE_INTERVAL == 0:
+                safe_save_excel(df, excel_path)
+                print(f"    (已保存进度: {processed_count} 行)")
+
+            if cover_url or genre or publisher:
+                print(MSG_FINAL_RESULT.format(
+                    MSG_COVER_HAS if cover_url else MSG_COVER_NONE,
+                    genre or MSG_COVER_NONE,
+                    publisher or MSG_COVER_NONE))
+            else:
+                print(MSG_NO_INFO)
+
+            time.sleep(REQUEST_DELAY)
+    except KeyboardInterrupt:
+        # 用户中断：保存当前进度后退出
+        print("\n⚠ 用户中断，正在保存当前进度...")
         safe_save_excel(df, excel_path)
-        time.sleep(REQUEST_DELAY)
+        raise
+
+    # 循环结束：最终保存
+    safe_save_excel(df, excel_path)
 
     print(f"\n{'='*50}")
     print(MSG_DONE_SUMMARY.format(len(df), success))

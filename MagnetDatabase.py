@@ -52,6 +52,7 @@ def copy_to_clipboard(text: str) -> None:
              "[System.Windows.Forms.Clipboard]::SetText($Input)"],
             input=text,
             encoding="utf-8",
+            errors="replace",
             capture_output=True,
             check=True,
         )

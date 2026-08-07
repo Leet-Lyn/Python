@@ -27,8 +27,7 @@
 # 询问我 SizeMD4 数据库文件位置（默认为：e:\Documents\Softwares\Codes\Attachments\Databases\SizeMD4\SizeMD4.txt）。读取剪贴板数据，其为多行 SizeMD4 值（每行一个 多行 SizeMD4 值），顺序读取每一行 多行 SizeMD4 值。比对 SizeMD4 数据库文件（SizeMD4 数据库文件，每一行为一个文件的 SizeMD4 值（文件大小|MD4哈希））。
 # 如果当前 SizeMD4 值在原来 SizeMD4 数据库文件里存在，则将该 SizeMD4 值从原来 SizeMD4 数据库文件里删除。
 # 如果当前 SizeMD4 值不在原来 SizeMD4 数据库文件里存在，则报告我。
-# 6. 询问我源文件夹位置（默认为：d:\Studios\Folders\Ins\），与目标源文件夹位置（默认为：d:\Studios\Folders\Outs\）。依次将源文件夹里的文件与文件夹移动到目标源文件夹，如出现有文件名与如何一个曾经移动的文件的文件名相同，则记录下来不触发移动。找出那些文件，直至源文件夹内所有文件及子文件夹中的文件都处理好结束。最后整理哪些文件 文件名相同，并将这些文件列表打印在屏幕上并复制到剪贴板上去。
-# 7. 整理数据库：
+# 6. 整理数据库：
 # 询问我 SizeMD4 数据库文件位置（默认为：e:\Documents\Softwares\Codes\Attachments\Databases\SizeMD4\SizeMD4.txt）。对 SizeMD4 数据库，先备份，再对文件里的 SizeMD4 值（字符串）从小到大排序。
 # 完成后，反复循环至最开始。
 
@@ -462,9 +461,8 @@ def add_to_size_md4_database(db_path: str, size_md4: str) -> None:
 
 
 def safe_move_file(src_path: str, dst_path_str: str,
-                   max_retries: int = 10, retry_delay: float = 1.0) -> str | None:
-    """安全移动文件（带重试），目标已存在时自动加 _N 后缀。
-    返回移动后的实际路径，失败返回 None。"""
+                   max_retries: int = 10, retry_delay: float = 1.0) -> bool:
+    """安全移动文件（带重试），目标已存在时自动加 _N 后缀。"""
     src = Path(src_path)
     dst = Path(dst_path_str)
 
@@ -481,15 +479,15 @@ def safe_move_file(src_path: str, dst_path_str: str,
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(src), str(dst))
             print(MSG_MOVE_SUCCESS.format(src.name, dst))
-            return str(dst)
+            return True
         except (PermissionError, OSError) as e:
             print(MSG_MOVE_FILE_OCCUPIED.format(attempt+1, max_retries, e))
             time.sleep(retry_delay)
         except Exception as e:
             print(MSG_MOVE_FILE_FAIL.format(e))
-            return None
+            return False
     print(MSG_MOVE_FILE_MAX_RETRIES.format(src))
-    return None
+    return False
 
 
 def wait_for_file_ready(file_path: str, timeout_seconds: int = 30,
@@ -590,11 +588,9 @@ def move_file_with_structure(source_file: str, target_base_dir: str,
     try:
         src = Path(source_file)
         base = Path(source_base_dir_str)
-        # 用 is_relative_to 判断路径归属（避免字符串包含误判，
-        # 如 Downloads vs Downloads2 的前缀陷阱）
-        try:
+        if str(base) in str(src):
             rel = str(src.relative_to(base))
-        except ValueError:
+        else:
             rel = src.name
 
         # 路径遍历安全检查：拒绝包含 .. 组件的相对路径
@@ -610,8 +606,9 @@ def move_file_with_structure(source_file: str, target_base_dir: str,
 
         target_dir.mkdir(parents=True, exist_ok=True)
         target_file = target_dir / src.name
-        # 直接返回实际移动后的路径（可能被 safe_move_file 加 _N 后缀）
-        return safe_move_file(str(src), str(target_file))
+        if safe_move_file(str(src), str(target_file)):
+            return str(target_file)
+        return None
     except Exception as e:
         print(MSG_MOVE_FILE_FAIL.format(e))
         return None
@@ -683,11 +680,7 @@ def process_folder_to_excel_and_db(
             if check_duplicates and size_md4 in size_md4_set:
                 fp_name = Path(file_path).name
                 print(MSG_OPT1_SIZE_MD4_EXISTS.format(fp_name))
-                # 移动到删除文件夹，保持源文件夹结构：
-                # Deletes\<源文件夹名>\<子目录>\文件
-                moved = move_file_with_structure(
-                    file_path, delete_dir, source_dir, source_folder_name
-                )
+                moved = move_file_with_structure(file_path, delete_dir, source_dir)
                 if moved:
                     duplicated_files.append(moved)
                     print(MSG_OPT1_MOVED_TO.format(moved))
@@ -712,15 +705,6 @@ def process_folder_to_excel_and_db(
             new_record["名字"] = re.sub(_illegal_chars, "_", fp.stem)
             new_record["原文件名"] = re.sub(_illegal_chars, "_", fp.name)
 
-            # 文件夹字段：原文件相对源文件夹的完整父目录路径
-            # （Windows 反斜杠分隔，含所有子文件夹层级，根目录文件为空）
-            try:
-                rel_dir = fp.parent.relative_to(Path(source_dir))
-                # str() 为 Windows 原生分隔符，包含所有层级
-                new_record["文件夹"] = "" if str(rel_dir) == "." else str(rel_dir)
-            except ValueError:
-                new_record["文件夹"] = ""
-
             moved_to_write = move_file_with_structure(
                 file_path, write_dir, source_dir, source_folder_name
             )
@@ -736,39 +720,15 @@ def process_folder_to_excel_and_db(
                 encrypted_file_path = wait_for_encrypted_file()
                 if encrypted_file_path:
                     enc_fp = Path(encrypted_file_path)
-                    # 先记录原始加密名，若移动时发生 _N 重命名，下面会覆盖为实际名
                     new_record["加密文件名"] = enc_fp.stem
 
-                    # 计算原文件相对 source_dir 的子目录（纯路径计算，原文件已移走）
-                    try:
-                        enc_rel_dir = Path(file_path).parent.relative_to(
-                            Path(source_dir)
-                        )
-                    except ValueError:
-                        enc_rel_dir = Path()
-
-                    # 加密文件移动到上传目录，保持源文件夹结构：
-                    # Uploads\<源文件夹名>\<原文件子目录>\<加密文件>
-                    enc_target_dir = (
-                        Path(upload_dir) / source_folder_name / enc_rel_dir
-                    )
-                    enc_target_dir.mkdir(parents=True, exist_ok=True)
-                    moved_to_upload = safe_move_file(
-                        encrypted_file_path,
-                        str(enc_target_dir / enc_fp.name),
+                    moved_to_upload = move_file_with_structure(
+                        encrypted_file_path, upload_dir, source_dir
                     )
                     if moved_to_upload:
-                        # 用实际文件名覆盖记录（可能被 safe_move_file 加 _N 后缀）
-                        new_record["加密文件名"] = Path(moved_to_upload).stem
-                        print(MSG_OPT1_MOVED_ENC_TO_UPLOAD.format(
-                            Path(moved_to_upload).name
-                        ))
+                        print(MSG_OPT1_MOVED_ENC_TO_UPLOAD.format(enc_fp.name))
                     else:
                         print(MSG_OPT1_MOVE_ENC_FAIL)
-                        # 提示残留：避免下次 wait_for_encrypted_file 误取
-                        print("  ⚠ 加密文件残留于 {}，请手动处理。".format(
-                            encrypted_file_path
-                        ))
                 else:
                     new_record["加密文件名"] = ""
             else:
@@ -799,15 +759,6 @@ def process_folder_to_excel_and_db(
         try:
             new_df = pd.DataFrame(new_records)
             df = pd.concat([df, new_df], ignore_index=True)
-            # 列序调整：新列"文件夹"移到"原文件名"后面
-            cols = list(df.columns)
-            if "文件夹" in cols and "原文件名" in cols:
-                cols.remove("文件夹")
-                cols.insert(cols.index("原文件名") + 1, "文件夹")
-                df = df[cols]
-            # 旧记录无文件夹值，NaN 转空字符串
-            if "文件夹" in df.columns:
-                df["文件夹"] = df["文件夹"].fillna("")
             df.to_excel(excel_path, index=False, engine="openpyxl")
             print(MSG_OPT1_ADDED_RECORDS.format(len(new_records)))
         except Exception as e:
