@@ -20,6 +20,15 @@ import time
 from datetime import datetime
 from pathlib import Path
 # ============================================================
+# 输出编码：强制 UTF-8，防止 GBK 控制台下 emoji/中文打印崩溃
+# ============================================================
+for _stream in (sys.stdout, sys.stderr):
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+# ============================================================
 # 全局配置
 # ============================================================
 # 默认源文件夹
@@ -42,6 +51,7 @@ VIDEO_EXTS = (
     ".avi",
     ".f4v",
     ".flv",
+    ".swf",
     ".ts",
     ".mpeg",
     ".mpg",
@@ -60,6 +70,8 @@ VIDEO_EXTS = (
 AUDIO_EXTS = (
     ".mp3",
     ".m4a",
+    ".m4b",
+    ".mka",
     ".wma",
     ".ogg",
     ".aac",
@@ -174,12 +186,36 @@ PRESETS = {
         False,
     },
     # --------------------------------------------------------
-    # AAC
+    # OGG Vorbis
     # --------------------------------------------------------
     "4":
     {
         "name":
-        "AAC 音频",
+        "OGG Vorbis 音频",
+        "extensions":
+        AUDIO_EXTS,
+        "output_ext":
+        ".ogg",
+        "ffmpeg":
+        [
+            "-map",
+            "0:a",
+            "-c:a",
+            "libvorbis",
+            "-q:a",
+            "4",
+            "-y",
+        ],
+        "mkvmerge":
+        False,
+    },
+    # --------------------------------------------------------
+    # AAC → .aac
+    # --------------------------------------------------------
+    "5":
+    {
+        "name":
+        "AAC 音频 (.aac)",
         "extensions":
         AUDIO_EXTS,
         "output_ext":
@@ -198,24 +234,72 @@ PRESETS = {
         False,
     },
     # --------------------------------------------------------
-    # OGG Vorbis
+    # AAC → .m4a
     # --------------------------------------------------------
-    "5":
+    "6":
     {
         "name":
-        "OGG Vorbis 音频",
+        "AAC 音频 (.m4a)",
         "extensions":
         AUDIO_EXTS,
         "output_ext":
-        ".ogg",
+        ".m4a",
         "ffmpeg":
         [
             "-map",
             "0:a",
             "-c:a",
-            "libvorbis",
+            "aac",
             "-q:a",
-            "4",
+            "0.36",
+            "-y",
+        ],
+        "mkvmerge":
+        False,
+    },
+    # --------------------------------------------------------
+    # AAC → .m4b
+    # --------------------------------------------------------
+    "7":
+    {
+        "name":
+        "AAC 音频 (.m4b)",
+        "extensions":
+        AUDIO_EXTS,
+        "output_ext":
+        ".m4b",
+        "ffmpeg":
+        [
+            "-map",
+            "0:a",
+            "-c:a",
+            "aac",
+            "-q:a",
+            "0.36",
+            "-y",
+        ],
+        "mkvmerge":
+        False,
+    },
+    # --------------------------------------------------------
+    # AAC → .mka
+    # --------------------------------------------------------
+    "8":
+    {
+        "name":
+        "AAC 音频 (.mka)",
+        "extensions":
+        AUDIO_EXTS,
+        "output_ext":
+        ".mka",
+        "ffmpeg":
+        [
+            "-map",
+            "0:a",
+            "-c:a",
+            "aac",
+            "-q:a",
+            "0.36",
             "-y",
         ],
         "mkvmerge":
@@ -264,6 +348,7 @@ def probe_streams(file_path):
         result = subprocess.check_output(
             cmd,
             text=True,
+            encoding="utf-8",
             stderr=subprocess.DEVNULL
         )
         return json.loads(result)
@@ -287,6 +372,7 @@ def get_duration(file_path):
         out = subprocess.check_output(
             cmd,
             text=True,
+            encoding="utf-8",
             stderr=subprocess.DEVNULL
         )
         return float(

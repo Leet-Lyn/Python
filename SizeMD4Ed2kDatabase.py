@@ -248,6 +248,9 @@ MSG_TARGET_EXISTS_RENAME = "目标已存在，重命名为: {}"
 MSG_FILE_READY_TIMEOUT = "文件就绪等待超时: {}"
 MSG_ENCRYPT_WAIT_TIMEOUT = "等待加密文件超时 ({}秒)"
 MSG_ED2K_GEN_FAIL = "生成ED2K链接失败 {}: {}"
+MSG_ED2K_RHASH_MISSING = "未找到 RHash 可执行文件: {}"
+MSG_ED2K_FILE_NOT_FOUND = "文件不存在，无法生成ED2K链接: {}"
+MSG_ED2K_RETRY_LONG_PATH = "  rhash 打开失败 ({}): {}，改用长路径前缀重试..."
 MSG_ED2K_PARSE_FAIL = "解析ED2K链接失败: {}"
 MSG_EXTRACT_SIZE_MD4_FAIL = "提取SizeMD4失败: {}"
 MSG_LOAD_DB_FAIL = "读取SizeMD4数据库失败: {}"
@@ -386,16 +389,50 @@ def get_all_files(source_dir: str) -> list[str]:
 
 
 def generate_ed2k_link(file_path: str) -> str:
-    """生成文件的 ED2K 链接。"""
+    """
+    生成文件的 ED2K 链接。
+
+    实测结论（rhash 1.4.6）：
+    - 本地路径长路径 OK（rhash 内置长路径支持）
+    - UNC 路径 >260 字符失败（"No such file or directory"），
+      必须加 \\\\?\\UNC\\ 前缀才能访问（Windows 对长 UNC 路径的要求）
+    失败时打印 rhash stderr / returncode，不静默返回空。
+    """
     try:
         fp = Path(file_path)
-        if DEFAULT_RHASH_PATH.is_file() and fp.is_file():
-            result = subprocess.run(
-                [str(DEFAULT_RHASH_PATH), "--uppercase", "--ed2k-link", str(fp)],
-                capture_output=True, encoding="utf-8",
-            )
-            if result.returncode == 0:
+        if not DEFAULT_RHASH_PATH.is_file():
+            print(MSG_ED2K_RHASH_MISSING.format(DEFAULT_RHASH_PATH))
+            return ""
+        if not fp.is_file():
+            print(MSG_ED2K_FILE_NOT_FOUND.format(file_path))
+            return ""
+
+        # 候选路径：原始路径 → 长路径前缀路径（Windows 专用）
+        candidates = [str(fp)]
+        if sys.platform == "win32":
+            raw = str(fp)
+            if raw.startswith("\\\\"):
+                candidates.append("\\\\?\\UNC\\" + raw[2:])
+            else:
+                candidates.append("\\\\?\\" + raw)
+
+        last_detail = "未知错误"
+        for path_arg in candidates:
+            try:
+                result = subprocess.run(
+                    [str(DEFAULT_RHASH_PATH), "--uppercase", "--ed2k-link", path_arg],
+                    capture_output=True, encoding="utf-8", errors="replace",
+                )
+            except Exception as e:
+                last_detail = str(e)
+                continue
+            if result.returncode == 0 and result.stdout.strip():
                 return result.stdout.strip()
+            detail = result.stderr.strip() or f"returncode={result.returncode}"
+            if len(candidates) > 1:
+                print(MSG_ED2K_RETRY_LONG_PATH.format(path_arg, detail))
+            last_detail = detail
+        print(MSG_ED2K_GEN_FAIL.format(file_path, last_detail))
         return ""
     except Exception as e:
         print(MSG_ED2K_GEN_FAIL.format(file_path, e))
@@ -779,7 +816,9 @@ def process_folder_to_excel_and_db(
             new_record["属于"] = belongs_to
             new_record["主链接"] = main_link
 
-            ed2k_link = generate_ed2k_link(moved_to_write)
+            # 复用源文件生成的链接：内容未变，避免二次全文件哈希；
+            # 且保留原始文件名，与"原文件名"字段一致
+            ed2k_link = ed2k_for_check
             new_record["标准链接"] = ed2k_link
             if ed2k_link:
                 size, filehash = parse_ed2k_link(ed2k_link)
@@ -1018,7 +1057,7 @@ def delete_size_md4_from_db(size_md4_db_path: str) -> None:
     to_delete: set[str] = set()
 
     for line in lines:
-        size_md4 = line.strip()
+        size_md4 = line.strip().upper()  # 统一大写，与数据库（排序去重后全大写）一致
         if not size_md4:
             continue
         to_delete.add(size_md4)
