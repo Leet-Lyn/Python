@@ -139,6 +139,7 @@ MSG_QUIT_KEY = "\n⚠ 用户中断（Ctrl+Q），已处理部分不会丢失。"
 
 # 错误消息
 MSG_ERR_SOURCE_NOT_FOUND = "错误: 源文件夹不存在 - {}，返回主菜单。"
+MSG_HINT_UNC_AUTH = "提示: UNC 路径（\\\\服务器\\共享）无法访问通常是未保存 NAS 凭据。\n      请执行: cmdkey /add:<NAS名> /user:<用户名> /pass:<密码>\n      或在资源管理器访问该共享时勾选\"记住凭据\"，然后重试。"
 MSG_ERR_DIR_CONFLICT = "目录冲突错误: {}"
 MSG_ERR_RETURN_MENU = "已返回主菜单，请重新选择目录。"
 MSG_ERR_CANNOT_GENERATE_MAGNET = "无法生成 Magnet 链接。"
@@ -363,9 +364,11 @@ def move_file_with_structure(source_file: str, target_base_dir: str,
     try:
         src = Path(source_file)
         base = Path(source_base_dir_str)
-        if str(base) in str(src):
+        # 用 relative_to 判断包含关系（大小写/尾斜杠不敏感），
+        # 避免 str 包含判断在 UNC 路径形式差异下失效导致丢目录结构
+        try:
             rel = str(src.relative_to(base))
-        else:
+        except ValueError:
             rel = src.name
 
         # 路径遍历安全检查：拒绝包含 .. 组件的相对路径
@@ -780,6 +783,8 @@ def main() -> None:
 
             if not Path(source_dir).is_dir():
                 print(MSG_ERR_SOURCE_NOT_FOUND.format(source_dir))
+                if source_dir.strip().startswith(r"\\"):
+                    print(MSG_HINT_UNC_AUTH)
                 continue
 
             is_valid, err_msg = validate_directory_independence(

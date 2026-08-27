@@ -561,7 +561,7 @@ def copy_to_z_drive_with_retry(source_file: str):
     ext = src.suffix
     current_stem = stem
     attempt_count = 0
-    max_attempts = 50
+    max_attempts = 1024
 
     while attempt_count < max_attempts:
         try:

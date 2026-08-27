@@ -8,6 +8,11 @@ from pathlib import Path
 
 import openpyxl
 
+# CSV 字段长度上限调大：某些 CSV 单元格（如长文本、多行内容）超过
+# Python csv 默认的 131072 字节（128KB）会报 field larger than field limit。
+# 这里放宽到 1GB，覆盖绝大多数场景。
+csv.field_size_limit(1024 * 1024 * 1024)
+
 # ==================== 全局配置 ====================
 
 # --- 消息常量 ---
@@ -58,6 +63,18 @@ def detect_encoding(file_path: Path) -> str:
     return "utf-8"  # 兜底，csv_to_xlsx 中以 errors="replace" 打开防止崩溃
 
 # ==================== CSV → XLSX ====================
+# Excel 单元格字符数硬上限为 32767，超长内容直接写入会导致 openpyxl
+# 报错或生成的 xlsx 损坏。这里截断并追加标记，保证转换不失败。
+EXCEL_CELL_LIMIT = 32767
+TRUNC_MARK = " ...[已截断]"
+
+def truncate_cell(value) -> str:
+    """截断超过 Excel 上限的单元格内容。"""
+    if len(value) > EXCEL_CELL_LIMIT:
+        keep = EXCEL_CELL_LIMIT - len(TRUNC_MARK)
+        return value[:keep] + TRUNC_MARK
+    return value
+
 def csv_to_xlsx(csv_path: Path) -> Path:
     """CSV 文件转 XLSX，处理 UTF-8 编码和多行单元格。"""
     encoding = detect_encoding(csv_path)
@@ -68,14 +85,20 @@ def csv_to_xlsx(csv_path: Path) -> Path:
     ws.title = csv_path.stem[:31]  # Excel 工作表名最长 31 字符
 
     row_count = 0
+    trunc_count = 0
     # errors="replace" 防止编码检测兜底时 UnicodeDecodeError 崩溃
     with open(csv_path, "r", encoding=encoding, errors="replace", newline="") as f:
         reader = csv.reader(f)
         for row in reader:
             row_count += 1
-            ws.append(row)
+            safe_row = [truncate_cell(cell) for cell in row]
+            if any(len(cell) > EXCEL_CELL_LIMIT for cell in row):
+                trunc_count += 1
+            ws.append(safe_row)
 
     print(MSG_CSV_ROWS.format(row_count))
+    if trunc_count:
+        print(f"  警告: {trunc_count} 行含超长单元格(>32767字符), 已截断")
 
     output_path = csv_path.with_suffix(".xlsx")
     wb.save(output_path)
