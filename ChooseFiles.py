@@ -8,6 +8,7 @@
 # 并设置快捷键：剔除（D）；保留（Q）；待定（H）；随机（Space）；撤销（U）。
 
 # 导入模块
+# python -m pip install PySide6
 import gc
 import random
 import shutil

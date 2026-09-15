@@ -24,7 +24,7 @@ from PIL import Image
 
 # ==================== 外部工具路径 ====================
 MHTML_TO_HTML_EXE = Path(r"d:\ProApps\MhtmlToHtml\mhtml-to-html.exe")
-LEANIFY_EXE = Path(r"d:\ProApps\leanify\current\Leanify.exe")
+LEANIFY_EXE = Path(r"d:\ProApps\Leanify\Leanify.exe")
 
 HTML_EXTS = {".htm", ".html", ".mhtml", ".mht"}
 MHTML_EXTS = {".mhtml", ".mht"}

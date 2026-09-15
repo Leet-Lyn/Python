@@ -33,6 +33,7 @@
 # 完成后，反复循环至最开始。
 
 # 导入模块
+# python -m pip install pandas
 import re
 import signal
 import shutil

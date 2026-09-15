@@ -1,5 +1,5 @@
 # 请帮我写个中文的 Python 脚本，批注也是中文。
-# 开始询问我目标文件夹位置（默认为 E:\Backups\Windows\StartMenu\）。依次运行该文件夹下所有 *.lnk 指向的内容。
+# 开始询问我目标文件夹位置（默认为 d:\Backups\Windows\StartMenu\）。依次运行该文件夹下所有 *.lnk 指向的内容。
 
 # 导入模块
 import signal
@@ -10,7 +10,7 @@ from pathlib import Path
 
 # ==================== 全局配置 ====================
 
-DEFAULT_STARTMENU_DIR = Path(r"E:\Backups\Windows\StartMenu")
+DEFAULT_STARTMENU_DIR = Path(r"d:\Backups\Windows\StartMenu")
 
 MSG_PROMPT_FOLDER = "请输入目标文件夹位置（默认 {default}）："
 MSG_ERROR_DIR_NOT_FOUND = "错误：文件夹 '{folder}' 不存在。"

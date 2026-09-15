@@ -2,6 +2,8 @@
 # 将 CVS 与 xls 文件相互转换，避免单元格内多行数据错误与编码错误。
 # 完成后进行循环。
 
+# 导入模块
+# python -m pip install openpyxl
 import csv
 import sys
 from pathlib import Path

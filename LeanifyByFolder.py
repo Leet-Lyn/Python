@@ -13,7 +13,7 @@ from pathlib import Path
 
 DEFAULT_SOURCE_DIR = r"d:\Studios\Folders\Ins"
 DEFAULT_TARGET_DIR = r"d:\Studios\Folders\Outs"
-LEANIFY_EXE = Path(r"d:\ProApps\leanify\current\Leanify.exe")
+LEANIFY_EXE = Path(r"d:\ProApps\Leanify\Leanify.exe")
 
 _quit_requested = False  # Ctrl+Q 中断标志
 
